@@ -163,17 +163,25 @@ class SpanAttentionClamp:
 
 
 def measure_span_share(model, input_ids, span, layer, attention_mask=None) -> float:
-    """Current span share at ``layer`` for one forward, under whatever hooks are installed.
+    """Current span share for one forward, under whatever hooks are installed.
+
+    ``layer`` is an int or a sequence of ints; a sequence is averaged. The clamp biases *every*
+    layer, so indexing the dose-response on a single one is a choice, and layer 24 was originally
+    picked because it looked strongest among the first five layers captured — a post-hoc pick on
+    the data the claims rest on. Passing every layer removes that choice; passing an int
+    reproduces the earlier experiments exactly.
 
     ``attention_mask`` must be passed on the sdpa path: a purely causal mask is optimized away to
     ``None`` before it reaches ``self_attn``, and the clamp needs an explicit mask to bias.
     """
-    capture = SelectiveAttentionCapture(model, [layer])
+    layers = [layer] if isinstance(layer, int) else list(layer)
+    capture = SelectiveAttentionCapture(model, layers)
     capture.enabled = True
     try:
         with torch.no_grad():
             model(input_ids, attention_mask=attention_mask)
-        return span_share(capture.captured[layer], span)
+        shares = [span_share(capture.captured[li], span) for li in layers]
+        return float(sum(shares) / len(shares))
     finally:
         capture.remove()
 
@@ -181,6 +189,9 @@ def measure_span_share(model, input_ids, span, layer, attention_mask=None) -> fl
 def solve_span_scale(model, input_ids, span, target_share: float, reference_layer: int,
                      layers=None, tol: float = 1e-4, max_iter: int = 60, attention_mask=None):
     """Find the ``scale`` whose clamped span share equals ``target_share`` at ``reference_layer``.
+
+    ``reference_layer`` may be a sequence, in which case the bisection targets the mean share over
+    those layers -- the readout the clamp's own all-layer intervention implies.
 
     Returns ``(scale, achieved_share)``. The aggregate share is monotone increasing in the bias, so
     a bisection on ``b`` converges; it is deterministic, and it leaves no hooks installed.

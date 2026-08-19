@@ -18,6 +18,7 @@ import random
 from pathlib import Path
 
 import pandas as pd
+from huggingface_hub import hf_hub_download
 
 OPTION_LABELS = ["A", "B", "C", "D", "E", "F", "G", "H"]
 
@@ -130,6 +131,19 @@ def format_case_mcq(age, sex, initial_ev, evidence_str, evidence_db, options, n_
             + "\n" + format_case_question(options, n_options))
 
 
+def load_case_frame(limit: int | None = 4000) -> pd.DataFrame:
+    """The raw DDXPlus test rows, from the local CSV if present and the Hub cache otherwise.
+
+    Deliberately not ``load_dataset``: that needs the dataset *builder* resolved from the Hub and
+    so fails under ``HF_HUB_OFFLINE=1``, which every driver here sets because the tokenizer
+    otherwise takes a rate-limited round trip. ``hf_hub_download`` serves the cached file offline.
+    """
+    path = DEFAULT_CASE_PATH
+    if not path.exists():
+        path = hf_hub_download("aai530-group6/ddxplus", "test.csv", repo_type="dataset")
+    return pd.read_csv(path, nrows=limit)
+
+
 def load_probe_pool(evidence_db, n_options, seed, limit=4000):
     """DDXPlus cases whose gold pathology is inside the top-``n_options`` differential.
 
@@ -138,11 +152,7 @@ def load_probe_pool(evidence_db, n_options, seed, limit=4000):
     in ~71% of cases. Any arm that happens to favour "A" would then score higher for a reason that
     has nothing to do with where the evidence sits.
     """
-    path = DEFAULT_CASE_PATH
-    if not path.exists():
-        from huggingface_hub import hf_hub_download
-        path = hf_hub_download("aai530-group6/ddxplus", "test.csv", repo_type="dataset")
-    df = pd.read_csv(path, nrows=limit)
+    df = load_case_frame(limit)
     rng = random.Random(seed)
     probes = []
     for _, row in df.iterrows():

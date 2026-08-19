@@ -24,7 +24,6 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import torch
-from datasets import load_dataset
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from src.probes.context_fatigue.attention_capture import SelectiveAttentionCapture
@@ -33,6 +32,7 @@ from _cf_common import (
     OPTION_LABELS,
     extract_mcq_answer,
     format_case_mcq,
+    load_case_frame,
     load_evidence_db,
 )
 
@@ -79,10 +79,10 @@ def main():
             conv, tokenize=False, add_generation_prompt=gen_prompt)))
 
     print("Loading DDXPlus...")
-    ds = load_dataset("aai530-group6/ddxplus", split="test")
+    ds = load_case_frame()
     valid = [i for i in range(len(ds))
-             if ds[i]["PATHOLOGY"] in
-             [d[0] for d in ast.literal_eval(ds[i]["DIFFERENTIAL_DIAGNOSIS"])[:args.n_options]]]
+             if ds.iloc[i]["PATHOLOGY"] in
+             [d[0] for d in ast.literal_eval(ds.iloc[i]["DIFFERENTIAL_DIAGNOSIS"])[:args.n_options]]]
 
     conversation = [{"role": "system", "content": SYSTEM_PROMPT}]
     system_tokens = n_tokens(conversation, False)
@@ -106,7 +106,7 @@ def main():
             if ctx_now / args.max_ctx > args.fill_target:
                 break
 
-            row = ds[idx]
+            row = ds.iloc[idx]
             pathology = row["PATHOLOGY"]
             ddx = ast.literal_eval(row["DIFFERENTIAL_DIAGNOSIS"])
             names = [d[0] for d in ddx[:args.n_options]]
@@ -246,10 +246,10 @@ def analyze(df, target_layers, model_name, out_dir):
             elif len(b):
                 print(f"  {lo:>4.0%}-{hi:<4.0%} {len(r):>3d}/{len(w):<3d}   (need both classes in bin)")
 
-    print(f"\nInterpretation: negative corr-system-fill = system-prompt erosion; "
-          f"positive corr-recent-fill = recency bias; negative corr-current-fill = current-\n"
-          f"query neglect; positive corr-entropy-fill = attention diffuses. The fill-controlled "
-          f"table isolates whether attention drift predicts errors *within* a context level.")
+    print("\nInterpretation: negative corr-system-fill = system-prompt erosion; "
+          "positive corr-recent-fill = recency bias; negative corr-current-fill = current-\n"
+          "query neglect; positive corr-entropy-fill = attention diffuses. The fill-controlled "
+          "table isolates whether attention drift predicts errors *within* a context level.")
     print(f"\nSaved to {out_dir}/")
 
 

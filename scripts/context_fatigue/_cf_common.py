@@ -6,8 +6,10 @@ generation used by the original DDXPlus scripts instead of copying them.
 """
 
 import re
+from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import torch
 
 from src.probes.context_fatigue.attention_clamp import span_share_by_head
@@ -15,6 +17,7 @@ from src.probes.context_fatigue.ddxplus_cases import (
     DEFAULT_EVIDENCE_PATH,
     OPTION_LABELS,
     decode_evidence,
+    load_case_frame,
     format_case_mcq,
     format_case_question,
     format_case_vignette,
@@ -143,3 +146,33 @@ def per_head_rows(attn, spans, **keys):
     n_heads = len(next(iter(by_span.values())))
     return [{**keys, "head": h, **{col: vals[h] for col, vals in by_span.items()}}
             for h in range(n_heads)]
+
+
+class RowAppender:
+    """Append rows to a CSV in chunks, writing the header once.
+
+    The drivers rewrite ``turns.csv`` in full after every probe so a killed run keeps its
+    completed work. That is cheap for one row per probe and quadratic for the per-head table,
+    which carries one row per probe x arm x head x layer. This keeps the crash-safety without
+    the rewrite: buffer, then append.
+    """
+
+    def __init__(self, path, chunk: int = 20000):
+        self.path = Path(path)
+        self.chunk = chunk
+        self.buffer: list[dict] = []
+        self.path.unlink(missing_ok=True)  # a rerun must not append to the previous run's rows
+        self.wrote_header = False
+
+    def extend(self, rows) -> None:
+        self.buffer.extend(rows)
+        if len(self.buffer) >= self.chunk:
+            self.flush()
+
+    def flush(self) -> None:
+        if not self.buffer:
+            return
+        pd.DataFrame(self.buffer).to_csv(self.path, mode="a", header=not self.wrote_header,
+                                         index=False)
+        self.wrote_header = True
+        self.buffer = []

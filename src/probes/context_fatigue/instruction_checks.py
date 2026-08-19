@@ -104,6 +104,22 @@ INSTRUCTIONS: dict[str, InstructionSpec] = {
 }
 
 
+def check_all(response: str, specs) -> dict[str, bool]:
+    """Obedience of ``response`` to each spec, keyed by spec name.
+
+    Several canaries can ride on one generation, which is how E5 gets three independent
+    compliance checks per forward. An empty response fails the positive canaries rather than
+    vacuously passing them -- a clamp strong enough to silence the model must not be scored as
+    compliant.
+    """
+    return {spec.name: spec.check_obeyed(response) for spec in specs}
+
+
+def bundled_system_text(base_system: str, specs) -> str:
+    """One system prompt carrying the task and every canary, as a single clamped span."""
+    return " ".join([base_system, *(spec.system_text for spec in specs)])
+
+
 # ── per-arm prompt / history construction ────────────────────────────────
 
 def system_prompt_for(spec: InstructionSpec, arm: str, base_system: str) -> str:

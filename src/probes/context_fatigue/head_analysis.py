@@ -33,6 +33,25 @@ class HeadConcentration(BaseSchema):
 
 
 @dataclass
+class DrainShape(BaseSchema):
+    """How well one uniform odds-scale reproduces the observed per-head drain.
+
+    The clamp applies a single additive bias to every head, so ``r2`` is the fraction of the
+    per-head target pattern that instrument can reach in principle. A low ``r2`` supports reading
+    a partial-necessity result as instrument limitation; a high one withdraws that excuse.
+    """
+
+    best_bias_nats: float
+    r2: float
+    implied_bias_sd: float
+    implied_bias_min: float
+    implied_bias_max: float
+    fractional_drain_mean: float
+    fractional_drain_sd: float
+    corr_level_with_fractional_drain: float
+
+
+@dataclass
 class HeadContrast(BaseSchema):
     """One head's paired between-arm difference in span share."""
 
@@ -168,3 +187,92 @@ def redistribution_test(df: pd.DataFrame, arm_a: str, arm_b: str,
         null_mean_abs_delta=null_abs,
         p_value=p_value,
     )
+
+
+def drain_shape(level: np.ndarray, drained: np.ndarray) -> DrainShape:
+    """Can one uniform odds-scale turn ``level`` into ``drained``, head for head?
+
+    ``level`` and ``drained`` are per-head shares in two arms. The clamp multiplies every head's
+    *odds* by the same factor, so the question is whether a single bias reproduces the observed
+    per-head pattern. ``corr_level_with_fractional_drain`` is reported alongside because the
+    correlation of level with *absolute* drain is near-vacuous: if every head loses a similar
+    fraction, absolute loss tracks level by arithmetic and says nothing about specialization.
+    """
+    level = np.asarray(level, dtype=float)
+    drained = np.asarray(drained, dtype=float)
+    if level.shape != drained.shape:
+        raise ValueError(f"per-head vectors must align, got {level.shape} and {drained.shape}")
+    if ((level <= 0) | (level >= 1) | (drained <= 0) | (drained >= 1)).any():
+        raise ValueError("shares must lie strictly inside (0, 1) to take odds")
+
+    odds = lambda s: s / (1 - s)  # noqa: E731 - local, and reads better inline here
+    implied = np.log(odds(drained) / odds(level))
+    best = float(implied.mean())
+    pred_odds = odds(level) * np.exp(best)
+    pred = pred_odds / (1 + pred_odds)
+    ss_res = float(((drained - pred) ** 2).sum())
+    ss_tot = float(((drained - drained.mean()) ** 2).sum())
+
+    frac = (level - drained) / level
+    # A constant fractional drain has no variance, so the correlation is undefined and numpy
+    # returns whatever the floating-point residue implies (0.447 on an exactly-uniform drain in
+    # testing). Semantically a constant drain *is* "level does not predict it", so report 0.0
+    # rather than a number manufactured from rounding error.
+    corr = (0.0 if frac.std() < 1e-12 or level.std() < 1e-12
+            else float(np.corrcoef(level, frac)[0, 1]))
+    return DrainShape(
+        best_bias_nats=best,
+        r2=float(1 - ss_res / ss_tot) if ss_tot > 0 else 1.0,
+        implied_bias_sd=float(implied.std()),
+        implied_bias_min=float(implied.min()),
+        implied_bias_max=float(implied.max()),
+        fractional_drain_mean=float(frac.mean()),
+        fractional_drain_sd=float(frac.std()),
+        corr_level_with_fractional_drain=corr,
+    )
+
+
+def evidence_head_profile(df: pd.DataFrame, arm: str, span_fraction: float) -> pd.DataFrame:
+    """Per-head evidence and question shares in ``arm``, with a specificity control.
+
+    ``enrichment`` is the head's evidence share divided by ``span_fraction``, the evidence span's
+    share of the context tokens: 1.0 means the head attends to the evidence exactly in proportion
+    to its size, so anything below 1.0 is *under*-weighting it. Without this normalization a long
+    span looks like a head specialty. ``ev_over_q`` separates heads that load on the evidence
+    specifically from heads that simply load on all recent content.
+    """
+    if span_fraction <= 0:
+        raise ValueError("span_fraction must be positive")
+    per_head = df[df["arm"] == arm].groupby("head")[["evidence_share", "question_share"]].mean()
+    per_head["enrichment"] = per_head["evidence_share"] / span_fraction
+    per_head["ev_over_q"] = per_head["evidence_share"] / per_head["question_share"]
+    return per_head.sort_values("evidence_share", ascending=False)
+
+
+def span_profile_by_fill(df: pd.DataFrame, value: str, low_fill: float = 0.25,
+                         high_fill: float = 0.6) -> pd.DataFrame:
+    """Per (layer, head) change in ``value`` from cold start to full context.
+
+    Rows are ordered by the **absolute** change, because that is the quantity a reader can judge:
+    a head going 0.010 to 0.005 halves, and so does one going 0.400 to 0.200, but only the second
+    moves attention anyone would notice. ``fold_change`` is reported alongside and never sets the
+    ordering.
+    """
+    low = df[df["context_fill"] < low_fill]
+    high = df[df["context_fill"] > high_fill]
+    if low.empty:
+        raise ValueError(f"no cold-start rows below fill {low_fill}; this profile needs a sweep "
+                         f"that starts near empty context")
+    if high.empty:
+        raise ValueError(f"no rows above fill {high_fill}")
+
+    keys = ["layer", "head"]
+    a = low.groupby(keys)[value].mean().rename("cold")
+    b = high.groupby(keys)[value].mean().rename("full")
+    out = pd.concat([a, b], axis=1).dropna().reset_index()
+    out["delta"] = out["full"] - out["cold"]
+    out["fold_change"] = out["full"] / out["cold"].replace(0.0, np.nan)
+    corr = (df.groupby(keys)[[value, "context_fill"]]
+            .corr().unstack().iloc[:, 1].rename("corr_with_fill").reset_index())
+    out = out.merge(corr, on=keys, how="left")
+    return out.reindex(out["delta"].abs().sort_values(ascending=False).index).reset_index(drop=True)

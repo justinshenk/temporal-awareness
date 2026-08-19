@@ -21,14 +21,18 @@ from pathlib import Path
 import pandas as pd
 
 from src.probes.context_fatigue.head_analysis import (
+    drain_shape,
+    evidence_head_profile,
     head_concentration,
     paired_head_contrasts,
     redistribution_test,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-E1_HEADS = REPO_ROOT / "results" / "context_fatigue" / "e1_heads" / "heads.csv"
-E3_HEADS = REPO_ROOT / "results" / "context_fatigue" / "e3_heads" / "heads.csv"
+E1_HEADS = REPO_ROOT / "results" / "context_fatigue" / "e1_heads_all" / "heads.csv"
+E1_TURNS = REPO_ROOT / "results" / "context_fatigue" / "e1_heads_all" / "turns.csv"
+E3_HEADS = REPO_ROOT / "results" / "context_fatigue" / "e3_heads_all" / "heads.csv"
+REFERENCE_LAYER = 24
 OUT_JSON = REPO_ROOT / "results" / "context_fatigue" / "head_structure.json"
 
 E1_ARMS = ["local", "back_2", "back_5", "back_10", "back_20"]
@@ -62,17 +66,17 @@ def analyse_drain(df: pd.DataFrame) -> dict:
     local = pd.Series(out["head_mean_share"]["local"])
     back = pd.Series(out["head_mean_share"]["back_20"])
     drain = local - back
+    shape = drain_shape(local.to_numpy(), back.to_numpy())
     out["drain"] = {
         "mean": float(drain.mean()),
-        "min": float(drain.min()),
-        "max": float(drain.max()),
         "n_heads_losing": int((drain > 0).sum()),
         "n_heads_gaining": int((drain < 0).sum()),
-        "top4_share_of_total_drain": float(drain.sort_values(ascending=False)[:4].sum()
-                                           / drain.sum()),
-        "corr_local_share_with_drain": float(local.corr(drain)),
         "fractional_drain_min": float((drain / local).min()),
         "fractional_drain_max": float((drain / local).max()),
+        # Level vs *absolute* drain is ~1 by arithmetic when every head loses a similar fraction,
+        # so it is deliberately not reported: the fractional correlation inside `shape` is the
+        # one that says whether high-mass heads are special.
+        **shape.to_dict(),
     }
     contrasts = paired_head_contrasts(df, "local", "back_20", alpha=BONFERRONI)
     out["drain"]["n_heads_significant_bonferroni"] = sum(c.delta.excludes_zero()
@@ -92,11 +96,61 @@ def analyse_redistribution(df: pd.DataFrame, pairs) -> dict:
     return out
 
 
+def sweep_layers(e1: pd.DataFrame, e3: pd.DataFrame, span_fraction: float) -> dict:
+    """Per-layer head structure, so no conclusion is scoped to one slice of the model.
+
+    A head that specializes in the evidence is what would make the head-averaged share a blunt
+    summary, and there is no reason to expect it at the reference layer specifically -- the extra
+    layers ride on the same forward, so restricting to one was never a measurement decision.
+    """
+    rows, best = [], []
+    for layer in sorted(e1["layer"].unique()):
+        le1 = e1[e1["layer"] == layer]
+        prof = evidence_head_profile(le1, "local", span_fraction)
+        local = le1[le1.arm == "local"].groupby("head")["evidence_share"].mean().sort_index()
+        back = le1[le1.arm == "back_20"].groupby("head")["evidence_share"].mean().sort_index()
+        shape = drain_shape(local.to_numpy(), back.to_numpy())
+        redis = redistribution_test(e3[e3["layer"] == layer], "random", "near_dup")
+        rows.append({
+            "layer": int(layer),
+            "max_enrichment": float(prof["enrichment"].max()),
+            "n_heads_enriched": int((prof["enrichment"] > 1).sum()),
+            "mean_evidence_share": float(prof["evidence_share"].mean()),
+            "effective_heads": head_concentration(
+                prof["evidence_share"].to_numpy()).effective_heads,
+            "fractional_drain_mean": shape.fractional_drain_mean,
+            "uniform_odds_r2": shape.r2,
+            "competition_mean_delta": redis.mean_delta,
+            "competition_mean_abs_delta": redis.mean_abs_delta,
+            "competition_ratio": redis.redistribution_ratio,
+            "competition_p": redis.p_value,
+        })
+        for head, r in prof.iterrows():
+            best.append({"layer": int(layer), "head": int(head),
+                         "evidence_share": float(r["evidence_share"]),
+                         "question_share": float(r["question_share"]),
+                         "enrichment": float(r["enrichment"]),
+                         "ev_over_q": float(r["ev_over_q"])})
+    best.sort(key=lambda r: -r["enrichment"])
+    return {"per_layer": rows, "top_heads_global": best[:15],
+            "n_heads_total": len(best),
+            "n_heads_enriched_global": sum(1 for r in best if r["enrichment"] > 1)}
+
+
 def main() -> None:
-    e1 = _balanced(_require(E1_HEADS), E1_ARMS)
-    e3 = _balanced(_require(E3_HEADS), ["disjoint", "random", "near_dup"])
+    e1_all = _balanced(_require(E1_HEADS), E1_ARMS)
+    e3_all = _balanced(_require(E3_HEADS), ["disjoint", "random", "near_dup"])
+    e1 = e1_all[e1_all["layer"] == REFERENCE_LAYER]
+    e3 = e3_all[e3_all["layer"] == REFERENCE_LAYER]
+
+    turns = pd.read_csv(E1_TURNS)
+    span_fraction = float((turns["evidence_tokens"] / turns["ctx_tokens"]).mean())
+    profile = evidence_head_profile(e1, "local", span_fraction).reset_index()
 
     payload = {
+        "span_fraction": span_fraction,
+        "n_heads_enriched": int((profile["enrichment"] > 1).sum()),
+        "evidence_heads": profile.round(6).to_dict("records"),
         "e1_distance": analyse_drain(e1),
         "e1_redistribution": analyse_redistribution(e1, [("local", "back_20")]),
         "e3_competition": analyse_redistribution(
@@ -108,6 +162,8 @@ def main() -> None:
             for arm in ["disjoint", "random", "near_dup"]
         },
         "n_probes": {"e1": int(e1["probe"].nunique()), "e3": int(e3["probe"].nunique())},
+        "reference_layer": REFERENCE_LAYER,
+        "layers": sweep_layers(e1_all, e3_all, span_fraction),
     }
     OUT_JSON.write_text(json.dumps(payload, indent=2))
 
@@ -120,10 +176,24 @@ def main() -> None:
     dr = d["drain"]
     print(f"\n  drain local->back_20: {dr['n_heads_losing']}/{dr['n_heads']} heads lose mass, "
           f"{dr['n_heads_significant_bonferroni']} significant at Bonferroni")
-    print(f"  top-4 heads carry {dr['top4_share_of_total_drain']:.1%} of the total drain")
-    print(f"  corr(local share, drain) = {dr['corr_local_share_with_drain']:+.3f}")
-    print(f"  fractional drain per head spans {dr['fractional_drain_min']:.1%} to "
-          f"{dr['fractional_drain_max']:.1%}")
+    print(f"  fractional drain {dr['fractional_drain_mean']:.1%} +- {dr['fractional_drain_sd']:.1%}, "
+          f"spanning {dr['fractional_drain_min']:.1%} to {dr['fractional_drain_max']:.1%}")
+    print(f"  corr(level, FRACTIONAL drain) = {dr['corr_level_with_fractional_drain']:+.3f} "
+          f"-- high-mass heads are not special")
+    print(f"  one uniform odds-scale ({dr['best_bias_nats']:+.3f} nats) reproduces the per-head "
+          f"pattern at R2={dr['r2']:.3f}")
+    print(f"  per-head implied bias sd {dr['implied_bias_sd']:.3f} nats, range "
+          f"{dr['implied_bias_min']:+.2f} to {dr['implied_bias_max']:+.2f}")
+
+    prof = payload["evidence_heads"]
+    print(f"\n  evidence span is {payload['span_fraction']:.1%} of context; a uniform head scores "
+          f"{payload['span_fraction']:.4f}")
+    print(f"  heads with enrichment > 1 (concentrating on the evidence): "
+          f"{payload['n_heads_enriched']}/32")
+    print("  top 5 by evidence share at local:")
+    for row in prof[:5]:
+        print(f"    head {row['head']:2d}  ev {row['evidence_share']:.4f}  q {row['question_share']:.4f}  "
+              f"ev/q {row['ev_over_q']:.2f}  enrich {row['enrichment']:.2f}")
 
     print("\nRedistribution (mean delta vs mean |per-head delta|)")
     for label, block in [("E1 local-back_20", payload["e1_redistribution"]),
@@ -135,6 +205,22 @@ def main() -> None:
                   f"p={r['p_value']:.4f})  ratio {ratio:6.2f}  "
                   f"heads!=0 {r['n_heads_excluding_zero']:2d} (bonf "
                   f"{r['n_heads_excluding_zero_bonferroni']:2d})/{r['n_heads']}")
+    ls = payload["layers"]
+    print(f"\nAll {ls['n_heads_total']} heads across {len(ls['per_layer'])} layers")
+    print(f"  heads concentrating on the evidence (enrichment > 1): "
+          f"{ls['n_heads_enriched_global']}/{ls['n_heads_total']}")
+    print("  top 10 by enrichment, anywhere in the model:")
+    for r in ls["top_heads_global"][:10]:
+        print(f"    L{r['layer']:2d}H{r['head']:2d}  enrich {r['enrichment']:5.2f}  "
+              f"ev {r['evidence_share']:.4f}  q {r['question_share']:.4f}  "
+              f"ev/q {r['ev_over_q']:6.2f}")
+    print("\n  per-layer (evidence share, drain, competition reallocation):")
+    print("   layer  meanEv  effHeads  fracDrain  unifR2   compMeanD  compMeanAbsD  ratio")
+    for r in ls["per_layer"]:
+        print(f"    {r['layer']:3d}  {r['mean_evidence_share']:.4f}  {r['effective_heads']:7.2f}  "
+              f"{r['fractional_drain_mean']:8.1%}  {r['uniform_odds_r2']:6.3f}  "
+              f"{r['competition_mean_delta']:+.5f}  {r['competition_mean_abs_delta']:11.5f}  "
+              f"{r['competition_ratio']:6.2f}")
     print(f"\nwrote {OUT_JSON}")
 
 

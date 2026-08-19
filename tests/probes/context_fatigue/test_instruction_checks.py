@@ -128,3 +128,37 @@ def test_instruction_registry_specs_are_well_formed():
         assert isinstance(spec, InstructionSpec)
         assert spec.name == name
         assert spec.system_text and spec.target
+
+
+# ── bundled canary scoring (E5 system-mass clamp) ───────────────────────
+
+def test_check_all_scores_every_spec_independently():
+    from src.probes.context_fatigue.instruction_checks import INSTRUCTIONS, check_all
+    specs = [INSTRUCTIONS["prefix_marker"], INSTRUCTIONS["suffix_ok"],
+             INSTRUCTIONS["forbid_diagnosis"]]
+    out = check_all("◆ The answer is B.\n⟦OK⟧", specs)
+    assert out == {"prefix_marker": True, "suffix_ok": True, "forbid_diagnosis": True}
+
+
+def test_check_all_isolates_a_single_violation():
+    from src.probes.context_fatigue.instruction_checks import INSTRUCTIONS, check_all
+    specs = [INSTRUCTIONS["prefix_marker"], INSTRUCTIONS["suffix_ok"],
+             INSTRUCTIONS["forbid_diagnosis"]]
+    out = check_all("◆ The diagnosis is B.\n⟦OK⟧", specs)
+    assert out["forbid_diagnosis"] is False
+    assert out["prefix_marker"] is True and out["suffix_ok"] is True
+
+
+def test_check_all_treats_an_empty_response_as_violating_the_positive_canaries():
+    """A clamp that silences the model must not read as compliance."""
+    from src.probes.context_fatigue.instruction_checks import INSTRUCTIONS, check_all
+    out = check_all("", [INSTRUCTIONS["prefix_marker"], INSTRUCTIONS["suffix_ok"]])
+    assert out == {"prefix_marker": False, "suffix_ok": False}
+
+
+def test_bundled_system_text_contains_every_canary_instruction():
+    from src.probes.context_fatigue.instruction_checks import INSTRUCTIONS, bundled_system_text
+    text = bundled_system_text("You are a doctor.", list(INSTRUCTIONS.values()))
+    assert text.startswith("You are a doctor.")
+    for spec in INSTRUCTIONS.values():
+        assert spec.system_text in text

@@ -215,3 +215,20 @@ status lines before believing the exception's own diagnosis — the message name
 why. On a warm box, run drivers under `HF_HUB_OFFLINE=1` by default: it is faster, it is
 reproducible, and it converts "the Hub is throttling us" from a corrupted-data red herring into an
 honest cache miss.
+
+## Report absolute changes first; a ratio on a small base is not a finding
+
+**Correction (2026-08-19, Paper B head analysis).** I ranked attention heads by *fractional*
+drain and led with head 28 at "99.3%". Head 28 goes 0.0198 → 0.0001: the largest percentage and
+nearly the smallest absolute movement in the set. Head 19 loses 0.0747 of attention mass — 40×
+more — and my ranking put it seventh. The percentage was measuring the size of the denominator,
+not the size of the effect.
+
+**Rule.** Lead with the absolute change in the unit the quantity is measured in. A ratio,
+percentage, or "N×" may follow it, never replace it, and never set an ordering on its own. Before
+quoting a ratio, state both numbers it came from and ask whether the difference would matter to
+anyone at that scale.
+
+**Where this already bit:** "competition heads move 9.6× the net change" is 0.0026 against 0.0003,
+both small next to a 0.041 evidence share; "50× larger share change needed" is the same
+arithmetic. State the shares, then the ratio.

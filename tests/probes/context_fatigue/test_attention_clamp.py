@@ -296,3 +296,43 @@ def test_locate_token_span_spans_partial_tokens():
     text = "abcQUERYxy"          # "QUERY" starts mid-token (chars 3..8)
     start, end = locate_token_span(_PairTokenizer(), text, "QUERY")
     assert start == 1 and end == 4   # tokens (2,4), (4,6), (6,8) all overlap
+
+
+# ── multi-layer share indexing ──────────────────────────────────────────
+
+def test_measure_span_share_accepts_several_layers_and_averages_them():
+    """The clamp biases every layer, so the readout should not privilege one.
+
+    Layer 24 was chosen because it looked strongest among the five layers first captured — a
+    post-hoc pick on the data the claims rest on. Averaging removes that choice.
+    """
+    from src.probes.context_fatigue.attention_clamp import measure_span_share
+    model = _olmo2_model()
+    ids = _ids()
+    n = len(model.model.layers)
+    each = [measure_span_share(model, ids, SPAN, li) for li in range(n)]
+    pooled = measure_span_share(model, ids, SPAN, list(range(n)))
+    assert pooled == pytest.approx(sum(each) / len(each), abs=1e-6)
+
+
+def test_single_layer_indexing_is_unchanged():
+    """Existing experiments are layer-24-indexed; passing an int must behave exactly as before."""
+    from src.probes.context_fatigue.attention_clamp import measure_span_share
+    model = _olmo2_model()
+    ids = _ids()
+    assert measure_span_share(model, ids, SPAN, 0) == pytest.approx(
+        measure_span_share(model, ids, SPAN, [0]), abs=1e-9)
+
+
+def test_solve_hits_the_target_on_the_pooled_share():
+    from src.probes.context_fatigue.attention_clamp import measure_span_share, solve_span_scale
+    model = _olmo2_model()
+    ids = _ids()
+    layers = list(range(len(model.model.layers)))
+    natural = measure_span_share(model, ids, SPAN, layers)
+    target = natural * 0.5
+    scale, achieved = solve_span_scale(model, ids, span=SPAN, target_share=target,
+                                       reference_layer=layers, tol=1e-4)
+    assert achieved == pytest.approx(target, abs=5e-3)
+    with SpanAttentionClamp(model, span=SPAN, scale=scale):
+        assert measure_span_share(model, ids, SPAN, layers) == pytest.approx(achieved, abs=1e-6)

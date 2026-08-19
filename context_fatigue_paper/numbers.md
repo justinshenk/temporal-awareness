@@ -71,18 +71,31 @@ The unpaired intervals previously reported are retained in that JSON for audit.
 | **evidence share unchanged** | −0.00027 [−0.00088, +0.00035] | `e3_attention/` |
 | mass-predicted share of the effect | 2.0% (6.5% at CI bound); 50× share change needed | derived from E1f slope |
 
-## §3.3 — per-head structure
+## §3.3 — per-layer and per-head structure
+
+All 32 layers x 32 heads = 1,024 heads. An earlier pass measured layer 24 only; every head-identity
+conclusion from it was wrong and is superseded here.
 
 | claim | value | artifact / report |
 |---|---|---|
-| effective heads at `local` | 27.28 of 32 (top-4 fraction 0.261) | `e1_heads/heads.csv`, `E4_HEAD_STRUCTURE.md` |
-| displacement: heads losing mass | 32/32, all significant at Bonferroni (0.05/32) | same |
-| corr(local share, drain) | +0.964 | same |
-| fractional drain range | 31.8% to 99.3% | same |
-| competition: mean per-head \|Δ\| | 0.00257 vs sign-flip null 0.00043, p ≤ 0.0005 | `e3_heads/heads.csv`, same |
-| competition: ratio to net change | 9.63× | same |
-| heads significant at Bonferroni | 19 of 32 | same |
-| head-averaged Δ reproduced | −0.00027 / +0.00152 / −0.00179 | matches `E3_COMPETITION.md` |
+| displacement drain, all-layer mean | 0.0455 | `e1_heads_all/heads.csv`, `E4_HEAD_STRUCTURE.md` |
+| competition drain, all-layer mean | 0.0022 | `e3_heads_all/heads.csv`, same |
+| competition drain at L17 / L16 / L18 | −0.0186 / −0.0110 / −0.0093 | same |
+| competition drain at L24 | −0.00027 [−0.00088, +0.00035] | matches `E3_COMPETITION.md` |
+| corr of the two drain profiles across layers | −0.32 | same |
+| heads enriched on the evidence | 255 of 1,024 (0 of 32 at L24) | same |
+| most evidence-concentrated head | L16H17, share 0.626, enrichment 6.13 | same |
+| evidence span as a share of context | 0.102 | `e1_heads_all/turns.csv` |
+| L24 mean evidence share | 0.0408 (vs 0.183 at L3, 0.143 at L16) | same |
+| displacement: heads losing mass at L24 | 32/32, all significant at Bonferroni | same |
+| fractional drain | 0.689 (sd 0.147), r with level = +0.08 | same |
+| uniform odds-scale fit to per-head drain | R² = 0.576 | same |
+| competition per-head \|Δ\| at L24 | 0.00257 vs sign-flip null 0.00043, p ≤ 0.0005 | same |
+| heads significant at Bonferroni, L24 | 19 of 32 | same |
+
+**Withdrawn:** the "50x larger share change needed" figure. It was read off layer 24 alone, and
+its arithmetic used the 6.29-per-unit-share slope — measured with an all-layer clamp indexed at
+layer 24 — to convert a layer-24-only delta from an experiment whose layers move independently.
 
 ## Not claimed: the late-window dip
 

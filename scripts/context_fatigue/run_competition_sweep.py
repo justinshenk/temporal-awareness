@@ -39,6 +39,7 @@ import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from _cf_common import (
+    RowAppender,
     extract_mcq_answer,
     generate_with_entropy,
     per_head_rows,
@@ -82,8 +83,11 @@ def parse_args():
     p.add_argument("--device", default="cuda")
     p.add_argument("--reference-layer", type=int, default=24)
     p.add_argument("--per-head", action="store_true",
-                   help="also write heads.csv: one row per probe x arm x head. Implies "
+                   help="also write heads.csv: one row per probe x arm x head x layer. Implies "
                         "--attention-only, since the per-head shares come off the same forward.")
+    p.add_argument("--head-layers", type=int, nargs="+", default=None,
+                   help="layers to record per-head shares at (default: every layer). Extra layers "
+                        "are free -- they are read off the same forward as the reference layer.")
     p.add_argument("--attention-only", action="store_true",
                    help="skip generation; measure the evidence span's attention share only. "
                         "Answers whether competition drains the evidence's mass (folding it into "
@@ -132,8 +136,9 @@ def main():
                           max_ctx=args.max_ctx, max_new=args.max_new, headroom=args.headroom)
     records, leaks, starved = [], 0, 0
     turns_path = out_dir / "turns.csv"
-    heads_path = out_dir / "heads.csv"
-    head_records = []
+    capture_layers = sorted({args.reference_layer, *(args.head_layers if args.head_layers
+                                                     else range(len(model.model.layers)))})
+    heads = RowAppender(out_dir / "heads.csv") if args.per_head else None
 
     for idx, probe in enumerate(probes):
         question = format_case_question(probe["options"], args.n_options, referent=REFERENT)
@@ -171,7 +176,7 @@ def main():
             attn_cols = {}
             if args.attention_only:
                 ids = tokenizer(rendered, return_tensors="pt").input_ids.to(args.device)
-                capture = SelectiveAttentionCapture(model, [args.reference_layer])
+                capture = SelectiveAttentionCapture(model, capture_layers)
                 capture.enabled = True
                 with torch.no_grad():
                     model(ids)
@@ -181,10 +186,11 @@ def main():
                          "question": locate_token_span(tokenizer, rendered, question)}
                 attn_cols = {"evidence_share": span_share(attn, spans["evidence"]),
                              "question_share": span_share(attn, spans["question"])}
-                if args.per_head:
-                    head_records.extend(per_head_rows(
-                        attn, spans, probe=idx, arm=arm, layer=args.reference_layer,
-                        pathology=probe["pathology"]))
+                if heads is not None:
+                    for li in capture_layers:
+                        heads.extend(per_head_rows(
+                            capture.captured[li], spans, probe=idx, arm=arm, layer=li,
+                            pathology=probe["pathology"]))
                 resp, ctx_len, entropy, pred = None, int(ids.shape[1]), None, None
             else:
                 resp, ctx_len, entropy, _ = generate_with_entropy(
@@ -203,13 +209,14 @@ def main():
             torch.cuda.empty_cache()
 
         pd.DataFrame(records).to_csv(turns_path, index=False)  # killed run keeps completed probes
-        if head_records:
-            pd.DataFrame(head_records).to_csv(heads_path, index=False)
         if (idx + 1) % 25 == 0:
             df = pd.DataFrame(records)
             acc = df.groupby("arm")["correct"].mean().to_dict()
             print(f"  [{idx + 1}/{len(probes)}] "
                   + "  ".join(f"{a}={v:.3f}" for a, v in sorted(acc.items())), flush=True)
+
+    if heads is not None:
+        heads.flush()
 
     del model
     gc.collect()
