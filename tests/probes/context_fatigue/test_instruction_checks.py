@@ -259,3 +259,39 @@ def test_a_bare_letter_answer_still_works_without_options():
     from src.probes.context_fatigue.instruction_checks import check_clinical_format
     out = check_clinical_format("ANSWER: B\nSUPPORTING: fever; sore throat", VIGNETTE)
     assert out["answer"] == "B" and out["fully_compliant"] is True
+
+
+def test_symptoms_listed_as_bullets_on_following_lines_are_counted():
+    """The model often puts the findings on their own lines rather than after the colon.
+
+    Reading only the remainder of the SUPPORTING line scores those replies as zero symptoms,
+    which is how a formatting preference became an apparent compliance collapse.
+    """
+    from src.probes.context_fatigue.instruction_checks import check_clinical_format
+    out = check_clinical_format(
+        "ANSWER: B) Epiglottitis\n\nSUPPORTING: \n- sore throat\n- fever of 38.4C\n\nExplanation: ...",
+        VIGNETTE, options=OPTS)
+    assert out["n_symptoms"] == 2
+    assert out["fully_compliant"] is True
+    assert out["answer"] == "B"
+
+
+def test_a_bulleted_list_stops_at_the_next_prose_section():
+    from src.probes.context_fatigue.instruction_checks import check_clinical_format
+    out = check_clinical_format(
+        "ANSWER: A\nSUPPORTING:\n* sore throat\n* fever\n\nExplanation: this is not a symptom\n",
+        VIGNETTE, options=OPTS)
+    assert out["n_symptoms"] == 2
+
+
+def test_semicolons_on_the_line_still_work_and_are_not_double_counted():
+    from src.probes.context_fatigue.instruction_checks import check_clinical_format
+    out = check_clinical_format("ANSWER: A\nSUPPORTING: sore throat; fever", VIGNETTE, options=OPTS)
+    assert out["n_symptoms"] == 2
+
+
+def test_the_answer_slot_tolerates_letter_and_name_together():
+    from src.probes.context_fatigue.instruction_checks import check_clinical_format
+    out = check_clinical_format("ANSWER: C) Pneumonia\nSUPPORTING: cough; fever",
+                                VIGNETTE, options=OPTS)
+    assert out["answer"] == "C" and out["has_answer"] is True

@@ -165,7 +165,21 @@ def check_clinical_format(response: str, vignette: str, min_symptoms: int = 2,
 
     symptoms = []
     if supporting_match:
-        symptoms = [p.strip() for p in supporting_match.group(1).split(";") if p.strip()]
+        inline = [p.strip() for p in supporting_match.group(1).split(";") if p.strip()]
+        # The findings are as often on their own bulleted lines as after the colon. Reading only
+        # the colon's remainder scores those replies as zero symptoms -- a formatting preference
+        # misread as a compliance failure.
+        tail = text[supporting_match.end():].splitlines()
+        bulleted = []
+        for line in tail:
+            stripped = line.strip()
+            if not stripped:
+                continue
+            bullet = re.match(r"^[-*\u2022]\s*(.+)$", stripped)
+            if not bullet:
+                break  # the list has ended and prose has resumed
+            bulleted.append(bullet.group(1).strip())
+        symptoms = inline + bulleted
 
     low_vignette = vignette.lower()
     grounded = [s for s in symptoms if s.lower() in low_vignette]
