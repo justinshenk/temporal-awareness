@@ -79,6 +79,69 @@ def test_wildchat_constants_match_reports():
 
 def test_make_figures_writes_pdfs(tmp_path):
     paths = pf.make_figures(tmp_path)
-    assert set(paths) == {"dose_response", "random_context", "attention_rot", "wildchat_homogeneity"}
+    assert set(paths) == {"distance_ladder", "mass_dose", "competition",
+                          "dose_response", "random_context", "attention_rot",
+                          "wildchat_homogeneity"}
     for p in paths.values():
         assert p.exists() and p.suffix == ".pdf" and p.stat().st_size > 0
+
+
+# ── the dilution program (E1 / E1b / E1f / E3) ──────────────────────────
+
+E1_REPORT = RESULTS / "context_fatigue" / "E1_DISTANCE_SWEEP.md"
+MECHANISM_REPORT = RESULTS / "context_fatigue" / "E1_MECHANISM.md"
+
+
+def test_distance_ladder_matches_the_committed_report():
+    """The plotted ladder must be the one E1_DISTANCE_SWEEP.md and E1_MECHANISM.md quote."""
+    df = pf.load_distance_sweep()
+    assert list(df["arm"]) == pf.DISTANCE_ORDER
+    acc = dict(zip(df["arm"], df["accuracy"]))
+    assert acc["local"] == pytest.approx(0.464, abs=1e-3)
+    assert acc["back_5"] == pytest.approx(0.292, abs=1e-3)
+    assert acc["back_20"] == pytest.approx(0.276, abs=1e-3)
+    # fill is the variable held fixed -- if it ever drifts, the ladder is confounded
+    assert df["fill"].nunique() == 1
+    assert df["fill"].iloc[0] == pytest.approx(0.688, abs=1e-3)
+    # evidence attention falls monotonically with distance (E1b, r = -0.83)
+    share = df["evidence_share"].tolist()
+    assert share == sorted(share, reverse=True)
+    assert share[0] == pytest.approx(0.0408, abs=1e-3)
+    assert share[-1] == pytest.approx(0.0124, abs=1e-3)
+
+
+def test_share_dose_uses_the_balanced_panel_and_has_no_knee():
+    """Raw per-level means confound dose with item set; the balanced panel is the comparison."""
+    df = pf.load_share_dose()
+    assert df["n"].nunique() == 1 and df["n"].iloc[0] == 131
+    assert df["share"].is_monotonic_increasing
+    assert df["accuracy"].iloc[0] == pytest.approx(0.275, abs=1e-3)   # share 0.012
+    assert df["accuracy"].iloc[-1] == pytest.approx(0.473, abs=1e-3)  # natural
+    # No threshold. "Smooth" is the claim E1f replaced the "knee" with, so the test is that no
+    # single step carries the decline: the largest is a small fraction of the total drop. (An
+    # earlier version of this test asserted <= 0.038, copied from a sentence in E1_MECHANISM.md
+    # that its own table contradicted -- the real maximum is the natural -> 0.036 step at 0.053,
+    # which is also the largest dose step in share terms.)
+    steps = df["accuracy"].diff().dropna().abs()
+    total = df["accuracy"].iloc[-1] - df["accuracy"].iloc[0]
+    assert steps.max() <= 0.06
+    assert steps.max() < total / 3
+
+
+def test_competition_arms_are_matched_on_everything_but_confusability():
+    df = pf.load_competition()
+    assert list(df["arm"]) == pf.COMPETITION_ORDER
+    assert df["n"].nunique() == 1, "paired design: every arm must see the same probes"
+    # Fill is the variable held fixed. The arms differ by 2.3% because DDXPlus vignettes vary in
+    # length and each arm draws a different subset; the guard that matters is that length does not
+    # *order* the arms, which is checked below.
+    assert (df["fill"].max() - df["fill"].min()) / df["fill"].mean() < 0.03
+
+
+def test_competition_result_is_not_a_context_length_artifact():
+    """Shorter context would be the obvious confound for near_dup, so it must not track accuracy."""
+    df = pf.load_competition().set_index("arm")
+    assert df.loc["near_dup", "fill"] == df["fill"].min(), "near_dup should be the shortest arm"
+    assert df.loc["near_dup", "accuracy"] == df["accuracy"].min()
+    # ...and the *longest* arm is not the most accurate, so length does not order the arms at all
+    assert df["fill"].idxmax() != df["accuracy"].idxmax()

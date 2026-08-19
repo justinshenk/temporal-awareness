@@ -51,6 +51,7 @@ class ArmSpec:
     DISTANCES = {"local": 0, "back_2": 2, "back_5": 5, "back_10": 10, "back_20": 20}
     SPLIT = "split"
     COMPETITION = ["unrelated", "same_subject", "near_dup"]
+    OVERLAP = ["disjoint", "random", "near_dup"]
 
     @classmethod
     def distance_arms(cls) -> list[str]:
@@ -59,6 +60,10 @@ class ArmSpec:
     @classmethod
     def competition_arms(cls) -> list[str]:
         return list(cls.COMPETITION)
+
+    @classmethod
+    def overlap_arms(cls) -> list[str]:
+        return list(cls.OVERLAP)
 
 
 class OverflowGuard:
@@ -152,6 +157,19 @@ def assemble_transcript(prior_turns, evidence, question, distance, ack: str = "N
                                question_turn_index=question_turn_index)
 
 
+def _take(candidates: list[dict], n: int, arm: str, detail: str = "") -> list[dict]:
+    """Return exactly ``n`` candidates or raise.
+
+    Silently returning fewer would shorten the accumulated context for one arm, and context
+    length is precisely what these designs hold fixed — a starved arm is a fill confound wearing
+    the costume of a result.
+    """
+    if len(candidates) < n:
+        raise ValueError(f"arm {arm!r} needs {n} competitors but only {len(candidates)} "
+                         f"qualify{detail}")
+    return candidates[:n]
+
+
 def _answer_identity(item) -> str:
     return item["choices"][item["gold_index"]]
 
@@ -180,10 +198,47 @@ def select_competitors(pool, current, arm: str, n: int, seed: int) -> list[dict]
         current_options = set(current["choices"])
         rng.shuffle(candidates)  # seeded tie-break, so ordering is reproducible
         candidates.sort(key=lambda it: -len(current_options & set(it["choices"])))
-        return candidates[:n]
+        return _take(candidates, n, arm)
 
     rng.shuffle(candidates)
-    return candidates[:n]
+    return _take(candidates, n, arm)
+
+
+def select_by_option_overlap(pool, current, arm: str, n: int, seed: int,
+                             min_overlap: int = 3) -> list[dict]:
+    """Pick ``n`` DDXPlus context cases of the requested confusability (E3).
+
+    Confusability here is **option-set overlap**: how many of the current case's candidate
+    pathologies also appear in the context case's differential. Measured on the real pool this
+    separates the arms by 5x (0 / 0.75 / 3.65 of 5 shared options) where the MMLU arms of
+    :func:`select_competitors` separate them by nothing that matters — which is why E3 runs on
+    DDXPlus. See ``tasks/e3_competition_brief.md`` §2.
+
+    Items are the driver's probe dicts: ``options`` (the 5 candidate pathologies) and
+    ``pathology`` (the gold). No arm may contain a case whose **gold** equals the current case's,
+    so the context never displays the probe's answer as a correct one. The probe's gold does
+    routinely appear as a *distractor* inside near_dup context cases; that is the manipulation.
+    """
+    if arm not in ArmSpec.OVERLAP:
+        raise ValueError(f"unknown arm {arm!r}; expected one of {ArmSpec.OVERLAP}")
+
+    current_options = set(current["options"])
+    candidates = [c for c in pool
+                  if c["pathology"] != current["pathology"]
+                  and set(c["options"]) != current_options]
+
+    rng = random.Random(seed)
+    rng.shuffle(candidates)  # seeded, so ranking ties below break reproducibly
+
+    if arm == "disjoint":
+        candidates = [c for c in candidates if not (current_options & set(c["options"]))]
+        return _take(candidates, n, arm, " with zero option overlap")
+    if arm == "near_dup":
+        candidates = [c for c in candidates
+                      if len(current_options & set(c["options"])) >= min_overlap]
+        candidates.sort(key=lambda c: -len(current_options & set(c["options"])))
+        return _take(candidates, n, arm, f" at overlap >= {min_overlap}")
+    return _take(candidates, n, arm)
 
 
 @dataclass

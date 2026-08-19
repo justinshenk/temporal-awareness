@@ -71,9 +71,18 @@ def render_markdown(payload: dict) -> str:
                 f"{s['max_decline_excluded_at_95']:.3f} |"
             )
         lines += ["", "The flat claim is scoped to fill < 0.8; the ≥0.8 region is quantified in "
-                      "§2 below, where the random-stream dip is a real effect, not a bound.", ""]
+                      "§2 below.", ""]
 
-    lines += ["## 2. The top-fill-bin dip", ""]
+    lines += ["## 2. The top-fill-bin dip — **WITHDRAWN 2026-08-19**", ""]
+    lines += [
+        "**Do not quote the random-stream row below.** `E2B_DIP_RESCUE.md` reproduced the "
+        "committed run item-for-item (per-item agreement 1.000 over 344 shared items) and then "
+        "located the whole effect inside a single trough: 0.80–0.85 = 0.625 (n=40), "
+        "**0.85–0.88 = 0.419 (n=31)**, 0.88–0.93 = 0.703 (n=37). The artifact this table is built "
+        "from has a maximum fill of 0.8784, so its entire top bin *is* that trough. Extending the "
+        "same sessions to 0.93 gives −0.097 (n.s.); 14 fresh sessions give **+0.090** (opposite "
+        "sign); all 26 pooled give **+0.005 [−0.105, +0.092]**. The row is retained only so the "
+        "withdrawn number stays traceable.", ""]
     lines += ["| stream | n top bin | acc top bin | acc rest | difference 95% CI | significant |",
               "|---|---:|---:|---:|---|---|"]
     for mode, s in payload["final_bin"].items():

@@ -12,6 +12,7 @@ import numpy as np
 import pytest
 
 from src.probes.context_fatigue.dilution_analysis import (
+    paired_accuracy_gap,
     arm_accuracy_gap,
     final_bin_regression,
     joint_fit,
@@ -145,3 +146,45 @@ def test_final_bin_regression_names_its_artifact():
     """
     stats = final_bin_regression()
     assert stats["artifact"].endswith("random_context_topbin/turns_pooled.csv")
+
+
+# ── paired contrasts ────────────────────────────────────────────────────
+
+def test_paired_gap_recovers_a_planted_within_item_effect():
+    """The clamp designs measure the *same* item twice; the estimator must use that."""
+    rng = np.random.default_rng(0)
+    n = 200
+    base = rng.random(n) < 0.5                      # item difficulty, shared by both conditions
+    flip = rng.random(n) < 0.20                     # the planted within-item cost
+    treated = base & ~flip
+    gap = paired_accuracy_gap(base.astype(float), treated.astype(float), n_boot=2000)
+    assert gap.lo < base.mean() - treated.mean() < gap.hi
+    assert gap.excludes_zero()
+
+
+def test_pairing_is_tighter_than_independent_resampling_on_paired_data():
+    """The bug this replaces: independent resampling throws the pairing away and inflates the CI.
+
+    Both estimators are unbiased for the difference; only the paired one uses the fact that item
+    difficulty is common to the two conditions, so its interval must be strictly narrower.
+    """
+    rng = np.random.default_rng(1)
+    n = 300
+    base = (rng.random(n) < 0.5).astype(float)
+    treated = base * (rng.random(n) > 0.15)
+    paired = paired_accuracy_gap(base, treated, n_boot=4000)
+    independent = arm_accuracy_gap(base, treated, n_boot=4000)
+    assert (paired.hi - paired.lo) < (independent.hi - independent.lo)
+
+
+def test_paired_gap_rejects_misaligned_arms():
+    """Unequal lengths mean the rows are not the same items -- pairing them would be a lie."""
+    with pytest.raises(ValueError, match="paired"):
+        paired_accuracy_gap(np.zeros(10), np.zeros(9))
+
+
+def test_paired_gap_finds_nothing_in_pure_noise():
+    rng = np.random.default_rng(2)
+    a = (rng.random(400) < 0.5).astype(float)
+    b = (rng.random(400) < 0.5).astype(float)
+    assert not paired_accuracy_gap(a, b, n_boot=2000).excludes_zero()

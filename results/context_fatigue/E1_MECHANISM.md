@@ -6,6 +6,17 @@ single contrast in this program was powered to detect. Positional decay (token d
 count) is what drains the mass. An earlier draft of this report called the penalty a "locality
 threshold"; the E1f sweep refutes that and the claim has been withdrawn.**
 
+> **Intervals corrected 2026-08-19 — all contrasts below are now PAIRED.** Every run in this
+> report scores the *same item* under several conditions, and this report always said so
+> ("paired n = 174"). The intervals, however, came from `arm_accuracy_gap`, which resamples the
+> two arms **independently** — correct for independent arms, wrong here, because it charges the
+> interval for between-item difficulty variance that cancels inside a within-item contrast. It
+> inflated every CI by roughly 2.5×. Recomputed with `paired_accuracy_gap`
+> (`scripts/context_fatigue/analyze_dilution_paired.py` → `results/context_fatigue/
+> dilution_paired.json`); both intervals are recorded there so the correction is auditable.
+> **This changes one verdict** — E1d's necessity contrast — and makes six of E1f's seven dose
+> contrasts significant. The old, wider intervals are quoted alongside as "unpaired".
+
 Four runs, 2026-08-18, `allenai/OLMo-2-1124-7B-Instruct`, L24, seed 42:
 
 | run | artifact | driver |
@@ -58,8 +69,11 @@ Evidence kept at `local` position; its span clamped to **the same item's own** `
 | `local_clamped` | 0.0125 | 0.3333 |
 | `back_20` | 0.0125 | 0.3646 |
 
-- `local` − `local_clamped` = **+0.2069 [+0.1034, +0.3103]** — significant
-- `local_clamped` − `back_20` = −0.0287 [−0.1264, +0.0747] — **indistinguishable**
+- `local` − `local_clamped` = **+0.2021 [+0.1379, +0.2672]** — significant
+  (unpaired: [+0.1034, +0.2998])
+- `local_clamped` − `back_20` = −0.0249 [−0.0833, +0.0345] — **indistinguishable**, and the
+  pairing tightens this null to ±0.06 (unpaired: [−0.1216, +0.0718])
+- for reference, `local` − `back_20` = +0.1772 [+0.1044, +0.2500]
 
 Starving the evidence's attention, with nothing moved, lands exactly on `back_20`'s accuracy:
 **116% of the distance penalty reproduced by mass alone.** Median clamp scale 0.152 (−1.89 nats),
@@ -75,17 +89,21 @@ The converse: evidence left at `back_20`, clamped **up** to the same item's `loc
 | `back_20_clamped` | 0.0415 | 0.4219 |
 | `back_20` | 0.0125 | 0.3646 |
 
-- `back_20_clamped` − `back_20` = **+0.0575 [−0.0460, +0.1609]** — *not* significant
-- `local` − `back_20_clamped` = **+0.1207 [+0.0172, +0.2241]** — significant residual
+- `back_20_clamped` − `back_20` = **+0.0546 [+0.0172, +0.0977]** — **significant**
+  (unpaired: [−0.0460, +0.1533], which is why this was previously read as a null)
+- `local` − `back_20_clamped` = **+0.1226 [+0.0536, +0.1925]** — significant residual
 
-Restoring the mass recovers ~32% of the penalty and does not clear zero; 68% survives.
+**Verdict revised by the paired reanalysis.** Restoring the mass recovers **32% of the penalty,
+and that recovery is real** — the earlier "does not clear zero" reading was an artifact of the
+unpaired estimator. The correct statement is that mass restoration is *partially* sufficient: a
+significant recovery with a significant 68% residual.
 
 **The asymmetry is probably the instrument.** The clamp applies a *uniform* bias across heads. It
 can strip mass faithfully, but it cannot reconstruct *which* heads should carry the restored mass —
-boosting every head equally is not the inverse of the natural pattern. A clean sufficiency result
-paired with a failed necessity result is exactly the signature of an intervention that is faithful
-in one direction and crude in the other. This is a limitation of the method, not evidence for a
-second mechanism, and should not be quoted as the latter.
+boosting every head equally is not the inverse of the natural pattern. Full sufficiency paired with
+*partial* necessity is exactly the signature of an intervention that is faithful in one direction
+and crude in the other. This is a limitation of the method, not evidence for a second mechanism,
+and should not be quoted as the latter.
 
 ## E1e — tokens govern the mass; neither governs the accuracy
 
@@ -108,13 +126,13 @@ decay predicts.
 
 Paired n = 192, bootstrap 10,000 draws, cases as the unit:
 
-| contrast | isolates | Δ accuracy | Δ evidence share |
+| contrast | isolates | Δ accuracy (paired) | Δ evidence share |
 |---|---|---|---|
-| `local` → `turns5_short` | evidence leaves the current turn | **+0.1562 [+0.0573, +0.2552]** | — |
-| `local` → `turns5_long` | " | **+0.1823 [+0.0885, +0.2760]** | — |
-| `local` → `turns20_short` | " | **+0.1927 [+0.0938, +0.2865]** | — |
-| `turns5_short` → `turns5_long` | +1,240 gap tokens, **turns fixed** | +0.0260 [−0.0677, +0.1198] n.s. | **+0.0184 [+0.0174, +0.0193] sig** |
-| `turns5_long` → `turns20_short` | 5 → 20 turns, **tokens fixed** | +0.0104 [−0.0833, +0.1042] n.s. | −0.0003 [−0.0009, +0.0002] n.s. |
+| `local` → `turns5_short` | evidence leaves the current turn | **+0.1562 [+0.0885, +0.2240]** | — |
+| `local` → `turns5_long` | " | **+0.1823 [+0.1042, +0.2604]** | — |
+| `local` → `turns20_short` | " | **+0.1927 [+0.1094, +0.2708]** | — |
+| `turns5_short` → `turns5_long` | +1,240 gap tokens, **turns fixed** | +0.0260 [−0.0417, +0.0938] n.s. | **+0.0184 [+0.0174, +0.0193] sig** |
+| `turns5_long` → `turns20_short` | 5 → 20 turns, **tokens fixed** | +0.0104 [−0.0573, +0.0781] n.s. | −0.0003 [−0.0009, +0.0002] n.s. |
 
 Joint fits over all rows confirm the split:
 
@@ -128,8 +146,9 @@ the displacement step, not a gradient, as the matched contrasts above show.
 
 **The sharpest single result here is contrast C2.** At matched turn count, evidence attention share
 falls by 64% (0.0288 → 0.0104) with a tight CI excluding zero, and accuracy does not move
-(+0.026, CI covering zero). Once the evidence has left the current turn, **its attention mass can be
-cut by nearly two thirds at no measurable accuracy cost.**
+(+0.026 [−0.042, +0.094]). Once the evidence has left the current turn, **its attention mass can be
+cut by nearly two thirds at a cost bounded above by 9.4 points** — and the paired interval is what
+makes that a usable bound rather than a shrug.
 
 ## What the four runs say together
 
@@ -138,13 +157,15 @@ cut by nearly two thirds at no measurable accuracy cost.**
 2. **That mass is causally sufficient for the accuracy penalty.** Removing it at fixed position
    reproduces the penalty in full (E1c).
 3. **The accuracy–mass relationship is graded, not a threshold** (E1f, below). Each sweep step of
-   ~0.004 share costs ~0.04 accuracy, individually indistinguishable from zero; the cumulative
-   effect over a large share change is real and matches E1c almost exactly.
-4. **E1e's flat contrasts were underpowered, not evidence of saturation.** Its C2 step
-   (+0.026 [−0.068, +0.120]) and E1f's comparable step (+0.115 [+0.000, +0.229]) have heavily
-   overlapping intervals. With n ≈ 130–192 and per-step effects near 0.04, the CI half-width is
-   ~0.12 — this program could never have resolved a single step. Read E1e as *"no single step is
-   detectable"*, not *"further distance is free"*.
+   ~0.004 share costs ~0.04 accuracy; the cumulative effect over a large share change is real and
+   matches E1c almost exactly. Under the paired estimator the gradient is significant from the
+   first step, so this is a measured slope, not an inference from a chain of nulls.
+4. **E1e's flat contrasts remain flat, but are now usefully bounded.** Its C2 step
+   (+0.026 [−0.042, +0.094]) and E1f's comparable clamped step, 0.029 → 0.012
+   (+0.115 [+0.038, +0.191]), still have overlapping intervals, so the data cannot separate "the
+   same shallow gradient" from "clamping and displacement differ". The point estimates differ
+   four-fold, so this is a genuine open question rather than a settled agreement — the paired
+   analysis narrows it without closing it.
 
 For the paper: the honest mechanism sentence is *"displacing evidence out of the current turn drains
 its attention mass, and that mass causally mediates the accuracy cost; the relationship is graded
@@ -157,19 +178,24 @@ defensible for both channels; what is **not** supported is any claim about a thr
 natural share are skipped, so per-level raw n ranges 131–192; everything below uses the **common
 subset present at every level**, which is the only comparison where the item set is held fixed.
 
-| clamped share | accuracy | vs natural (95% CI) |
-|---|---|---|
-| 0.0441 (natural) | 0.473 | — |
-| 0.0360 | 0.420 | +0.053 [−0.069, +0.176] |
-| 0.0320 | 0.427 | +0.046 [−0.076, +0.168] |
-| 0.0290 | 0.389 | +0.084 [−0.038, +0.198] |
-| 0.0250 | 0.351 | +0.122 [+0.000, +0.237] |
-| 0.0200 | 0.313 | **+0.160 [+0.046, +0.275]** |
-| 0.0160 | 0.313 | **+0.160 [+0.038, +0.275]** |
-| 0.0120 | 0.275 | **+0.198 [+0.084, +0.313]** |
+| clamped share | accuracy | vs natural, **paired** (95% CI) | vs natural, unpaired |
+|---|---|---|---|
+| 0.0441 (natural) | 0.473 | — | — |
+| 0.0360 | 0.420 | **+0.053 [+0.008, +0.107]** | +0.053 [−0.069, +0.176] |
+| 0.0320 | 0.427 | +0.046 [−0.008, +0.099] | +0.046 [−0.076, +0.168] |
+| 0.0290 | 0.389 | **+0.084 [+0.023, +0.145]** | +0.084 [−0.038, +0.198] |
+| 0.0250 | 0.351 | **+0.122 [+0.053, +0.191]** | +0.122 [+0.000, +0.237] |
+| 0.0200 | 0.313 | **+0.160 [+0.084, +0.244]** | +0.160 [+0.046, +0.275] |
+| 0.0160 | 0.313 | **+0.160 [+0.076, +0.244]** | +0.160 [+0.038, +0.275] |
+| 0.0120 | 0.275 | **+0.198 [+0.115, +0.282]** | +0.198 [+0.084, +0.313] |
 
-**No knee exists.** Every adjacent step is ≤0.038 and none excludes zero; the curve is a smooth,
-roughly linear decline that becomes cumulatively significant below share ≈ 0.020.
+**No knee exists, and under the corrected estimator the gradient is detectable from the first
+step.** Six of the seven levels differ significantly from the natural share — including 0.036, a
+cut of less than a fifth of the mass. The largest adjacent step is **+0.053** (natural → 0.036;
+an earlier draft of this section said "every adjacent step is ≤0.038", which its own table
+contradicted), and three adjacent steps exclude zero. The curve is a smooth, roughly linear
+decline with no threshold anywhere in it — the "graded, not a knee" conclusion is unchanged and
+now rests on a significant gradient rather than on a chain of nulls.
 
 **This experiment was run to confirm a knee and refuted it.** The hypothesis was that E1c (cutting
 0.041→0.012 at `local`, costing 0.207) and E1e's C2 (cutting 0.029→0.010 at `back_5`, costing
@@ -183,8 +209,9 @@ two separately-run experiments, which is the strongest internal consistency chec
 
 - Whether the residual E1d gap survives a **pattern-matched** clamp (per-head targets rather than
   one aggregate) — the test separating instrument limitation from a genuine second mechanism.
-- Whether the E1d residual survives a **pattern-matched** clamp (per-head targets rather than one
-  aggregate) — the test that would separate instrument limitation from a genuine second mechanism.
-- **Power.** Every per-step contrast in this program has a CI half-width of ~0.12 against effects of
-  ~0.04. Any future single-step claim needs roughly an order of magnitude more items, or a paired
-  design over shared items rather than independent arms.
+- **Power — the original diagnosis was wrong.** This section used to say every per-step contrast
+  had a CI half-width of ~0.12 against effects of ~0.04, and concluded the program needed an order
+  of magnitude more items. It did not. **The designs were already paired; the analysis was not.**
+  Switching to `paired_accuracy_gap` cuts the half-width to ~0.03–0.08 on the same data and turns
+  four previously-null contrasts significant, including E1d's necessity result. What remains true
+  is the prescription — prefer a paired design over shared items — which these runs had all along.

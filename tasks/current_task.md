@@ -191,10 +191,15 @@ Cost matters: E2a is 6 levels × n≥100 cases. Leaning **(B)** with a hard earl
           identical at 0.0104/0.0108; share~tokens sig, share~turns n.s.). Accuracy pays −0.156 to
           −0.193 at the first displacement and nothing after: +0.026 n.s. for +1240 tokens,
           +0.010 n.s. for 5→20 turns. **C2: evidence attention cut 64% at no accuracy cost.**
-  - [ ] **E1f evidence-share knee sweep (RUNNING)** — `run_evidence_clamp.py --levels 0.036 …
-        0.012` at local position, 192 probes. Resolves the E1c/E1e tension: E1c cut 0.041→0.012 and
-        cost 0.21; E1e C2 cut 0.029→0.010 and cost nothing. Both hold only if the share→accuracy
-        curve has a knee between ~0.029 and ~0.041. Artifacts `e1f_share_knee/`.
+  - [x] **E1f evidence-share knee sweep — NO KNEE; the curve is a shallow gradient.** — `run_evidence_clamp.py --levels 0.036 …
+        0.012` at local position, 192 probes. Artifacts `e1f_share_knee/`; folded into
+        `E1_MECHANISM.md`. Ran to confirm a knee and **refuted it**: on the common subset present
+        at every level (n=131) accuracy falls smoothly 0.473 (natural, share 0.0441) → 0.275
+        (share 0.012), every adjacent step ≤0.038 and none excluding zero. The real resolution of
+        the E1c/E1e tension is duller and better — both are the same shallow gradient, and E1e's
+        single step was too small to detect. natural→0.012 gives +0.198 [+0.084, +0.313] against
+        E1c's independently measured +0.207 [+0.103, +0.310] for the same share change: agreement
+        to 0.01 across two separately-run experiments, the program's strongest internal check.
   - [x] **E2b exact-item replication — the dip is a single-bin artifact.** My e2b driver shares the
         committed driver's seed formula, so its sessions 0–11 present the **identical 344 questions**
         as `results/random_context/turns.csv`: subject match 344/344, gold agreement 1.000,
@@ -208,9 +213,40 @@ Cost matters: E2a is 6 levels × n≥100 cases. Leaning **(B)** with a hard earl
         Ruled out: overflow-guard selection (1/781 skipped) and item length (86 vs 90 median tokens
         across the two deep bins). **G3 closed in the least convenient direction — the explanandum
         does not exist.**
-  - [ ] E3 competition sweep — recommend parking (power: per-step CI half-width ~0.12 vs ~0.04 effects)
+  - [x] **E3 competition sweep — CONFIRMED, and it is a SECOND mechanism.** Report
+        `E3_COMPETITION.md`. Paired n=365/arm, 0 gold leaks, 4 overflow skips, 15 starved.
+        random 0.512 / disjoint 0.485 / **near_dup 0.427**; random−near_dup = +0.0849
+        [+0.0301, +0.1397] sig, survives parsed-only. Shared-options β sig, fill β not — the same
+        shape as E1's distance result. Both control arms agree with E1's `local` 0.464, so the
+        harness did not drift; context length does not order the arms.
+        **Attention addendum (`e3_attention/`) is the important part:** the 8.5-point accuracy gap
+        comes with **no change in the evidence's attention mass** (−0.00027 [−0.00088, +0.00035]).
+        E1f's dose-response (6.29 accuracy per unit share) predicts 2.0% of the observed effect;
+        reproducing it through mass would need a 50× larger share change. So displacement acts
+        through mass and competition does not — two mechanisms, which is why needle benchmarks
+        (varying both at once) have never separated them.
+        Not monotone in confusability: random sits *above* disjoint (n.s.), so the claim is
+        "near-duplicate context is costly", not "cost rises with overlap".
+        Original brief entry follows —
+        driver `run_competition_sweep.py`, artifacts `e3_competition/`. The earlier "park it on
+        power" note is superseded: the power objection applies to *graded* steps, and E3's
+        near_dup vs random contrast is designed to be large. Paired over shared probes at n=384
+        (2× E1) puts the CI half-width near 0.07.
+        **Substrate changed from the brief's MMLU to DDXPlus**, on measurement: the MMLU
+        instrument does not work (near_dup stem-jaccard 0.106 vs same_subject 0.102, only 16% of
+        picks sharing an option), so a null there would mean "no near-duplicates exist", not "no
+        competition effect". DDXPlus cases share a 46-pathology option universe and separate the
+        arms 5× (0 / 0.75 / 3.65 shared options of 5) at ≤1.1% difference in context tokens.
+        All three arms are DDXPlus, so ICL affordance is constant — keeping the brief's MMLU
+        `unrelated` arm would have confounded competition with the ICL this paper credits for
+        holding accuracy up.
   - [ ] ~~E4 window-position control~~ — **moot**, no dip to attribute
-  - [ ] E5 query decodability — partly pre-empted: E1b already shows share is not a proxy for use
+  - [ ] E5 query decodability — **recommend dropping.** Its premise (flat decodability against
+        halved mass would show mass ≠ the information currency) is now answered the other way for
+        displacement: E1c/E1f establish causally that mass *is* the currency there. And E3's
+        attention addendum answers the interesting half of it more directly — competition costs
+        accuracy at constant mass, so mass is not the *only* currency. E5 would now be
+        confirmatory at best.
 
 ## Reporting convention deviation
 

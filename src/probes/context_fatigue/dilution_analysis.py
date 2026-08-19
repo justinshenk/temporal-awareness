@@ -98,6 +98,38 @@ def arm_accuracy_gap(arm_a, arm_b, n_boot: int = 10000, seed: int = 42,
                        hi=float(np.percentile(draws, 100 * (1 - alpha / 2))))
 
 
+def paired_accuracy_gap(arm_a, arm_b, n_boot: int = 10000, seed: int = 42,
+                        alpha: float = 0.05) -> Coefficient:
+    """Accuracy of ``arm_a`` minus ``arm_b`` when both arms scored the **same items**.
+
+    The clamp and dissociation designs (E1c/E1d/E1e/E1f) measure one item under several
+    conditions, so the two arms share item difficulty exactly. :func:`arm_accuracy_gap`
+    resamples the arms independently, which is correct for genuinely independent arms and
+    *throws the pairing away* here — it charges the interval for between-item variance that
+    cancels in the contrast, inflating the CI roughly 2.5x on this data. Resample item indices
+    once and take the difference within the resampled items.
+
+    ``arm_a[i]`` and ``arm_b[i]`` must be the same item; equal lengths are necessary, not
+    sufficient, so callers must align the arms themselves (pivoting on the item id).
+    """
+    a = np.asarray(arm_a, dtype=float)
+    b = np.asarray(arm_b, dtype=float)
+    if a.size != b.size:
+        raise ValueError(f"paired arms must be aligned item-for-item, got {a.size} and {b.size}")
+    if a.size == 0:
+        raise ValueError("paired arms need at least one item to compare")
+
+    diff = a - b
+    rng = np.random.default_rng(seed)
+    idx = rng.integers(0, diff.size, size=(n_boot, diff.size))
+    draws = diff[idx].mean(axis=1)
+
+    return Coefficient(name="paired_accuracy_gap",
+                       estimate=float(diff.mean()),
+                       lo=float(np.percentile(draws, 100 * alpha / 2)),
+                       hi=float(np.percentile(draws, 100 * (1 - alpha / 2))))
+
+
 def final_bin_regression(path: Path | None = None, mode: str = "random") -> dict:
     """The published top-bin dip, read from a **named** artifact.
 

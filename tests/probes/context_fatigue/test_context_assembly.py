@@ -19,6 +19,7 @@ from src.probes.context_fatigue.context_assembly import (
     ArmSpec,
     OverflowGuard,
     assemble_transcript,
+    select_by_option_overlap,
     select_competitors,
 )
 
@@ -234,3 +235,92 @@ def test_multi_block_depths_hold_regardless_of_argument_order(depths):
 
     got = {out.turns[i]["content"]: _depth(out, i) for i in out.evidence_turn_indices}
     assert got == {f"BLOCK-{d}": d for d in depths}
+
+
+# ── option-overlap competitor selection (E3, DDXPlus arms) ──────────────
+
+def _case_pool():
+    """DDXPlus-shaped cases: a shared 8-pathology option universe, 5 options each.
+
+    Built so overlap is controllable — cases 0-9 all draw from the first six pathologies (so
+    high-overlap neighbours exist), cases 10-29 draw from the last four (so disjoint neighbours
+    exist too).
+    """
+    top = ["GERD", "Bronchitis", "Pericarditis", "Unstable angina", "NSTEMI", "Pneumonia"]
+    bottom = ["Anemia", "Anaphylaxis", "Pulmonary embolism", "Viral pharyngitis", "Panic attack"]
+    cases = []
+    for i in range(10):
+        opts = [top[(i + j) % len(top)] for j in range(5)]
+        cases.append({"options": opts, "pathology": opts[i % 5], "vignette": f"case {i}"})
+    for i in range(20):
+        opts = [bottom[(i + j) % len(bottom)] for j in range(5)]
+        cases.append({"options": opts, "pathology": opts[i % 5], "vignette": f"case {10 + i}"})
+    return cases
+
+
+def test_near_dup_meets_the_requested_option_overlap():
+    """§8: near_dup must be genuinely confusable, not merely same-domain."""
+    pool = _case_pool()
+    current = pool[0]
+    picked = select_by_option_overlap(pool, current, arm="near_dup", n=5, seed=42, min_overlap=3)
+    assert len(picked) == 5
+    for case in picked:
+        assert len(set(current["options"]) & set(case["options"])) >= 3
+
+
+def test_disjoint_arm_shares_no_options_at_all():
+    pool = _case_pool()
+    current = pool[0]
+    picked = select_by_option_overlap(pool, current, arm="disjoint", n=8, seed=42)
+    assert len(picked) == 8
+    for case in picked:
+        assert not set(current["options"]) & set(case["options"])
+
+
+def test_no_overlap_arm_leaks_the_probes_gold_as_an_answer():
+    """The probe's gold may appear as a *distractor* in context — that is the manipulation —
+    but no context case may have been answered with it."""
+    pool = _case_pool()
+    for current in pool[:6]:
+        for arm in ("disjoint", "random", "near_dup"):
+            picked = select_by_option_overlap(pool, current, arm=arm, n=4, seed=3,
+                                              min_overlap=3)
+            assert all(c["pathology"] != current["pathology"] for c in picked)
+
+
+def test_overlap_selection_is_seeded_and_reproducible():
+    pool = _case_pool()
+    a = select_by_option_overlap(pool, pool[0], arm="random", n=6, seed=7)
+    b = select_by_option_overlap(pool, pool[0], arm="random", n=6, seed=7)
+    c = select_by_option_overlap(pool, pool[0], arm="random", n=6, seed=8)
+    assert [x["vignette"] for x in a] == [x["vignette"] for x in b]
+    assert [x["vignette"] for x in a] != [x["vignette"] for x in c]
+
+
+def test_starved_arm_raises_rather_than_returning_a_short_context():
+    """A short arm is a fill confound: fewer context cases means less context, which is the
+    variable E3 holds fixed. Failing loudly is the only safe behaviour."""
+    pool = _case_pool()
+    with pytest.raises(ValueError, match="only"):
+        select_by_option_overlap(pool, pool[0], arm="near_dup", n=500, seed=1, min_overlap=4)
+
+
+def test_overlap_arms_are_enumerated():
+    assert ArmSpec.overlap_arms() == ["disjoint", "random", "near_dup"]
+
+
+def test_overlap_arms_yield_equal_turn_counts():
+    """§7.5: the arms must differ in confusability and in nothing else — same turns, same shape."""
+    pool = _case_pool()
+    current = pool[0]
+    counts = set()
+    for arm in ArmSpec.overlap_arms():
+        picked = select_by_option_overlap(pool, current, arm=arm, n=4, seed=11, min_overlap=3)
+        prior = []
+        for case in picked:
+            prior += [{"role": "user", "content": case["vignette"]},
+                      {"role": "assistant", "content": "A"}]
+        built = assemble_transcript(prior, evidence=current["vignette"],
+                                    question="Most likely diagnosis:", distance=0)
+        counts.add(len([t for t in built.turns if t["role"] == "user"]))
+    assert len(counts) == 1

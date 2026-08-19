@@ -31,7 +31,6 @@ this paper attributes to accumulation.
 """
 
 import argparse
-import ast
 import gc
 import json
 import random
@@ -51,6 +50,7 @@ from src.probes.context_fatigue.ddxplus_cases import (
     format_case_question,
     format_case_vignette,
     load_evidence_db,
+    load_probe_pool,
 )
 
 MMLU_LABELS = ["A", "B", "C", "D"]
@@ -100,40 +100,6 @@ def load_filler_pool(tokenizer, max_tokens):
             pool.append({"text": text, "gold": MMLU_LABELS[row["answer"]],
                          "subject": row["subject"]})
     return pool
-
-
-def load_probe_pool(evidence_db, n_options, seed, limit=4000):
-    """DDXPlus cases whose gold pathology is inside the top-``n_options`` differential.
-
-    The options are **shuffled**. DDXPlus lists the differential in rank order and the true
-    pathology is usually ranked first, so taking ``ddx[:5]`` unshuffled makes the gold letter "A"
-    in ~71% of cases. Any arm that happens to favour "A" would then score higher for a reason that
-    has nothing to do with where the evidence sits.
-    """
-    path = Path(__file__).resolve().parents[2] / "data" / "context_fatigue" / "ddxplus_test.csv"
-    if not path.exists():
-        from huggingface_hub import hf_hub_download
-        path = hf_hub_download("aai530-group6/ddxplus", "test.csv", repo_type="dataset")
-    df = pd.read_csv(path, nrows=limit)
-    rng = random.Random(seed)
-    probes = []
-    for _, row in df.iterrows():
-        ddx = ast.literal_eval(row["DIFFERENTIAL_DIAGNOSIS"])
-        options = [d[0] for d in ddx[:n_options]]
-        # A short differential is not a usable probe: 7% of DDXPlus cases offer a *single*
-        # candidate, where "A" is correct without reading the vignette at all. Such items cannot
-        # show a distance effect and would flatten every arm equally toward the same ceiling.
-        if len(options) < n_options or row["PATHOLOGY"] not in options:
-            continue
-        rng.shuffle(options)
-        probes.append({
-            "vignette": format_case_vignette(row["AGE"], row["SEX"], row["INITIAL_EVIDENCE"],
-                                             row["EVIDENCES"], evidence_db),
-            "options": options,
-            "gold": "ABCDE"[options.index(row["PATHOLOGY"])],
-            "pathology": row["PATHOLOGY"],
-        })
-    return probes
 
 
 def main():

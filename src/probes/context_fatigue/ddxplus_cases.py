@@ -14,12 +14,16 @@ from __future__ import annotations
 
 import ast
 import json
+import random
 from pathlib import Path
+
+import pandas as pd
 
 OPTION_LABELS = ["A", "B", "C", "D", "E", "F", "G", "H"]
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_EVIDENCE_PATH = _REPO_ROOT / "data" / "context_fatigue" / "release_evidences.json"
+DEFAULT_CASE_PATH = _REPO_ROOT / "data" / "context_fatigue" / "ddxplus_test.csv"
 
 
 def load_evidence_db(path=DEFAULT_EVIDENCE_PATH) -> dict:
@@ -124,3 +128,37 @@ def format_case_mcq(age, sex, initial_ev, evidence_str, evidence_db, options, n_
     """Vignette and question as one block — the original single-turn case format."""
     return (format_case_vignette(age, sex, initial_ev, evidence_str, evidence_db)
             + "\n" + format_case_question(options, n_options))
+
+
+def load_probe_pool(evidence_db, n_options, seed, limit=4000):
+    """DDXPlus cases whose gold pathology is inside the top-``n_options`` differential.
+
+    The options are **shuffled**. DDXPlus lists the differential in rank order and the true
+    pathology is usually ranked first, so taking ``ddx[:5]`` unshuffled makes the gold letter "A"
+    in ~71% of cases. Any arm that happens to favour "A" would then score higher for a reason that
+    has nothing to do with where the evidence sits.
+    """
+    path = DEFAULT_CASE_PATH
+    if not path.exists():
+        from huggingface_hub import hf_hub_download
+        path = hf_hub_download("aai530-group6/ddxplus", "test.csv", repo_type="dataset")
+    df = pd.read_csv(path, nrows=limit)
+    rng = random.Random(seed)
+    probes = []
+    for _, row in df.iterrows():
+        ddx = ast.literal_eval(row["DIFFERENTIAL_DIAGNOSIS"])
+        options = [d[0] for d in ddx[:n_options]]
+        # A short differential is not a usable probe: 7% of DDXPlus cases offer a *single*
+        # candidate, where "A" is correct without reading the vignette at all. Such items cannot
+        # show a distance effect and would flatten every arm equally toward the same ceiling.
+        if len(options) < n_options or row["PATHOLOGY"] not in options:
+            continue
+        rng.shuffle(options)
+        probes.append({
+            "vignette": format_case_vignette(row["AGE"], row["SEX"], row["INITIAL_EVIDENCE"],
+                                             row["EVIDENCES"], evidence_db),
+            "options": options,
+            "gold": "ABCDE"[options.index(row["PATHOLOGY"])],
+            "pathology": row["PATHOLOGY"],
+        })
+    return probes

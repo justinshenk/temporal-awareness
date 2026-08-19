@@ -26,7 +26,7 @@
 \captionsetup[sub]{skip=1pt}
 \setlist[itemize]{nosep,leftmargin=1.4em,topsep=2pt}
 
-\title{Context Fatigue Is In-Context Comfort:\\Multi-Turn Confidence Signatures Without Performance Loss}
+\title{Accumulation Is Free, Dilution Is Not:\\A Within-Harness Causal Test of Context Rot}
 
 \author{%
   Ronen Raj Roy\\
@@ -38,244 +38,365 @@
 \maketitle
 
 \begin{abstract}
-As a multi-turn conversation accumulates, instruction-tuned LLMs show two vivid
-``context-fatigue'' signatures: output entropy collapses several-fold, and the last
-token's attention drifts off the system prompt and the current query onto recent
-context. We reproduce both across Qwen-2.5-7B, Llama-3.1-8B, Gemma-2-9B, and the full
-OLMo-2-7B post-training chain---and then show, with a design that other context-rot
-studies cannot use, that they are \emph{not} a competence decay. Our key methodological
-choice is to accumulate \textbf{individually localized tasks} (self-contained multiple-choice
-cases) rather than one long task, so the information needed for the current answer is
-always at the current query and never diluted across length. This \emph{structurally rules
-out attention dilution / lost-in-the-middle} as the cause. With dilution removed, the
-signatures persist but performance does not move: per-case accuracy is flat-to-rising across
-the first ${\sim}80\%$ of context fill ($r{\approx}0$ even when in-context learning is deterred
-with a random-subject stream), and in the final ${\sim}20\%$ a genuine dip appears \emph{only}
-where ICL is deterred ($-0.14$ $[-0.25,-0.03]$; the coherent stream stays flat) --- locating the
-end-of-window cost exactly where in-context comfort cannot mask it (\S4). Checkable instruction
-adherence stays at ceiling, and---conditioning on fill---wrong answers consistently
-\emph{fixate} on the current query rather than under-attend it (sign-positive in every fill bin
-and probed layer, pooled $\Delta{=}+0.045$), while correct answers spread attention onto the
-accumulated context (the per-case fingerprint of in-context learning). The entropy collapse vanishes on organic WildChat dialogue ($0.99$
-within-conversation late/early ratio) and tracks conversation \emph{homogeneity}, not length.
-An OLMo-2 dose-response shows the collapse is a baseline-confidence \emph{level shift}
-installed mostly by supervised fine-tuning, and a causal test of the boundary-detector
-feature blamed for it does not rescue the model. We argue ``context fatigue'' as measured is
-in-context comfort, not decay; the genuine hazard is a widening confidently-wrong gap:
-confidence climbs $0.85\to0.95$ with fill ($r{=}+0.72$), on wrong answers as much as right,
-at flat accuracy.
+Long conversations are said to wear language models down. The phenomenology is easy to
+elicit---as context fills, output entropy collapses several-fold and the last token's attention
+drifts off the system prompt and the current query onto recent text---but the causal claim behind
+it has never been tested inside a single harness, because the standard setups confound
+\emph{accumulation} (more context) with \emph{dilution} (the answer-bearing tokens becoming a
+smaller, more distant fraction of it). We separate them. Accumulating \textbf{individually
+localized} tasks, where the evidence for the current answer always sits at the current query, we
+reproduce the full signature battery across four model families and find \textbf{no accuracy cost}
+and no loss of instruction adherence. Holding items, model, fill and metric fixed and moving only
+\emph{where the evidence lives}, the cost appears at once: displacing it costs $0.19$--$0.21$
+accuracy, and in a joint fit distance carries the coefficient
+($\beta{=}-0.0076$ $[-0.0117,-0.0035]$) while fill carries none. We then show this cost is
+\textbf{causally mediated by attention mass}. Clamping the evidence's attention share at its
+original position, with nothing moved, reproduces \textbf{114\%} of the displacement penalty
+($+0.202$ $[+0.138,+0.267]$, landing indistinguishably on the displaced arm); a dose-response
+sweep over the share recovers the same effect to within $0.004$ and shows the mass$\to$accuracy
+curve is smooth and graded, with no threshold anywhere in it. The drain itself is positional in
+\emph{tokens}, not turns. Holding distance and fill fixed and varying only how \emph{confusable}
+the accumulated context is isolates a \emph{second and separate} cost: near-duplicate context is
+worth $-0.085$ $[-0.140,-0.030]$ while leaving the evidence's attention mass untouched
+($-0.0003$ $[-0.0009,+0.0004]$, where the measured dose-response predicts $2\%$ of the observed
+effect). So context rot is two mechanisms, not one---displacement acts through attention mass and
+competition does not---and needle benchmarks vary both at once, which is why they have not been
+told apart. Meanwhile the
+signatures are in-context comfort: the entropy collapse vanishes on organic WildChat dialogue and
+tracks conversation homogeneity, not length, and across OLMo-2's post-training chain it is a
+baseline-confidence level shift installed mostly by SFT. Context rot, as measured, is not a decay
+of competence with length; it is dilution of the evidence, and it is dose-dependent in attention
+mass. \emph{We also withdraw a positive result from an earlier version of this work} (\S6).
 \end{abstract}
 
-\section{The claim under test}
+\section{Accumulation and dilution are confounded everywhere else}
 
-A recurring worry about long conversations is \emph{context rot}: as turns accumulate, the
-model is said to degrade. The phenomenology is real and easy to elicit. On a repeating
-multiple-choice task, instruction-tuned models become dramatically more confident as context
-fills---next-token entropy drops $3$--$4\times$ on Qwen-2.5-7B and Llama-3.1-8B, in both
-question orders---and the last token's attention shifts systematically: away from the system
-prompt and the current query, toward the most recent prior cases, with the attention
-distribution diffusing. The tempting reading is that the model is being worn down: it stops
-reading its instructions, fixates on recent text, and its collapsing entropy is overconfidence
-that should translate into errors and into sycophantic capitulation when challenged.
+A recurring worry about long conversations is \emph{context rot}: as turns accumulate, the model
+is said to degrade. The phenomenology is real. On a repeating multiple-choice task,
+instruction-tuned models become dramatically more confident as context fills---next-token entropy
+drops $3$--$4\times$ on Qwen-2.5-7B and Llama-3.1-8B, in both question orders---and the last
+token's attention shifts systematically away from the system prompt and the current query toward
+the most recent prior cases, with the distribution diffusing (at layer 24 of OLMo-2-Instruct:
+system$\leftrightarrow$fill $-0.93$, recent$\leftrightarrow$fill $+0.89$,
+current$\leftrightarrow$fill $-0.71$, entropy$\leftrightarrow$fill $+0.95$, all monotone in fill).
+By every visual diagnostic this is a strong effect that grows with context.
 
-This abstract tests that reading and finds it inverted. The signatures are robust and
-replicate across four model families, but they are signatures of \emph{in-context learning},
-not of degradation. We make the case with a design that separates accumulation from the
-confound that dominates the existing literature.
+The tempting reading is that the model is being worn down by length. But almost every
+context-rot evaluation embeds the answer-bearing information inside \emph{one long task}---a long
+document, a buried needle, a growing codebase. There, longer context mechanically \emph{dilutes}
+the relevant tokens among irrelevant ones, so a measured degradation conflates the cost of
+accumulation per se with the cost of the target being harder to attend to (``lost in the middle,''
+\citealp{liu2023lost}). These cannot be told apart in that setup, and the distinction matters
+practically: an agent transcript of finished, locally-scoped steps accumulates without diluting,
+and the two accounts make opposite predictions about it.
 
-\section{Design: localized tasks rule out attention dilution}
+This abstract separates them inside one harness, and finds that \textbf{accumulation is free and
+dilution is not}---then measures the dilution cost causally, in units of attention mass.
 
-Most context-rot evaluations embed the answer-bearing information inside \emph{one long
-task}---a long document, a buried ``needle,'' a growing codebase. There, longer context
-mechanically \emph{dilutes} the relevant tokens among irrelevant ones, so any degradation
-conflates two things: the cost of accumulation per se and the cost of the target being
-harder to attend to (``lost in the middle,'' \citealp{liu2023lost}). These cannot be told
-apart in that setup.
+\section{Design: localized tasks make accumulation and dilution independent}
 
-Our harness instead accumulates \textbf{individually localized tasks}: a stream of
-self-contained $5$-option medical cases (DDXPlus, \citealp{tchango2022ddxplus}) or discrete
-factual questions (MMLU, \citealp{hendrycks2021mmlu}). Each answer depends only on the
-\emph{current} question, which always sits at the end of the context; prior turns are never
-required to answer it. Accumulation therefore grows the context without ever diluting the
-information the current answer needs. \textbf{This structurally removes attention dilution as
-a candidate mechanism}---if performance is flat here, it cannot be rescued or explained by
-dilution---and lets us read accumulation effects cleanly. A reversed-question-order control
-additionally removes any difficulty-ordering confound (the entropy collapse is order
-invariant). Because a $4$--$32$k window holds only tens of cases, we pool many independent
-accumulation sessions (different case and option orders) to power per-case analysis.
+Our harness accumulates \textbf{individually localized tasks}: a stream of self-contained
+$5$-option medical cases (DDXPlus, \citealp{tchango2022ddxplus}) or discrete factual questions
+(MMLU, \citealp{hendrycks2021mmlu}). Each answer depends only on the \emph{current} question,
+which always sits at the end of the context; prior turns are never required to answer it.
+Accumulation therefore grows the context without ever diluting the information the current answer
+needs. A reversed-question-order control removes difficulty-ordering confounds. Because a
+$4$--$32$k window holds only tens of cases, we pool many independent accumulation sessions.
+
+The design's real value is that dilution becomes an \emph{independent knob}. Holding the item, the
+model, the total fill and the metric fixed, we can move the evidence $k$ user turns back into the
+accumulated transcript, with the question text byte-identical across arms and the same filler in
+every arm. Distance and fill, welded together in a long-document setup, move independently here.
+All causal experiments below run on OLMo-2-7B-Instruct at layer 24, seed 42, with an overflow
+guard that skips rather than truncates every item that would not fit whole---truncating a long
+item near the window edge manufactures exactly the late-window cost under study.
+
+\section{Accumulation alone costs nothing}
+
+Per-case accuracy does not fall as context fills; it is worst at the cold start and warms up
+($\mathrm{corr}(\text{correct},\text{fill})=+0.11$ Instruct, $+0.07$ DPO). The obvious objection is
+that a homogeneous repeating task lets in-context learning mask a hidden decay, so we remove that
+crutch: in a \emph{random-subject} stream each question is drawn uniformly from all 56 MMLU
+subjects, so prior context carries no predictive information about the next question---only the
+answer \emph{format} is learnable. Accuracy is still flat (random: $\mathrm{corr}=-0.02$
+$[-0.10,+0.05]$, $n{=}699$; coherent single-subject: $\mathrm{corr}=+0.01$, $n{=}1001$). These
+nulls are \emph{bounded}: the 95\% interval on upper-minus-lower-half accuracy excludes declines
+beyond $4.1$ points (coherent) and $9.4$ (random). Checkable instruction adherence---a canary
+system instruction to begin every reply with a marker and end with a tag---stays at ceiling
+throughout ($\mathrm{corr}(\text{violation},\text{fill})=0$), an honest null that bounds rather
+than proves, since the canaries were easy.
 
 \begin{figure}[t]
   \centering
-  \begin{subfigure}{0.49\textwidth}\includegraphics[width=\linewidth]{figures/dose_response.pdf}\end{subfigure}
+  \begin{subfigure}{0.33\textwidth}\includegraphics[width=\linewidth]{figures/distance_ladder.pdf}\end{subfigure}
   \hfill
-  \begin{subfigure}{0.49\textwidth}\includegraphics[width=\linewidth]{figures/random_context.pdf}\end{subfigure}
-  \\[2pt]
-  \begin{subfigure}{0.49\textwidth}\includegraphics[width=\linewidth]{figures/attention_rot.pdf}\end{subfigure}
+  \begin{subfigure}{0.33\textwidth}\includegraphics[width=\linewidth]{figures/mass_dose.pdf}\end{subfigure}
   \hfill
-  \begin{subfigure}{0.49\textwidth}\includegraphics[width=\linewidth]{figures/wildchat_homogeneity.pdf}\end{subfigure}
-  \caption{\textbf{The signatures are real but performance is not affected.}
-  (a) Across OLMo-2's post-training chain, early-context (baseline) entropy collapses
-  monotonically ($\sim$5$\times$); the within-context early/late ratio (annotated) falls from
-  collapse ($1.64\times$, base) to mild reversal ($0.47\times$, Instruct).
-  (b) Per-case accuracy is flat as context fills, even when in-context learning is deterred by
-  drawing each question from a random MMLU subject ($r{\approx}0$).
-  (c) At layer 24 (OLMo-2-Instruct), attention mass moves off the system prompt and onto recent
-  cases monotonically with fill, while per-case accuracy holds.
-  (d) The within-conversation entropy collapse appears only with a homogeneous repeating task
-  (DDXPlus), not on organic WildChat dialogue, and tracks homogeneity rather than length.}
-  \label{fig:main}
+  \begin{subfigure}{0.33\textwidth}\includegraphics[width=\linewidth]{figures/competition.pdf}\end{subfigure}
+  \caption{\textbf{Dilution costs accuracy; accumulation does not.}
+  (a) Moving the evidence $k$ user turns back, at identical fill and byte-identical questions,
+  drains its attention mass and costs accuracy together.
+  (b) Setting that mass directly, with the evidence left in place, reproduces the penalty and
+  traces a smooth graded dose-response---no threshold. The diamond is an independently-run clamp
+  experiment measuring the same endpoint cut; the two agree to $0.004$.
+  (c) At distance $0$ and fixed fill, near-duplicate accumulated context costs a further
+  $0.085$. Bootstrap CIs resample cases throughout.}
+  \label{fig:dilution}
 \end{figure}
 
-\section{The signatures are real---and they replicate}
 
-The attention reallocation is not an artifact of our attention reconstruction: we replicate
-OLMo-2's post-RoPE last-token attention and validate it against the model's own
-\texttt{output\_attentions} to $\max|\Delta|\approx 1.4\mathrm{e}{-3}$. With context fill it
-produces strong, monotone, per-case correlations at every probed layer
-(layer 24: system$\leftrightarrow$fill $-0.93$, recent$\leftrightarrow$fill $+0.89$,
-current$\leftrightarrow$fill $-0.71$, entropy$\leftrightarrow$fill $+0.95$;
-Fig.~\ref{fig:main}c). The DPO and Instruct checkpoints are indistinguishable, so the
-reallocation is present from the SFT/DPO stage, not introduced by the final RLVR step. The
-entropy collapse likewise replicates across model families. By every visual diagnostic, this
-is a real, strongly-measurable effect that grows with context---exactly the thing one would
-report as ``context rot.''
+\section{Move the evidence and the cost appears}
 
-\section{...but there is no performance cost}
-
-\paragraph{Accuracy is flat, and stays flat when ICL is removed.}
-Per-case accuracy does not fall as context fills; it is worst at the cold start and warms up
-($\mathrm{corr}(\text{correct},\text{fill})=+0.11$ Instruct, $+0.07$ DPO). The obvious
-objection is that a homogeneous repeating task lets in-context learning mask a hidden decay.
-We remove that crutch: in a \emph{random-subject} stream each question is drawn uniformly from
-all 56 MMLU subjects, so prior context carries no predictive information about the next
-question---only the answer \emph{format} is learnable. Accuracy is still flat across the first
-$\sim$80\% of context (random: $\mathrm{corr}=-0.02$ $[-0.10,+0.05]$, $n{=}699$), versus a
-coherent single-subject stream ($0.82$, $\mathrm{corr}=+0.01$, $n{=}1001$); the lower level just
-reflects harder questions, not a slope (Fig.~\ref{fig:main}b). These nulls are \emph{bounded}:
-the 95\% interval on upper-minus-lower-half accuracy excludes declines beyond $4.1$ points
-(coherent) and $9.4$ (random).
-
-\paragraph{The final 20\% is not flat---and the exception proves the mechanism.} An initial
-batch showed a marginal top-bin dip on the random stream ($-0.19$ $[-0.37,-0.00]$, $n{=}31$).
-Rather than bound it, we resolved it: 15 further sessions per stream at deeper fill (to 93\% of
-the window, with an overflow guard so no near-full question is ever truncated---a bias that would
-otherwise manufacture exactly this dip; the guard skips long, typically harder items, biasing
-\emph{against} it). Pooled, the dip is real and replicates: random-stream accuracy at
-${\geq}80\%$ fill is $0.47$ against $0.61$ below ($-0.141$ $[-0.249,-0.031]$, $n{=}91$; the
-independent batch alone reproduces the sign). The coherent stream, at the same depths, is exactly
-flat ($+0.010$ $[-0.060,+0.075]$, $n{=}137$). So there \emph{is} an end-of-window cost---but only
-where in-context learning cannot compensate, which is the paper's mechanism seen from the other
-side: what looks like robustness to accumulation is ICL actively holding accuracy up, and the
-final fifth of the window is where accumulation finally outruns it. With dilution excluded by
-design, this is a cost of accumulation per se, not of the target being harder to find.
-
-\paragraph{Instruction adherence holds.}
-Looking for a competence-preserved, compliance-degraded dissociation, we add a checkable
-``canary'' system instruction (begin every reply with a marker; end with a tag) and track
-obedience versus fill across baseline, forced-history, and refresh arms. Adherence is perfect
-throughout ($\mathrm{corr}(\text{violation},\text{fill})=0$) with accuracy flat---an honest
-null: the canaries were easy enough to sit on a ceiling, so this bounds rather than proves the
-effect, but it shows no adherence decay where the degradation reading predicts one.
-
-\paragraph{The per-case mechanism inverts the story.}
-Conditioning on context fill, the cases OLMo-2 answers \emph{wrong} have \emph{higher}
-current-query attention and lower, more peaked attention entropy than the ones it gets right
-(Table~\ref{tab:invert}). The effect is small (pooled $\Delta=+0.045$
-$[-0.003,+0.097]$, $n{=}115$, significant only in the fullest bin), but its sign is positive
-in every fill bin and at every probed layer ($8/16/24/31$): nowhere do wrong answers
-\emph{under}-attend the current query, as the degradation reading predicts. Errors are
-associated with \emph{fixating} on the query; correct answers spread attention onto the
-accumulated cases---i.e.\ onto the in-context examples. The ``rot'' (system erosion, recency
-bias, diffusion) and the within-context predictor of a correct answer point in \emph{opposite}
-directions. More contextual attention is the fingerprint of the ICL that keeps accuracy up,
-not a symptom of decay.
+We now vary only \emph{where the answer-bearing evidence lives}. Each DDXPlus probe's vignette is
+placed $k$ user turns before its question; mean fill is $0.688$ in every arm, the question text is
+byte-identical, and the overflow guard skipped $0$ of $192$ probes.
 
 \begin{table}[t]
   \centering\small
-  \caption{Per-case, conditioning on fill (OLMo-2-Instruct, layer 24): wrong cases
-  \emph{fixate} on the current query. Current-query attention mass by correctness, heads
-  averaged within case (no head-level pseudo-replication); seeded bootstrap 95\% CIs.}
-  \label{tab:invert}
-  \begin{tabular}{lcccc}
+  \caption{\textbf{Distance is the variable that matters} (OLMo-2-Instruct, $n{=}192$ per arm,
+  chance $=0.200$, fill $0.688$ in every arm). Evidence attention share is measured at layer 24 on
+  the same forwards. Case-resampled bootstrap 95\% CIs.}
+  \label{tab:distance}
+  \begin{tabular}{lccccc}
     \toprule
-    fill bin & 0--25\% ($n{=}36$) & 25--50\% ($n{=}32$) & 50--75\% ($n{=}31$) & 75--100\% ($n{=}16$) \\
+    arm & \texttt{local} & \texttt{back\_2} & \texttt{back\_5} & \texttt{back\_10} & \texttt{back\_20}\\
     \midrule
-    correct  & 0.349 & 0.193 & 0.168 & 0.153 \\
-    wrong    & 0.377 & 0.197 & 0.179 & 0.182 \\
-    $\Delta$ (wrong$-$correct) & $+0.028$ & $+0.005$ & $+0.010$ & $+0.029$ \\
-    95\% CI & $[-.08,+.13]$ & $[-.01,+.02]$ & $[-.00,+.02]$ & $[+.01,+.05]$ \\
+    accuracy & \textbf{0.464} & 0.359 & 0.292 & 0.250 & 0.276\\
+    cost vs \texttt{local} & --- & $+0.104$ & $+0.172$ & $+0.214$ & $+0.188$\\
+    95\% CI & --- & $[+.005,+.203]$ & $[+.073,+.266]$ & $[+.120,+.307]$ & $[+.094,+.281]$\\
+    evidence share @L24 & 0.0408 & 0.0363 & 0.0320 & 0.0195 & 0.0124\\
     \bottomrule
   \end{tabular}
 \end{table}
 
-\section{The entropy collapse is in-context comfort, not depth}
+Every gap's CI excludes zero (Table~\ref{tab:distance}, Fig.~\ref{fig:dilution}a). In a joint fit of accuracy on fill and
+distance, \textbf{distance carries the coefficient} ($\beta=-0.00761$ $[-0.01173,-0.00346]$,
+significant) and \textbf{fill carries none} ($\beta=-0.00725$ $[-0.21006,+0.18658]$). Within the
+\texttt{local} arm---the one that reproduces the paper's original design---accuracy is flat with
+fill ($\beta=-0.294$ $[-0.767,+0.184]$). The effect survives restriction to parsed responses and
+is then fully monotone ($0.524\to0.413\to0.397\to0.343\to0.338$). One honest qualification: the
+decline saturates by $k{\approx}10$ rather than deepening to $k{=}20$, and those two arms are not
+distinguishable from each other.
 
-If the collapse were a generic depth effect it should survive on heterogeneous dialogue. It
+So the same model, on the same items at the same fill, degrades when the evidence is displaced and
+does not degrade when it is not. The localized null is not a ceiling artifact: these items
+\emph{can} show degradation, and do, as soon as dilution is reintroduced.
+
+\section{The cost is causally mediated by attention mass}
+
+Distance and attention drain move together by construction, so Table~\ref{tab:distance} is
+consistent with dilution but does not establish it---a purely positional account predicts the same
+table. Four interventions separate them.
+
+\paragraph{The drain is real, and observational correlations invert it.}
+Evidence share falls $0.0408\to0.0124$ across the ladder ($r=-0.83$ with distance) while the
+\emph{question}'s share stays flat, confirming only the evidence moved. A trap worth recording:
+\emph{within} an arm, higher evidence share predicts \emph{lower} accuracy
+($\beta=-11.2$ $[-20.0,-2.6]$, stronger controlling for vignette length). Attention there tracks
+item difficulty---the model looks harder at confusing vignettes---and has the \emph{opposite sign}
+to the causal effect below. Anyone reading share-against-accuracy correlations off this data
+without intervening will conclude the reverse of the truth.
+
+\paragraph{Removing the mass is sufficient.}
+We add a clamp that \emph{sets} a token span's post-softmax attention share: a constant bias on the
+span's key columns scales its odds, and softmax renormalizes, so nothing in the attention forward
+is reimplemented and a scale of $1.0$ is bit-identical to the unhooked model. Keeping the evidence
+at \texttt{local} and clamping its share down to the \emph{same item's own} \texttt{back\_20}
+share costs $+0.202$ $[+0.138,+0.267]$ (paired $n{=}174$) and lands at $0.333$ against
+\texttt{back\_20}'s $0.365$---a difference of $-0.025$ $[-0.083,+0.035]$, indistinguishable.
+\textbf{Mass removal alone reproduces 114\% of the displacement penalty, with nothing moved.}
+
+\paragraph{The dose-response is smooth, and replicates itself.}
+Sweeping the evidence's share at fixed position over seven levels (common subset $n{=}131$ present
+at every level) gives a monotone decline from $0.473$ at the natural share ($0.0441$) to $0.275$ at
+$0.012$ (Fig.~\ref{fig:dilution}b). Six of the seven levels differ significantly from the natural
+share---including a cut of less than a fifth of the mass---and no step is a threshold: the largest
+adjacent step is $0.053$ and the decline is smooth throughout. The endpoint contrast,
+$+0.198$ $[+0.115,+0.282]$, matches the independently-run clamp experiment's
+$+0.202$ $[+0.138,+0.267]$ for the same share change---agreement to $0.004$ across two separate
+runs, which is the strongest internal consistency check in the program. An earlier draft of this
+work read a \emph{threshold} into two flat contrasts; the sweep refutes it. The relationship is
+\emph{graded}: a measured slope, not a cliff.
+
+\paragraph{Restoring the mass is not sufficient---probably the instrument.}
+The converse is only partial: clamping the displaced evidence's share back \emph{up} to its
+\texttt{local} level recovers a real but small $32\%$ of the penalty
+($+0.055$ $[+0.017,+0.098]$), leaving a significant residual ($+0.123$ $[+0.054,+0.193]$). Our
+clamp applies a \emph{uniform} bias across heads; it can strip mass faithfully but cannot
+reconstruct \emph{which} heads should carry the restored mass. Full sufficiency with partial
+necessity is the signature of an instrument that is faithful in one direction and crude in the
+other, and we report it as one rather than as a second mechanism. A pattern-matched, per-head
+clamp is the test that would settle it.
+
+\paragraph{The drain is positional in tokens, not turns.}
+A partial $2{\times}2$ in (gap turns) $\times$ (filler length), total context equalized by padding,
+dissociates them: two arms matched on \emph{tokens} have effectively identical evidence share
+($0.0104$ vs $0.0108$) despite a $4\times$ difference in turn count, while at matched turns share
+falls $0.0288\to0.0104$ as the gap grows $446\to1684$ tokens---a $64\%$ cut in the evidence's
+attention that costs at most $9.4$ accuracy points ($+0.026$ $[-0.042,+0.094]$). Share regresses significantly on gap
+tokens and not on gap turns. Attention drain is a function of token distance, as RoPE decay
+predicts; conversation structure is not what drains it.
+
+\paragraph{On the current query, there is no headroom.}
+Accumulation drives the \emph{current query}'s share from ${\approx}0.35$ down to ${\approx}0.15$,
+and it is natural to ask whether that stops short of a floor. It does not. Clamping the query span
+on cold-start contexts, accuracy is flat from the natural share ($0.258$, accuracy $0.545$) down
+through $0.20$ ($0.509$), then costs $16.4$ points at $0.15$ ($+0.164$ $[+0.036,+0.291]$)---which
+is exactly the share accumulation reaches. Accumulation does not stop far short of the shoulder;
+it stops \emph{at} it. (Levels below $0.15$ require $-4.7$ to $-6.1$ nats, near-ablation rather
+than points on a dose-response---the model answers ``A'' $110/110$---and are excluded from
+interpretation.) That accuracy nonetheless stays flat under accumulation, while the same share
+reached by clamping costs points, is itself evidence that in-context learning is actively holding
+accuracy up.
+
+\section{Competition, separated from distance}
+
+Burying a needle varies two things at once: the evidence becomes distant \emph{and} it becomes
+surrounded by plausible alternatives. \S4--\S5 isolated distance. We isolate the other half by
+holding the evidence at the current query and fill fixed, and varying only how \emph{confusable}
+the accumulated context is. Every arm accumulates eight prior DDXPlus cases, each answered in the
+transcript with its gold letter, so format and in-context-learning affordance are constant; the
+arms differ only in how much the accumulated cases' differentials overlap the current probe's
+(\texttt{disjoint} $0$ shared options, \texttt{random} $0.80$, \texttt{near\_dup} $3.75$ of $5$,
+always with a \emph{different} gold, so the context never displays the probe's answer as a correct
+one). Paired over $n{=}365$ probes:
+
+\begin{center}\small
+\begin{tabular}{lccc}
+\toprule
+arm & \texttt{random} (0.80) & \texttt{disjoint} (0.00) & \texttt{near\_dup} (3.75)\\
+\midrule
+accuracy & 0.512 & 0.485 & \textbf{0.427}\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Near-duplicate context costs $-0.085$ $[-0.140,-0.030]$ against the natural stream and $-0.058$
+$[-0.112,-0.006]$ against disjoint context; in a joint fit within this experiment, \textbf{option
+overlap carries the coefficient} ($\beta=-0.021$ $[-0.039,-0.003]$) and \textbf{fill carries none}
+($\beta=-0.284$ $[-0.640,+0.075]$)---the same shape as the distance result, on a different
+variable. Two controls matter: the low-competition arms must land on \S4's \texttt{local} accuracy
+of $0.464$, and both do ($+0.049$ $[-0.037,+0.134]$ and $+0.021$ $[-0.065,+0.107]$); and context
+length does not order the arms, since \texttt{disjoint} is the \emph{longest} and mid-accuracy
+while \texttt{near\_dup} is the shortest, so length biases against the result. Restricted to
+parsed responses only, \texttt{random} $-$ \texttt{near\_dup} $=+0.082$ $[+0.025,+0.138]$ survives.
+
+The effect is \emph{not} monotone in confusability: \texttt{random} sits above \texttt{disjoint},
+not below it, though not significantly ($+0.027$ $[-0.019,+0.074]$). Mild topical overlap
+plausibly supplies useful priming over the option space while near-duplication supplies
+competitors that actively mislead; only the second is large enough to measure here. We therefore
+claim that near-duplicate context is costly, \emph{not} that cost rises with overlap---one
+significant step, not a gradient.
+
+\paragraph{And it is a second mechanism, not more dilution.}
+Repeating the sweep with attention capture instead of generation (same probes, same seeds) shows
+the headline contrast moves accuracy $8.5$ points with \textbf{no detectable change in the
+evidence's attention mass}: \texttt{random} $-$ \texttt{near\_dup} $=-0.00027$
+$[-0.00088,+0.00035]$ in evidence share at layer 24. The dose-response of \S5 is $6.29$ accuracy
+per unit share ($R^2{=}0.97$), so that share difference predicts an accuracy gap of $0.0017$---%
+\textbf{2\% of what is measured}, and $6.5\%$ even at the CI's upper end. Reproducing this cost
+through mass would need a share change $50\times$ larger. The two contrasts even run opposite
+ways: \texttt{random} $-$ \texttt{disjoint} has a significant \emph{share} difference and no
+accuracy difference, while \texttt{random} $-$ \texttt{near\_dup} has a significant
+\emph{accuracy} difference and no share difference. \textbf{Displacement costs accuracy by
+draining attention mass; competition costs accuracy while leaving it intact.} ``Attention
+dilution'' is the right account of the first and the wrong account of the second---and a
+needle-in-a-haystack benchmark varies both at once, which is precisely why they have not been
+told apart before.
+
+
+\section{A withdrawn result}
+
+An earlier version of this work reported one positive finding: a late-window accuracy dip on the
+random-subject stream at ${\geq}80\%$ fill ($-0.141$ $[-0.249,-0.031]$, $n{=}91$), read as
+accumulation finally outrunning in-context learning. \textbf{We withdraw it.} Re-running the
+protocol, our driver turned out to present the \emph{identical} questions as the committed run
+(per-item agreement $1.000$ over 344 items, accuracy $0.6221$ both), so the harness is
+bit-identical and any disagreement is sample composition. Finer bins locate the effect: accuracy is
+$0.625$ at $0.80$--$0.85$ fill ($n{=}40$), $\mathbf{0.419}$ at $0.85$--$0.88$ ($n{=}31$), and
+$0.703$ at $0.88$--$0.93$ ($n{=}37$). The original run's maximum fill was $0.8784$, so its entire
+top bin \emph{is} that one trough. Extending the same sessions to $93\%$ gives $-0.097$ (n.s.);
+14 fresh sessions give $+0.090$ (opposite sign); all 26 pooled give $+0.005$ $[-0.105,+0.092]$.
+Overflow-guard selection ($1/781$ skipped) and item length are ruled out. A clamp-based rescue arm
+was null but too weak an instrument to carry weight. The explanandum does not exist, and the
+paper's account no longer needs it: the end-of-window cost we thought we had is a single-bin
+artifact, while the dilution cost of \S4--\S5 is large, causal and replicated.
+
+\section{The confidence signatures are in-context comfort}
+
+If the entropy collapse were a generic depth effect it should survive on heterogeneous dialogue. It
 does not. On 150 organic WildChat conversations \citep{zhao2024wildchat} (Qwen-2.5-7B,
 teacher-forced over the real history), within-conversation entropy is flat with depth: median
-late/early ratio $0.99$, within-conversation $\mathrm{corr}(\text{entropy},\text{depth})$
-median $-0.02$, and 52\% of conversations trend down---a coin flip (Fig.~\ref{fig:main}d). The
-$3$--$4\times$ DDXPlus collapse simply does not appear once the task stops repeating.
-Partitioning WildChat by its \emph{own} inter-turn homogeneity (format and dataset held
-constant) isolates the driver: the entropy slope correlates with homogeneity
-(partial $r=-0.151$ controlling for length), homogeneous conversations collapse
+late/early ratio $0.99$, median within-conversation $\mathrm{corr}(\text{entropy},\text{depth})$
+$-0.02$, and 52\% of conversations trend down---a coin flip. Partitioning WildChat by its
+\emph{own} inter-turn homogeneity isolates the driver: the entropy slope correlates with
+homogeneity (partial $r=-0.151$ controlling for length), homogeneous conversations collapse
 ($0.897$ late/early) while heterogeneous ones are flat ($1.001$), and because homogeneous
-conversations are \emph{longer}, length works against the effect. The collapse is the model
-growing comfortable with a repeating task---in-context learning sharpening a distribution---not
-fatigue with depth.
+conversations are \emph{longer}, length works against the effect.
+
+Replaying one probe across OLMo-2-7B's \citep{olmo2024} \texttt{base}$\to$\texttt{SFT}$\to$\texttt{DPO}$\to$
+\texttt{Instruct} chain (identical cases and orders) shows early-context entropy collapsing
+monotonically, $1.06\to0.58\to0.33\to0.20$, with the largest single drop at base$\to$SFT. But the
+``collapses \emph{as context fills}'' framing is mostly a base-model ICL effect plus a floor: the
+within-context ratio \emph{falls} across stages ($1.64\to0.47$), because aligned models start near
+a confidence floor. Post-training is a downward \emph{level shift} in baseline entropy, not a
+steeper collapse slope. Finally, the mechanistic story proposed for the collapse does not survive
+a causal test: clamping the boundary-detector SAE feature (Gemma Scope F90871,
+\citealp{lieberum2024gemmascope}) back to its clean level on held-out fatigued cases moves entropy
+the \emph{wrong} way ($0.442\to0.465$ vs.\ clean $0.293$), leaves accuracy flat, and a random
+feature of similar magnitude perturbs entropy at least as much.
+
+Consistently, conditioning on fill, the cases OLMo-2 answers \emph{wrong} have \emph{higher}
+current-query attention than the ones it gets right (pooled $\Delta=+0.045$ $[-0.003,+0.097]$,
+$n{=}115$; sign positive in every fill bin and at every probed layer). Errors are associated with
+\emph{fixating} on the query; correct answers spread attention onto the accumulated cases---the
+per-case fingerprint of the in-context learning that keeps accuracy up. The ``rot'' and the
+within-context predictor of a correct answer point in opposite directions.
 
 \begin{figure}[t]
   \centering
-  \includegraphics[width=0.38\textwidth]{figures/calibration_gap.pdf}
-  \caption{\textbf{The confidently-wrong gap widens with fill} (pooled DDXPlus MCQ,
-  $n{=}154$). Shaded area: calibration gap; error bars: bootstrap 95\% CIs.}
-  \label{fig:calibration}
+  \begin{subfigure}{0.32\textwidth}\includegraphics[width=\linewidth]{figures/attention_rot.pdf}\end{subfigure}
+  \hfill
+  \begin{subfigure}{0.32\textwidth}\includegraphics[width=\linewidth]{figures/wildchat_homogeneity.pdf}\end{subfigure}
+  \hfill
+  \begin{subfigure}{0.32\textwidth}\includegraphics[width=\linewidth]{figures/calibration_gap.pdf}\end{subfigure}
+  \caption{\textbf{The signatures are in-context comfort, and the residual hazard is calibration.}
+  (a) Attention reallocates monotonically off the system prompt and current query with fill while
+  accuracy holds. (b) The entropy collapse appears only with a homogeneous repeating task, not on
+  organic WildChat dialogue, and tracks homogeneity rather than length. (c) Confidence rises with
+  fill on wrong answers as much as right, at flat accuracy.}
+  \label{fig:signatures}
 \end{figure}
 
-\section{It is an instruction-tuning level shift, and the proposed mechanism does not hold}
 
-Replaying one fatigue probe across OLMo-2-7B's \texttt{base}$\to$\texttt{SFT}$\to$\texttt{DPO}
-$\to$\texttt{Instruct} chain (identical cases and orders, so differences are attributable only
-to post-training) turns a single correlational base-vs-IT pair into a graded curve.
-Early-context entropy collapses monotonically, $1.06\to0.58\to0.33\to0.20$ ($\sim$5$\times$),
-with the \emph{largest single drop at base$\to$SFT}: supervised fine-tuning on assistant
-transcripts installs most of the overconfidence, before any preference optimization
-(Fig.~\ref{fig:main}a). But the ``collapses \emph{as context fills}'' framing is mostly a
-base-model ICL effect plus a floor: the within-context ratio \emph{falls} across stages
-($1.64\to0.47$), because aligned models start near a confidence floor and have nowhere left to
-drop. Within a fixed window, post-training is a downward \emph{level shift} in baseline
-entropy, not a steeper collapse slope.
+\section{What context rot actually is}
 
-Finally, the mechanistic story does not survive a causal test. A boundary-detector SAE feature
-(Gemma Scope F90871, \citealp{lieberum2024gemmascope}) had been singled out as the regulator
-suppressed under fatigue. Clamping it back to its clean level on held-out fatigued cases moves
-entropy the \emph{wrong} way ($0.442\to0.465$ vs.\ clean $0.293$), leaves accuracy flat, and
-barely moves sycophancy; a random feature of similar magnitude perturbs entropy at least as
-much, and the feature's decision-token suppression is sign-unstable across configurations. The
-single-feature mechanism is a context-dependent correlate, not a lever.
+With accumulation and dilution separated inside one harness: accumulation produces a real, monotone
+reallocation of attention and a real collapse of \emph{confidence}, but no loss of accuracy and no
+loss of instruction adherence. Displacing the evidence produces a large accuracy cost that is
+causally mediated by its attention mass, graded in that mass, and positional in tokens. Making the
+context confusable produces a further cost that is \emph{not} mediated by that mass at all. The
+literature's central claim is therefore \emph{correct but misattributed, and under-counted}:
+context rot is not a decay with length: it is displacement and competition, two mechanisms with
+different signatures, of which length is merely the usual way of causing both at once.
 
-\section{What context fatigue actually is}
-
-Across four model families and an organic-dialogue control, with attention dilution removed by
-construction: accumulation produces a real, monotone reallocation of attention and a real
-collapse of \emph{confidence}, but no loss of accuracy, no loss of instruction adherence, and a
-within-context error signature that is the opposite of neglect. The confidence collapse is
-in-context comfort with a homogeneous task, installed by instruction tuning as a baseline
-level shift. ``Context fatigue,'' as the signatures measure it, is in-context learning, not
-decay. The genuine hazard is therefore not falling competence but \emph{calibration}, and it is
-directly measurable (Fig.~\ref{fig:calibration}): on the DDXPlus streams logging per-token
-confidence ($n{=}154$ pooled cases, two models, both question orders), answer confidence
-rises $0.85\to0.95$ with fill ($r=+0.72$ $[+0.64,+0.79]$) at flat accuracy---and equally on
-\emph{wrong} answers ($0.86\to0.95$; $r=+0.69$ $[+0.57,+0.78]$)---so the already-large
-confidently-wrong gap widens by ${\sim}10$ points over a session, most consequential exactly
-where a homogeneous high-stakes stream makes the model surest.
-
+The residual hazard in the localized case is \emph{calibration}, not competence: on the DDXPlus
+streams logging per-token confidence ($n{=}154$ pooled cases, two models, both question orders),
+answer confidence rises $0.85\to0.95$ with fill ($r=+0.72$ $[+0.64,+0.79]$) at flat accuracy---and
+equally on \emph{wrong} answers ($0.86\to0.95$; $r=+0.69$ $[+0.57,+0.78]$)---so the confidently-wrong gap widens by ${\sim}10$ points over a session
+(Fig.~\ref{fig:signatures}c), most consequential exactly where
+a homogeneous high-stakes stream makes the model surest.
 
 \paragraph{Limitations.}
-Per-condition $n$ is bounded by the context window (tens of cases per session; we pool
-sessions); the OLMo sycophancy denominators are small and inconclusive; the instruction-canary null is a floor effect; and the WildChat
-figures are summary values from teacher-forced analyses. The accuracy claim is strongest for localized tasks---genuinely length-dependent
-single-task settings (where dilution is the point) are out of scope by design.
+Per-condition $n$ is bounded by the context window, so every clamp experiment is paired over
+shared items and analysed with a paired bootstrap; an earlier analysis of these same runs
+resampled the arms independently, inflating each interval about $2.5\times$ and reporting one real
+effect as null. The necessity direction of the mediation is only partially established and is
+plausibly instrument-limited. The clamp is uniform across heads. The instruction-canary null is a
+floor effect, the WildChat figures are summary values from teacher-forced analyses, and the causal
+program runs on one model family. The accuracy null holds for localized tasks; genuinely
+length-dependent single-task settings are where dilution is the point, and are out of scope by
+design.
 
 \small
 \begin{thebibliography}{9}

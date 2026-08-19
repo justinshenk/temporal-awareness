@@ -196,3 +196,22 @@ already propagated into two results docs and two commit messages.
 "X diverges from Y", open Y's artifact and confirm it was measured *at the same setting* — same
 layer, same α, same injection mode. If it wasn't, the cell reads "not measured", not a number. A
 number you cannot open a file for is a memory, not a result.
+
+## A 429 from the Hub arrives disguised as a corrupted tokenizer
+
+**What happened (2026-08-19):** the E3 preflight died on
+`AutoTokenizer.from_pretrained("allenai/OLMo-2-1124-7B-Instruct")` with
+`OSError: Unable to load vocabulary from file. Please check that the provided vocabulary is
+accessible and not corrupted.` The cache was complete and untouched — `tokenizer.json`, 7.1 MB,
+same blob the E1/E2 runs had used the day before. The real cause was five retried
+**HTTP 429s on `merges.txt`**: `tokenizer_config.json` declares `tokenizer_class: GPT2Tokenizer`,
+so transformers goes looking for the slow tokenizer's `vocab.json`/`merges.txt`, gets rate-limited
+rather than 404'd, and reports the *outcome* (no vocabulary) instead of the *cause* (throttled).
+`use_fast=True` does not help; it takes the same path. `HF_HUB_OFFLINE=1` loads the cached
+`tokenizer.json` instantly.
+
+**Rule:** when a load fails on a cache that worked yesterday, read the *whole* stderr for HTTP
+status lines before believing the exception's own diagnosis — the message names what broke, not
+why. On a warm box, run drivers under `HF_HUB_OFFLINE=1` by default: it is faster, it is
+reproducible, and it converts "the Hub is throttling us" from a corrupted-data red herring into an
+honest cache miss.

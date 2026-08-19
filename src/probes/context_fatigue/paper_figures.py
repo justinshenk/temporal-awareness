@@ -27,6 +27,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from src.common.bootstrap_stats import bootstrap_interval
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
 RESULTS = REPO_ROOT / "results"
 
@@ -118,6 +120,70 @@ def attention_corr_at_layer(model: str = "instruct", layer: int = 24) -> dict[st
 # Figures
 # --------------------------------------------------------------------------- #
 
+# ── the dilution program (E1 / E1b / E1f / E3) ──────────────────────────
+
+CF = RESULTS / "context_fatigue"
+DISTANCE_ORDER = ["local", "back_2", "back_5", "back_10", "back_20"]
+DISTANCE_LABELS = {"local": "local\n(0)", "back_2": "2", "back_5": "5",
+                   "back_10": "10", "back_20": "20"}
+COMPETITION_ORDER = ["disjoint", "random", "near_dup"]
+COMPETITION_LABELS = {"disjoint": "disjoint\n(0 shared)", "random": "random\n(0.8 shared)",
+                      "near_dup": "near-dup\n(3.7 shared)"}
+
+
+def _arm_accuracy(path: Path, order: list[str]) -> pd.DataFrame:
+    """Per-arm accuracy from a driver's ``turns.csv``, with case-resampled CIs, in arm order."""
+    df = pd.read_csv(path)
+    out = (df.groupby("arm")
+             .agg(n=("correct", "size"), accuracy=("correct", "mean"),
+                  fill=("context_fill", "mean"))
+             .reindex(order).reset_index())
+    los, his = [], []
+    for arm in out["arm"]:
+        vals = df.loc[df["arm"] == arm, "correct"].to_numpy(dtype=float)
+        interval = bootstrap_interval(vals, np.mean)
+        los.append(interval.lo)
+        his.append(interval.hi)
+    return out.assign(lo=los, hi=his)
+
+
+def load_distance_sweep() -> pd.DataFrame:
+    """E1 accuracy by evidence distance, with E1b's evidence attention share at L24.
+
+    Accuracy and share come from two runs (``e1_distance_sweep`` and ``e1_with_attention``); the
+    second reproduced the first's accuracies exactly, which is why they can be shown on one axis.
+    """
+    acc = _arm_accuracy(CF / "e1_distance_sweep" / "turns.csv", DISTANCE_ORDER)
+    attn = pd.read_csv(CF / "e1_with_attention" / "turns.csv")
+    share = (attn.groupby("arm")["evidence_share"].mean().reindex(DISTANCE_ORDER)
+             .reset_index(name="evidence_share"))
+    return acc.merge(share, on="arm")
+
+
+def load_share_dose() -> pd.DataFrame:
+    """E1f: accuracy against clamped evidence share, on the balanced item panel.
+
+    Levels at or above an item's natural share cannot be reached, so per-level raw ``n`` varies
+    131--192. Only the subset present at *every* level is a like-for-like comparison; using the
+    raw per-level means would confound the dose with the item set.
+    """
+    df = pd.read_csv(CF / "e1f_share_knee" / "turns.csv")
+    n_levels = df["level"].nunique()
+    counts = df.groupby("probe")["level"].nunique()
+    balanced = df[df["probe"].isin(counts[counts == n_levels].index)]
+    out = (balanced.groupby("level")
+                   .agg(n=("correct", "size"), accuracy=("correct", "mean"),
+                        share=("achieved_share", "mean"))
+                   .reset_index()
+                   .sort_values("share").reset_index(drop=True))
+    return out
+
+
+def load_competition() -> pd.DataFrame:
+    """E3: accuracy by context confusability at fixed distance and fill."""
+    return _arm_accuracy(CF / "e3_competition" / "turns.csv", COMPETITION_ORDER)
+
+
 def fig_dose_response(ax: plt.Axes) -> None:
     df = load_dose_response()
     x = np.arange(len(df))
@@ -203,11 +269,80 @@ def fig_wildchat(ax: plt.Axes) -> None:
     ax.set_title("(d) Collapse needs a homogeneous task", fontsize=10)
 
 
+def fig_distance_ladder(ax: plt.Axes) -> None:
+    """E1/E1b: displacing the evidence drains its attention and costs accuracy, at fixed fill."""
+    df = load_distance_sweep()
+    x = np.arange(len(df))
+    err = np.vstack([df["accuracy"] - df["lo"], df["hi"] - df["accuracy"]])
+    ax.bar(x, df["accuracy"], 0.6, color="#4c72b0", yerr=err, capsize=2.5,
+           error_kw=dict(lw=0.9, ecolor="#2a3f5f"), label="accuracy")
+    ax.axhline(0.200, color="#555555", linestyle=":", linewidth=1)
+    ax.text(0.98, 0.205, "chance", transform=ax.get_yaxis_transform(), fontsize=7,
+            va="bottom", ha="right", color="#555555")
+    ax.set_xticks(x)
+    ax.set_xticklabels([DISTANCE_LABELS[a] for a in df["arm"]])
+    ax.set_xlabel("evidence distance (user turns back)")
+    ax.set_ylabel("per-case accuracy")
+    ax.set_ylim(0, 0.62)
+
+    rhs = ax.twinx()
+    rhs.plot(x, df["evidence_share"], marker="o", color="#c44e52", label="evidence attention")
+    rhs.set_ylabel("evidence attention share @L24", color="#c44e52")
+    rhs.tick_params(axis="y", colors="#c44e52")
+    rhs.set_ylim(0, 0.052)
+
+    ax.set_title("(a) Displace the evidence: mass and accuracy fall together", fontsize=9.5)
+    ax.text(0.97, 0.94, f"fill = {df['fill'].iloc[0]:.3f} in every arm",
+            transform=ax.transAxes, ha="right", va="top", fontsize=7.5, color="#555555")
+
+
+def fig_mass_dose(ax: plt.Axes) -> None:
+    """E1f: the share->accuracy dose-response is smooth and shallow -- no threshold."""
+    df = load_share_dose()
+    ax.plot(df["share"], df["accuracy"], marker="o", color="#4c72b0",
+            label=f"clamped at local (n={int(df['n'].iloc[0])})")
+    nat = df[df["level"] == "natural"].iloc[0]
+    ax.scatter([nat["share"]], [nat["accuracy"]], s=70, facecolor="white",
+               edgecolor="#4c72b0", zorder=5, label="natural share (unclamped)")
+    # E1c measured the same endpoint contrast in a separate run; the agreement is the check.
+    ax.scatter([0.0125], [0.333], marker="D", s=36, color="#c44e52", zorder=5,
+               label="separate clamp run (agrees to 0.004)")
+    ax.set_xlabel("evidence attention share @L24 (clamped)")
+    ax.set_ylabel("per-case accuracy")
+    ax.set_title("(b) Accuracy is graded in attention mass", fontsize=9.5)
+    ax.legend(fontsize=7.5, frameon=False, loc="upper left")
+    ax.margins(y=0.14)
+
+
+def fig_competition(ax: plt.Axes) -> None:
+    """E3: confusability of the accumulated context, at fixed distance and fill."""
+    df = load_competition()
+    x = np.arange(len(df))
+    colors = ["#55a868", "#4c72b0", "#c44e52"]
+    err = np.vstack([df["accuracy"] - df["lo"], df["hi"] - df["accuracy"]])
+    ax.bar(x, df["accuracy"], 0.6, color=colors, yerr=err, capsize=2.5,
+           error_kw=dict(lw=0.9, ecolor="#2a3f5f"))
+    ax.axhline(0.200, color="#555555", linestyle=":", linewidth=1)
+    ax.text(0.98, 0.205, "chance", transform=ax.get_yaxis_transform(), fontsize=7,
+            va="bottom", ha="right", color="#555555")
+    ax.set_xticks(x)
+    ax.set_xticklabels([COMPETITION_LABELS[a] for a in df["arm"]], fontsize=8)
+    ax.set_xlabel("context confusability")
+    ax.set_ylabel("per-case accuracy")
+    ax.set_ylim(0, 0.72)
+    ax.set_title("(c) Competition costs accuracy at distance 0", fontsize=9.5)
+    ax.text(0.97, 0.94, f"n={int(df['n'].iloc[0])}/arm, fill {df['fill'].iloc[0]:.3f}",
+            transform=ax.transAxes, ha="right", va="top", fontsize=7.5, color="#555555")
+
+
 def make_figures(outdir: str | Path) -> dict[str, Path]:
     """Render all four figures as PDFs into ``outdir``; return their paths."""
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
     builders = {
+        "distance_ladder": fig_distance_ladder,
+        "mass_dose": fig_mass_dose,
+        "competition": fig_competition,
         "dose_response": fig_dose_response,
         "random_context": fig_random_context,
         "attention_rot": fig_attention,
