@@ -20,7 +20,7 @@ seed 42, bootstrap 10,000 draws resampling **cases**.
 
 Regenerate: `uv run python scripts/context_fatigue/make_paper_figures.py`.
 
-## §4 — the distance sweep
+## §3.2 — the distance sweep
 
 | claim | value | artifact / report |
 |---|---|---|
@@ -32,7 +32,7 @@ Regenerate: `uv run python scripts/context_fatigue/make_paper_figures.py`.
 | `local` flat with fill | β = −0.294 [−0.767, +0.184] | same |
 | parsed-only ladder | 0.524 / 0.413 / 0.397 / 0.343 / 0.338 | same |
 
-## §5 — mass mediation
+## §3.2 — mass mediation (same subsection, the four interventions)
 
 **All contrasts PAIRED** (`paired_accuracy_gap`), recomputed 2026-08-19 into
 `results/context_fatigue/dilution_paired.json` by `scripts/context_fatigue/analyze_dilution_paired.py`.
@@ -55,7 +55,7 @@ The unpaired intervals previously reported are retained in that JSON for audit.
 | E2a natural share / accuracy | 0.258 / 0.545, n=110/level | `e2a_mass_clamp/`, `E2A_MASS_CLAMP.md` |
 | E2a cost at 0.15 | +0.164 [+0.036, +0.291] | same |
 
-## §6 — competition
+## §3.3 — competition
 
 | claim | value | artifact / report |
 |---|---|---|
@@ -71,7 +71,7 @@ The unpaired intervals previously reported are retained in that JSON for audit.
 | **evidence share unchanged** | −0.00027 [−0.00088, +0.00035] | `e3_attention/` |
 | mass-predicted share of the effect | 2.0% (6.5% at CI bound); 50× share change needed | derived from E1f slope |
 
-## §7 — the withdrawn result
+## §4 (Limitations) — the withdrawn result
 
 | claim | value | artifact / report |
 |---|---|---|
@@ -81,7 +81,7 @@ The unpaired intervals previously reported are retained in that JSON for audit.
 | committed run's max fill | 0.8784 | same |
 | pooled 26 sessions | +0.005 [−0.105, +0.092] | same |
 
-## §8 — signatures (unchanged from the previous version)
+## §3.4 — signatures (unchanged from the previous version)
 
 | claim | value | artifact / report |
 |---|---|---|

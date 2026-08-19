@@ -75,10 +75,10 @@ baseline-confidence level shift installed mostly by SFT. Context rot, as measure
 of competence with length: accumulation alone is free, and what costs accuracy is the evidence
 being displaced or contested---one of which is attention dilution and one of which is not.
 \emph{We also withdraw a positive result from an earlier version of this work}
-(\S\ref{sec:withdrawn}).
+(\S\ref{sec:limitations}).
 \end{abstract}
 
-\section{Accumulation and dilution are confounded everywhere else}
+\section{Introduction}
 
 A recurring worry about long conversations is \emph{context rot}: as turns accumulate, the model
 is said to degrade. The phenomenology is real. On a repeating multiple-choice task,
@@ -99,11 +99,60 @@ accumulation per se with the cost of the target being harder to attend to (``los
 practically: an agent transcript of finished, locally-scoped steps accumulates without diluting,
 and the two accounts make opposite predictions about it.
 
-This abstract separates them inside one harness, and finds that \textbf{accumulation is free and
-dilution is not}---then measures the dilution cost causally, in units of attention mass.
+In this paper we separate them inside one harness. We accumulate \textbf{individually localized}
+tasks, so that context length and the dilution of the answer-bearing evidence become independent
+knobs, and we intervene on each in turn. Accumulation alone costs nothing. Moving the evidence
+$k$ turns back, at identical fill and byte-identical questions, costs $0.19$--$0.21$ accuracy
+(Table~\ref{tab:distance}).
 
-\section{Design: localized tasks make accumulation and dilution independent}
+\begin{table}[t]
+  \centering\small
+  \caption{\textbf{Distance is the variable that matters} (OLMo-2-Instruct, $n{=}192$ per arm,
+  chance $=0.200$, fill $0.688$ in every arm). Evidence attention share is measured at layer 24 on
+  the same forwards. Case-resampled bootstrap 95\% CIs.}
+  \label{tab:distance}
+  \setlength{\tabcolsep}{4.5pt}
+  \begin{tabular}{lccccc}
+    \toprule
+    arm & \texttt{local} & \texttt{back\_2} & \texttt{back\_5} & \texttt{back\_10} & \texttt{back\_20}\\
+    \midrule
+    accuracy & \textbf{0.464} & 0.359 & 0.292 & 0.250 & 0.276\\
+    cost vs \texttt{local} & --- & $+0.104$ & $+0.172$ & $+0.214$ & $+0.188$\\
+    95\% CI & --- & $[+.005,+.203]$ & $[+.073,+.266]$ & $[+.120,+.307]$ & $[+.094,+.281]$\\
+    evidence share @L24 & 0.0408 & 0.0363 & 0.0320 & 0.0195 & 0.0124\\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
+That cost is \emph{causally mediated by attention mass}. A clamp that sets a span's post-softmax
+attention share lets us remove the evidence's mass while leaving it exactly where it is: doing so
+reproduces $114\%$ of the displacement penalty, and a dose-response sweep over the share recovers
+the same endpoint to within $0.004$ across two separately-run experiments.
+
+A second cost is not mediated that way at all. Holding the evidence at the current query and
+varying only how \emph{confusable} the accumulated context is, near-duplicate context costs a
+further $0.085$ accuracy while the evidence's attention share does not move measurably---$2\%$ of
+what the measured dose-response would require. Taken together, context rot is two mechanisms with
+different signatures, and a needle-in-a-haystack benchmark varies both at once, which is why they
+have not been told apart.
+
+Our contributions are as follows:
+
+\begin{itemize}
+  \item A harness that makes accumulation and dilution independent, by accumulating individually
+        localized tasks whose evidence never moves. In it, accumulation alone costs no
+        accuracy and no instruction adherence, with bounded nulls rather than point estimates.
+  \item A causal mediation result for displacement: removing the evidence's attention mass with
+        nothing moved reproduces $114\%$ of the displacement penalty, and the mass$\to$accuracy
+        relationship is smooth and graded with no threshold in it.
+  \item A dissociation establishing a \emph{second} mechanism: competition costs accuracy at
+        constant attention mass, so ``attention dilution'' is the right account of displacement
+        and the wrong account of competition.
+\end{itemize}
+
+\section{Preliminaries}
+
+\paragraph{Localized task streams.}
 Our harness accumulates \textbf{individually localized tasks}: a stream of self-contained
 $5$-option medical cases (DDXPlus, \citealp{tchango2022ddxplus}) or discrete factual questions
 (MMLU, \citealp{hendrycks2021mmlu}). Each answer depends only on the \emph{current} question,
@@ -112,15 +161,29 @@ Accumulation therefore grows the context without ever diluting the information t
 needs. A reversed-question-order control removes difficulty-ordering confounds. Because a
 $4$--$32$k window holds only tens of cases, we pool many independent accumulation sessions.
 
+\paragraph{The dilution knob.}
 The design's real value is that dilution becomes an \emph{independent knob}. Holding the item, the
 model, the total fill and the metric fixed, we can move the evidence $k$ user turns back into the
 accumulated transcript, with the question text byte-identical across arms and the same filler in
 every arm. Distance and fill, welded together in a long-document setup, move independently here.
-All causal experiments below run on OLMo-2-7B-Instruct at layer 24, seed 42, with an overflow
+All causal experiments run on OLMo-2-7B-Instruct at layer 24, seed 42, with an overflow
 guard that skips rather than truncates every item that would not fit whole---truncating a long
 item near the window edge manufactures exactly the late-window cost under study.
 
-\section{Accumulation alone costs nothing}
+\paragraph{The attention-mass clamp.}
+To intervene on attention rather than position, we add a clamp that \emph{sets} a token span's
+post-softmax attention share: a constant bias on the span's key columns scales its odds, and
+softmax renormalizes, so nothing in the attention forward is reimplemented and a scale of $1.0$
+is bit-identical to the unhooked model. The clamp is uniform across heads.
+
+\paragraph{Analysis.}
+Per-condition $n$ is bounded by the context window, so every clamp experiment is paired over
+shared items and analysed with a paired bootstrap resampling \emph{cases} (10,000 draws), never
+heads or turns.
+
+\section{Two mechanisms, separated}
+
+\subsection{Accumulation alone costs nothing}
 
 Per-case accuracy does not fall as context fills; it is worst at the cold start and warms up
 ($\mathrm{corr}(\text{correct},\text{fill})=+0.11$ Instruct, $+0.07$ DPO). The obvious objection is
@@ -153,46 +216,22 @@ than proves, since the canaries were easy.
   \label{fig:dilution}
 \end{figure}
 
-
-\section{Move the evidence and the cost appears}
+\subsection{Displacement costs accuracy, and attention mass mediates it}
 
 We now vary only \emph{where the answer-bearing evidence lives}. Each DDXPlus probe's vignette is
 placed $k$ user turns before its question; mean fill is $0.688$ in every arm, the question text is
-byte-identical, and the overflow guard skipped $0$ of $192$ probes.
-
-\begin{table}[t]
-  \centering\small
-  \caption{\textbf{Distance is the variable that matters} (OLMo-2-Instruct, $n{=}192$ per arm,
-  chance $=0.200$, fill $0.688$ in every arm). Evidence attention share is measured at layer 24 on
-  the same forwards. Case-resampled bootstrap 95\% CIs.}
-  \label{tab:distance}
-  \setlength{\tabcolsep}{4.5pt}
-  \begin{tabular}{lccccc}
-    \toprule
-    arm & \texttt{local} & \texttt{back\_2} & \texttt{back\_5} & \texttt{back\_10} & \texttt{back\_20}\\
-    \midrule
-    accuracy & \textbf{0.464} & 0.359 & 0.292 & 0.250 & 0.276\\
-    cost vs \texttt{local} & --- & $+0.104$ & $+0.172$ & $+0.214$ & $+0.188$\\
-    95\% CI & --- & $[+.005,+.203]$ & $[+.073,+.266]$ & $[+.120,+.307]$ & $[+.094,+.281]$\\
-    evidence share @L24 & 0.0408 & 0.0363 & 0.0320 & 0.0195 & 0.0124\\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-Every gap's CI excludes zero (Table~\ref{tab:distance}, Fig.~\ref{fig:dilution}a). In a joint fit of accuracy on fill and
+byte-identical, and the overflow guard skipped $0$ of $192$ probes. Every gap's CI excludes zero
+(Table~\ref{tab:distance}, Fig.~\ref{fig:dilution}a). In a joint fit of accuracy on fill and
 distance, \textbf{distance carries the coefficient} ($\beta=-0.00761$ $[-0.01173,-0.00346]$,
 significant) and \textbf{fill carries none} ($\beta=-0.00725$ $[-0.21006,+0.18658]$). Within the
 \texttt{local} arm---the one that reproduces the paper's original design---accuracy is flat with
 fill ($\beta=-0.294$ $[-0.767,+0.184]$). The effect survives restriction to parsed responses and
 is then fully monotone ($0.524\to0.413\to0.397\to0.343\to0.338$). One honest qualification: the
 decline saturates by $k{\approx}10$ rather than deepening to $k{=}20$, and those two arms are not
-distinguishable from each other.
-
-So the same model, on the same items at the same fill, degrades when the evidence is displaced and
-does not degrade when it is not. The localized null is not a ceiling artifact: these items
-\emph{can} show degradation, and do, as soon as dilution is reintroduced.
-
-\section{The cost is causally mediated by attention mass}
+distinguishable from each other. So the same model, on the same items at the same fill, degrades
+when the evidence is displaced and does not degrade when it is not. The localized null is not a
+ceiling artifact: these items \emph{can} show degradation, and do, as soon as dilution is
+reintroduced.
 
 Distance and attention drain move together by construction, so Table~\ref{tab:distance} is
 consistent with dilution but does not establish it---a purely positional account predicts the same
@@ -208,12 +247,9 @@ to the causal effect below. Anyone reading share-against-accuracy correlations o
 without intervening will conclude the reverse of the truth.
 
 \paragraph{Removing the mass is sufficient.}
-We add a clamp that \emph{sets} a token span's post-softmax attention share: a constant bias on the
-span's key columns scales its odds, and softmax renormalizes, so nothing in the attention forward
-is reimplemented and a scale of $1.0$ is bit-identical to the unhooked model. Keeping the evidence
-at \texttt{local} and clamping its share down to the \emph{same item's own} \texttt{back\_20}
-share costs $+0.202$ $[+0.138,+0.267]$ (paired $n{=}174$) and lands at $0.333$ against
-\texttt{back\_20}'s $0.365$---a difference of $-0.025$ $[-0.083,+0.035]$, indistinguishable.
+Keeping the evidence at \texttt{local} and clamping its share down to the \emph{same item's own}
+\texttt{back\_20} share costs $+0.202$ $[+0.138,+0.267]$ (paired $n{=}174$) and lands at $0.333$
+against \texttt{back\_20}'s $0.365$---a difference of $-0.025$ $[-0.083,+0.035]$, indistinguishable.
 \textbf{Mass removal alone reproduces 114\% of the displacement penalty, with nothing moved.}
 
 \paragraph{The dose-response is smooth, and replicates itself.}
@@ -232,11 +268,10 @@ work read a \emph{threshold} into two flat contrasts; the sweep refutes it. The 
 The converse is only partial: clamping the displaced evidence's share back \emph{up} to its
 \texttt{local} level recovers a real but small $32\%$ of the penalty
 ($+0.055$ $[+0.017,+0.098]$), leaving a significant residual ($+0.123$ $[+0.054,+0.193]$). Our
-clamp applies a \emph{uniform} bias across heads; it can strip mass faithfully but cannot
-reconstruct \emph{which} heads should carry the restored mass. Full sufficiency with partial
-necessity is the signature of an instrument that is faithful in one direction and crude in the
-other, and we report it as one rather than as a second mechanism. A pattern-matched, per-head
-clamp is the test that would settle it.
+uniform clamp can strip mass faithfully but cannot reconstruct \emph{which} heads should carry the
+restored mass. Full sufficiency with partial necessity is the signature of an instrument that is
+faithful in one direction and crude in the other, and we report it as one rather than as a second
+mechanism. A pattern-matched, per-head clamp is the test that would settle it.
 
 \paragraph{The drain is positional in tokens, not turns.}
 A partial $2{\times}2$ in (gap turns) $\times$ (filler length), total context equalized by padding,
@@ -259,38 +294,28 @@ interpretation.) That accuracy nonetheless stays flat under accumulation, while 
 reached by clamping costs points, is itself evidence that in-context learning is actively holding
 accuracy up.
 
-\section{Competition, separated from distance}
+\subsection{Competition costs accuracy at constant attention mass}
 
 Burying a needle varies two things at once: the evidence becomes distant \emph{and} it becomes
-surrounded by plausible alternatives. \S4--\S5 isolated distance. We isolate the other half by
+surrounded by plausible alternatives. So far we have isolated distance. We isolate the other half by
 holding the evidence at the current query and fill fixed, and varying only how \emph{confusable}
 the accumulated context is. Every arm accumulates eight prior DDXPlus cases, each answered in the
 transcript with its gold letter, so format and in-context-learning affordance are constant; the
 arms differ only in how much the accumulated cases' differentials overlap the current probe's
 (\texttt{disjoint} $0$ shared options, \texttt{random} $0.80$, \texttt{near\_dup} $3.75$ of $5$,
 always with a \emph{different} gold, so the context never displays the probe's answer as a correct
-one). Paired over $n{=}365$ probes:
-
-\begin{center}\small
-\begin{tabular}{lccc}
-\toprule
-arm & \texttt{random} (0.80) & \texttt{disjoint} (0.00) & \texttt{near\_dup} (3.75)\\
-\midrule
-accuracy & 0.512 & 0.485 & \textbf{0.427}\\
-\bottomrule
-\end{tabular}
-\end{center}
+one). Paired over $n{=}365$ probes, accuracy is \texttt{random} $0.512$, \texttt{disjoint} $0.485$,
+\texttt{near\_dup} $\mathbf{0.427}$.
 
 Near-duplicate context costs $-0.085$ $[-0.140,-0.030]$ against the natural stream and $-0.058$
 $[-0.112,-0.006]$ against disjoint context; in a joint fit within this experiment, \textbf{option
 overlap carries the coefficient} ($\beta=-0.021$ $[-0.039,-0.003]$) and \textbf{fill carries none}
 ($\beta=-0.284$ $[-0.640,+0.075]$)---the same shape as the distance result, on a different
-variable. Two controls matter: the low-competition arms must land on \S4's \texttt{local} accuracy
+variable. Two controls matter: the low-competition arms must land on \S3.2's \texttt{local} accuracy
 of $0.464$, and both do ($+0.049$ $[-0.037,+0.134]$ and $+0.021$ $[-0.065,+0.107]$); and context
 length does not order the arms, since \texttt{disjoint} is the \emph{longest} and mid-accuracy
 while \texttt{near\_dup} is the shortest, so length biases against the result. Restricted to
 parsed responses only, \texttt{random} $-$ \texttt{near\_dup} $=+0.082$ $[+0.025,+0.138]$ survives.
-
 The effect is \emph{not} monotone in confusability: \texttt{random} sits above \texttt{disjoint},
 not below it, though not significantly ($+0.027$ $[-0.019,+0.074]$). Mild topical overlap
 plausibly supplies useful priming over the option space while near-duplication supplies
@@ -302,7 +327,7 @@ significant step, not a gradient.
 Repeating the sweep with attention capture instead of generation (same probes, same seeds) shows
 the headline contrast moves accuracy $8.5$ points with \textbf{no detectable change in the
 evidence's attention mass}: \texttt{random} $-$ \texttt{near\_dup} $=-0.00027$
-$[-0.00088,+0.00035]$ in evidence share at layer 24. The dose-response of \S5 is $6.29$ accuracy
+$[-0.00088,+0.00035]$ in evidence share at layer 24. The dose-response above is $6.29$ accuracy
 per unit share ($R^2{=}0.97$), so that share difference predicts an accuracy gap of $0.0017$---%
 \textbf{2\% of what is measured}, and $6.5\%$ even at the CI's upper end. Reproducing this cost
 through mass would need a share change $50\times$ larger. The two contrasts even run opposite
@@ -314,26 +339,7 @@ dilution'' is the right account of the first and the wrong account of the second
 needle-in-a-haystack benchmark varies both at once, which is precisely why they have not been
 told apart before.
 
-
-\section{A withdrawn result}
-\label{sec:withdrawn}
-
-An earlier version of this work reported one positive finding: a late-window accuracy dip on the
-random-subject stream at ${\geq}80\%$ fill ($-0.141$ $[-0.249,-0.031]$, $n{=}91$), read as
-accumulation finally outrunning in-context learning. \textbf{We withdraw it.} Re-running the
-protocol, our driver turned out to present the \emph{identical} questions as the committed run
-(per-item agreement $1.000$ over 344 items, accuracy $0.6221$ both), so the harness is
-bit-identical and any disagreement is sample composition. Finer bins locate the effect: accuracy is
-$0.625$ at $0.80$--$0.85$ fill ($n{=}40$), $\mathbf{0.419}$ at $0.85$--$0.88$ ($n{=}31$), and
-$0.703$ at $0.88$--$0.93$ ($n{=}37$). The original run's maximum fill was $0.8784$, so its entire
-top bin \emph{is} that one trough. Extending the same sessions to $93\%$ gives $-0.097$ (n.s.);
-14 fresh sessions give $+0.090$ (opposite sign); all 26 pooled give $+0.005$ $[-0.105,+0.092]$.
-Overflow-guard selection ($1/781$ skipped) and item length are ruled out. A clamp-based rescue arm
-was null but too weak an instrument to carry weight. The explanandum does not exist, and the
-paper's account no longer needs it: the end-of-window cost we thought we had is a single-bin
-artifact, while the dilution cost of \S4--\S5 is large, causal and replicated.
-
-\section{The confidence signatures are in-context comfort}
+\subsection{The confidence signatures are in-context comfort}
 
 If the entropy collapse were a generic depth effect it should survive on heterogeneous dialogue. It
 does not. On 150 organic WildChat conversations \citep{zhao2024wildchat} (Qwen-2.5-7B,
@@ -357,13 +363,6 @@ a causal test: clamping the boundary-detector SAE feature (Gemma Scope F90871,
 the \emph{wrong} way ($0.442\to0.465$ vs.\ clean $0.293$), leaves accuracy flat, and a random
 feature of similar magnitude perturbs entropy at least as much.
 
-Consistently, conditioning on fill, the cases OLMo-2 answers \emph{wrong} have \emph{higher}
-current-query attention than the ones it gets right (pooled $\Delta=+0.045$ $[-0.003,+0.097]$,
-$n{=}115$; sign positive in every fill bin and at every probed layer). Errors are associated with
-\emph{fixating} on the query; correct answers spread attention onto the accumulated cases---the
-per-case fingerprint of the in-context learning that keeps accuracy up. The ``rot'' and the
-within-context predictor of a correct answer point in opposite directions.
-
 \begin{figure}[t]
   \centering
   \begin{subfigure}{0.32\textwidth}\includegraphics[width=\linewidth]{figures/attention_rot.pdf}\end{subfigure}
@@ -379,8 +378,39 @@ within-context predictor of a correct answer point in opposite directions.
   \label{fig:signatures}
 \end{figure}
 
+Consistently, conditioning on fill, the cases OLMo-2 answers \emph{wrong} have \emph{higher}
+current-query attention than the ones it gets right (pooled $\Delta=+0.045$ $[-0.003,+0.097]$,
+$n{=}115$; sign positive in every fill bin and at every probed layer). Errors are associated with
+\emph{fixating} on the query; correct answers spread attention onto the accumulated cases---the
+per-case fingerprint of the in-context learning that keeps accuracy up. The ``rot'' and the
+within-context predictor of a correct answer point in opposite directions.
 
-\section{What context rot actually is}
+\section{Conclusion and Outlook}
+
+\paragraph{Limitations.}
+\label{sec:limitations}
+\textbf{We withdraw a positive result from an earlier version of this work.} That version reported
+a late-window accuracy dip on the random-subject stream at ${\geq}80\%$ fill
+($-0.141$ $[-0.249,-0.031]$, $n{=}91$), read as accumulation finally outrunning in-context
+learning. Re-running the protocol, our driver turned out to present the \emph{identical} questions
+as the committed run (per-item agreement $1.000$ over 344 items, accuracy $0.6221$ both), so the
+harness is bit-identical and any disagreement is sample composition. Finer bins locate the effect:
+accuracy is $0.625$ at $0.80$--$0.85$ fill ($n{=}40$), $\mathbf{0.419}$ at $0.85$--$0.88$
+($n{=}31$), and $0.703$ at $0.88$--$0.93$ ($n{=}37$). The original run's maximum fill was $0.8784$,
+so its entire top bin \emph{is} that one trough. Extending the same sessions to $93\%$ gives
+$-0.097$ (n.s.); 14 fresh sessions give $+0.090$ (opposite sign); all 26 pooled give
+$+0.005$ $[-0.105,+0.092]$. Overflow-guard selection ($1/781$ skipped) and item length are ruled
+out. A clamp-based rescue arm was null but too weak an instrument to carry weight. The explanandum
+does not exist, and the account here no longer needs it.
+Beyond that: an earlier analysis of these same runs resampled the arms independently rather than
+pairing over shared items, inflating each interval about $2.5\times$ and reporting one real effect
+as null. The necessity direction of the mediation is only partially established and is plausibly
+instrument-limited, since the clamp is uniform across heads. The competition result is one
+significant step rather than a gradient---mild overlap is indistinguishable from none, and we do
+not claim cost rises with confusability. The instruction-canary null is a floor effect, the
+WildChat figures are summary values from teacher-forced analyses, and the causal program runs on
+one model family. The accuracy null holds for localized tasks; genuinely length-dependent
+single-task settings are where dilution is the point, and are out of scope by design.
 
 With accumulation, displacement and competition separated inside one harness: accumulation
 produces a real, monotone
@@ -389,28 +419,17 @@ loss of instruction adherence. Displacing the evidence produces a large accuracy
 causally mediated by its attention mass, graded in that mass, and positional in tokens. Making the
 context confusable produces a further cost that is \emph{not} mediated by that mass at all. The
 literature's central claim is therefore \emph{correct but misattributed, and under-counted}:
-context rot is not a decay with length: it is displacement and competition, two mechanisms with
+context rot is not a decay with length, it is displacement and competition, two mechanisms with
 different signatures, of which length is merely the usual way of causing both at once.
 
 The residual hazard in the localized case is \emph{calibration}, not competence: on the DDXPlus
 streams logging per-token confidence ($n{=}154$ pooled cases, two models, both question orders),
 answer confidence rises $0.85\to0.95$ with fill ($r=+0.72$ $[+0.64,+0.79]$) at flat accuracy---and
-equally on \emph{wrong} answers ($0.86\to0.95$; $r=+0.69$ $[+0.57,+0.78]$)---so the confidently-wrong gap widens by ${\sim}10$ points over a session
-(Fig.~\ref{fig:signatures}c), most consequential exactly where
-a homogeneous high-stakes stream makes the model surest.
-
-\paragraph{Limitations.}
-Per-condition $n$ is bounded by the context window, so every clamp experiment is paired over
-shared items and analysed with a paired bootstrap; an earlier analysis of these same runs
-resampled the arms independently, inflating each interval about $2.5\times$ and reporting one real
-effect as null. The necessity direction of the mediation is only partially established and is
-plausibly instrument-limited. The clamp is uniform across heads. The competition result is one significant
-step rather than a gradient---mild overlap is indistinguishable from none, and we do not claim
-cost rises with confusability. The instruction-canary null is a
-floor effect, the WildChat figures are summary values from teacher-forced analyses, and the causal
-program runs on one model family. The accuracy null holds for localized tasks; genuinely
-length-dependent single-task settings are where dilution is the point, and are out of scope by
-design.
+equally on \emph{wrong} answers ($0.86\to0.95$; $r=+0.69$ $[+0.57,+0.78]$)---so the
+confidently-wrong gap widens by ${\sim}10$ points over a session (Fig.~\ref{fig:signatures}c), most
+consequential exactly where a homogeneous high-stakes stream makes the model surest. The test we
+would run next is the pattern-matched, per-head clamp that would settle whether the partial
+necessity above is an instrument limitation or a second channel within displacement itself.
 
 \small
 \begin{thebibliography}{9}
