@@ -107,7 +107,8 @@ def format_case_vignette(age, sex, initial_ev, evidence_str, evidence_db) -> str
     return "\n".join(lines)
 
 
-def format_case_question(options, n_options: int = 5, referent: str | None = None) -> str:
+def format_case_question(options, n_options: int = 5, referent: str | None = None,
+                         answer_cue: bool = True) -> str:
     """The 5-option question. Byte-identical across every E1 arm.
 
     ``referent`` prepends an explicit pointer back to the case ("For the patient described
@@ -117,11 +118,18 @@ def format_case_question(options, n_options: int = 5, referent: str | None = Non
     It is applied to **every** arm, ``local`` included, so the question's bytes stay equal across
     the ladder. Off by default, so the single-turn case format the committed drivers emit is
     unchanged.
+
+    ``answer_cue`` appends the trailing ``"Answer:"``. It writes the first line of the reply for
+    the model, which is harmless when the reply is a bare letter and fatal when the experiment
+    asks whether a system-prompt-specified format survives -- the probe would be competing with
+    the system prompt for control of the output. Default ``True`` keeps every committed run's
+    bytes unchanged.
     """
     opener = "Most likely diagnosis:" if referent is None else f"{referent}, most likely diagnosis:"
     lines = [f"\n{opener}"]
     lines.extend(f"{OPTION_LABELS[i]}) {opt}" for i, opt in enumerate(options[:n_options]))
-    lines.append("\nAnswer:")
+    if answer_cue:
+        lines.append("\nAnswer:")
     return "\n".join(lines)
 
 

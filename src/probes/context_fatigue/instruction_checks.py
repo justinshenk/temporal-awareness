@@ -27,6 +27,7 @@ import re
 from dataclasses import dataclass
 
 from src.common.base_schema import BaseSchema
+from src.probes.context_fatigue.ddxplus_cases import OPTION_LABELS
 
 ARMS = ("baseline", "forced", "refresh")
 
@@ -118,6 +119,76 @@ def check_all(response: str, specs) -> dict[str, bool]:
 def bundled_system_text(base_system: str, specs) -> str:
     """One system prompt carrying the task and every canary, as a single clamped span."""
     return " ".join([base_system, *(spec.system_text for spec in specs)])
+
+
+CLINICAL_FORMAT_SYSTEM = (
+    "You are a doctor. For each patient, reply in exactly this format:\n"
+    "ANSWER: <letter>\n"
+    "SUPPORTING: <symptom>; <symptom>\n"
+    "List at least two findings from the patient's description that support your answer."
+)
+
+
+def check_clinical_format(response: str, vignette: str, min_symptoms: int = 2,
+                          options=None) -> dict:
+    """Grade a reply against :data:`CLINICAL_FORMAT_SYSTEM`.
+
+    Returns the components separately rather than one boolean, because they fail in different
+    ways and the difference is the finding: a reply can keep the shape while naming nothing, or
+    name findings the patient never reported. ``grounded_fraction`` is the share of named findings
+    that actually occur in the vignette, so an ungrounded reply is distinguishable from a
+    non-compliant one.
+
+    ``answer`` is extracted even from a non-compliant reply, so accuracy stays scoreable when the
+    format collapses -- otherwise a compliance drop and an accuracy drop would be the same event.
+
+    ``options`` lets the answer slot hold a **pathology name** rather than a letter, which the
+    model does often and which obeys the format perfectly well. Without it such a reply scores as
+    "no answer" and is then also counted wrong, turning one checker gap into a fabricated collapse
+    in two separate metrics.
+    """
+    text = response or ""
+    slot = re.search(r"^\s*answer\s*:\s*(.+)$", text, re.IGNORECASE | re.MULTILINE)
+    answer_match = None
+    if slot:
+        payload = slot.group(1).strip()
+        letter = re.match(r"([A-Ea-e])\b", payload)
+        if letter:
+            answer_match = letter.group(1).upper()
+        elif options:
+            cleaned = re.sub(r"[^a-z0-9 ]", "", payload.lower()).strip()
+            for i, opt in enumerate(options):
+                if re.sub(r"[^a-z0-9 ]", "", opt.lower()).strip() == cleaned:
+                    answer_match = OPTION_LABELS[i]
+                    break
+    supporting_match = re.search(r"^\s*supporting\s*:\s*(.+)$", text, re.IGNORECASE | re.MULTILINE)
+
+    symptoms = []
+    if supporting_match:
+        symptoms = [p.strip() for p in supporting_match.group(1).split(";") if p.strip()]
+
+    low_vignette = vignette.lower()
+    grounded = [s for s in symptoms if s.lower() in low_vignette]
+    answer = answer_match
+    if answer is None:
+        bare = re.fullmatch(r"\s*([A-Ea-e])\s*", text)
+        if bare:
+            answer = bare.group(1).upper()
+        else:
+            # A letter offered in prose ("**D) Pneumonia**") is scoreable for accuracy even though
+            # it does not follow the format; the two are recorded separately on purpose.
+            loose = re.search(r"\b([A-Ea-e])\s*\)", text)
+            answer = loose.group(1).upper() if loose else None
+
+    return {
+        "has_answer": answer_match is not None,
+        "has_supporting": supporting_match is not None,
+        "n_symptoms": len(symptoms),
+        "grounded_fraction": (len(grounded) / len(symptoms)) if symptoms else 0.0,
+        "fully_compliant": bool(answer_match and supporting_match
+                                and len(symptoms) >= min_symptoms),
+        "answer": answer,
+    }
 
 
 # ── per-arm prompt / history construction ────────────────────────────────

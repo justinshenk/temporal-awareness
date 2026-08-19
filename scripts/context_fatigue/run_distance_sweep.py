@@ -38,13 +38,13 @@ from pathlib import Path
 
 import pandas as pd
 import torch
-from datasets import load_dataset
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from _cf_common import (
     RowAppender,
     extract_mcq_answer,
     generate_with_entropy,
+    load_filler_pool,
     per_head_rows,
     render_prompt,
 )
@@ -59,7 +59,6 @@ from src.probes.context_fatigue.ddxplus_cases import (
     load_probe_pool,
 )
 
-MMLU_LABELS = ["A", "B", "C", "D"]
 INTRO = ("You are answering a mixed stream of questions. Some are multiple-choice knowledge "
          "questions; some describe a patient. Answer each one as it arrives.")
 REFERENT = "For the patient described earlier"
@@ -95,23 +94,6 @@ def parse_args():
     p.add_argument("--preflight", action="store_true",
                    help="run one cell end-to-end, write it, and exit")
     return p.parse_args()
-
-
-def format_mmlu(question, choices):
-    return (question + "\n"
-            + "".join(f"{MMLU_LABELS[i]}) {o}\n" for i, o in enumerate(choices))
-            + "\nReply with only the letter (A, B, C, or D).")
-
-
-def load_filler_pool(tokenizer, max_tokens):
-    ds = load_dataset("cais/mmlu", "all", split="test")
-    pool = []
-    for row in ds:
-        text = format_mmlu(row["question"], row["choices"])
-        if len(tokenizer.encode(text)) <= max_tokens:
-            pool.append({"text": text, "gold": MMLU_LABELS[row["answer"]],
-                         "subject": row["subject"]})
-    return pool
 
 
 def main():

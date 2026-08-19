@@ -47,11 +47,22 @@ from src.probes.context_fatigue.ddxplus_cases import format_case_question, load_
 OPTION_LETTERS = ["A", "B", "C", "D", "E"]
 
 
+def _normalise_layers(args):
+    """A single layer stays an int, so the committed L24 runs keep their exact call signature."""
+    if len(args.reference_layer) == 1:
+        args.reference_layer = args.reference_layer[0]
+    return args
+
+
 def parse_args():
     p = argparse.ArgumentParser()
     p.add_argument("--model", default="allenai/OLMo-2-1124-7B-Instruct")
     p.add_argument("--max-ctx", type=int, default=4096)
-    p.add_argument("--reference-layer", type=int, default=24)
+    p.add_argument("--reference-layer", type=int, nargs="+", default=[24],
+                   help="layer(s) the span share is read from. The clamp biases every layer "
+                        "regardless, so a single-layer readout restores that layer and leaves "
+                        "the rest over- or under-restored; pass every layer for the pooled "
+                        "readout. Default [24] reproduces the committed runs exactly.")
     p.add_argument("--donor-arm", default="back_20",
                    help="arm whose per-item evidence share becomes the clamp target")
     p.add_argument("--clamp-arm", default="local",
@@ -72,7 +83,7 @@ def parse_args():
                         "knee in the share->accuracy curve that reconciles E1c with E1e's C2.")
     p.add_argument("--n-probes", type=int, default=192, help="sweep mode only")
     p.add_argument("--preflight", action="store_true")
-    return p.parse_args()
+    return _normalise_layers(p.parse_args())
 
 
 def letter_token_ids(tokenizer):
@@ -169,7 +180,7 @@ def run_sweep(args, model, tokenizer, pad_id, is_chat, letter_ids, out_dir):
     with open(out_dir / "summary.json", "w") as f:
         json.dump({"model": args.model, "mode": "evidence_share_sweep",
                    "clamp_arm": args.clamp_arm, "levels": levels, "by_level": by}, f, indent=2)
-    print(f"\n{'='*66}\nEVIDENCE-SHARE SWEEP at {args.clamp_arm} — L{args.reference_layer}\n{'='*66}")
+    print(f"\n{'='*66}\nEVIDENCE-SHARE SWEEP at {args.clamp_arm} — layers {args.reference_layer}\n{'='*66}")
     for r in sorted(by, key=lambda r: -r["achieved"]):
         print(f"  {r['level']:>8s}  achieved={r['achieved']:.4f}  n={r['n']:4d}  "
               f"acc={r['accuracy']:.3f}  scale={r['scale']:.4f}")

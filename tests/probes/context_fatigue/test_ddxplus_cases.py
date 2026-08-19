@@ -177,3 +177,26 @@ def test_referent_defaults_off_so_the_single_turn_format_is_unchanged():
 def test_referent_never_enters_the_vignette():
     vignette = format_case_vignette(49, "F", "E_cough", EVIDENCES, EVIDENCE_DB)
     assert "described earlier" not in vignette
+
+
+def test_answer_cue_can_be_suppressed_for_format_experiments():
+    """The trailing 'Answer:' cue writes the first line of the reply for the model.
+
+    Harmless when the reply is a bare letter, fatal when the experiment is about whether a
+    system-prompt-specified format survives: the probe would be competing with the system prompt
+    for control of the output.
+    """
+    from src.probes.context_fatigue.ddxplus_cases import format_case_question
+    opts = ["Bronchitis", "Pneumonia", "URTI", "Asthma", "GERD"]
+    assert format_case_question(opts).rstrip().endswith("Answer:")
+    assert not format_case_question(opts, answer_cue=False).rstrip().endswith("Answer:")
+
+
+def test_suppressing_the_cue_changes_nothing_else():
+    from src.probes.context_fatigue.ddxplus_cases import format_case_question
+    opts = ["Bronchitis", "Pneumonia", "URTI", "Asthma", "GERD"]
+    with_cue = format_case_question(opts)
+    without = format_case_question(opts, answer_cue=False)
+    assert with_cue.replace("\n\nAnswer:", "").rstrip() == without.rstrip()
+    for o in opts:
+        assert o in without

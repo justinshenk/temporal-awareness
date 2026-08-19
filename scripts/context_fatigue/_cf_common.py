@@ -5,12 +5,14 @@ reuse the exact case-formatting, answer-extraction, and entropy-tracked
 generation used by the original DDXPlus scripts instead of copying them.
 """
 
+import random
 import re
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import torch
+from datasets import load_dataset
 
 from src.probes.context_fatigue.attention_clamp import span_share_by_head
 from src.probes.context_fatigue.ddxplus_cases import (
@@ -176,3 +178,98 @@ class RowAppender:
                                          index=False)
         self.wrote_header = True
         self.buffer = []
+
+
+MMLU_LABELS = ["A", "B", "C", "D"]
+# MMLU subjects close enough to clinical medicine that filler drawn from them would give the
+# model in-domain practice at the very task the probe measures. 15 of 57 subjects, ~26% of the
+# pool, so leaving them in makes "irrelevant context" quietly relevant.
+MEDICAL_SUBJECTS = frozenset({
+    "anatomy", "clinical_knowledge", "college_biology", "college_medicine",
+    "high_school_biology", "high_school_psychology", "human_aging", "human_sexuality",
+    "medical_genetics", "nutrition", "professional_medicine", "professional_psychology",
+    "virology",
+})
+
+
+def format_mmlu(question, choices):
+    return (question + "\n"
+            + "".join(f"{MMLU_LABELS[i]}) {o}\n" for i, o in enumerate(choices))
+            + "\nReply with only the letter (A, B, C, or D).")
+
+
+def load_filler_pool(tokenizer, max_tokens, exclude_subjects=None):
+    """Short MMLU items usable as accumulated filler.
+
+    ``exclude_subjects`` drops whole subjects from the pool; passing ``MEDICAL_SUBJECTS`` is what
+    makes the accumulated context genuinely off-topic for a DDXPlus probe. Default ``None``
+    reproduces the pool the distance sweep was run on.
+    """
+    ds = load_dataset("cais/mmlu", "all", split="test")
+    blocked = frozenset(exclude_subjects or ())
+    pool = []
+    for row in ds:
+        if row["subject"] in blocked:
+            continue
+        text = format_mmlu(row["question"], row["choices"])
+        if len(tokenizer.encode(text)) <= max_tokens:
+            pool.append({"text": text, "gold": MMLU_LABELS[row["answer"]],
+                         "subject": row["subject"]})
+    return pool
+
+
+# Independent, self-contained coding requests. Synthetic on purpose: filler only has to be
+# irrelevant to the probe and to accumulate, and a real code corpus would drag in cross-references
+# between turns of the kind that make an accumulated transcript non-independent. Free-form output
+# with no option letters anywhere, so nothing here demonstrates an MCQ answer shape.
+_CODE_TASKS = [
+    "reverses the words in a sentence without using split()",
+    "merges two sorted lists into one sorted list",
+    "finds the longest run of repeated characters in a string",
+    "converts a Roman numeral to an integer",
+    "checks whether two strings are anagrams, ignoring case and spaces",
+    "flattens an arbitrarily nested list of integers",
+    "computes a moving average over a list with a given window size",
+    "groups a list of words by their first letter",
+    "removes duplicate rows from a list of dicts, keeping the first occurrence",
+    "parses a duration like '1h30m' into total seconds",
+    "returns the k most frequent elements of a list",
+    "validates that brackets in a string are balanced",
+    "transposes a matrix given as a list of lists",
+    "finds the second-largest distinct number in a list",
+    "converts snake_case identifiers to camelCase",
+    "computes the Levenshtein distance between two strings",
+    "chunks a list into pieces of at most n elements",
+    "finds all pairs in a list that sum to a target",
+    "implements binary search over a sorted list",
+    "counts vowels and consonants in a string",
+    "rotates a list left by k positions in place",
+    "returns the intersection of two lists preserving order",
+    "formats a byte count as a human-readable size",
+    "computes compound interest over a number of years",
+    "finds the first non-repeating character in a string",
+    "sorts a list of version strings like '1.10.2' correctly",
+    "expands a range string like '1-3,7,9-11' into a list",
+    "computes the median of a list without sorting the whole list",
+    "detects whether a linked list has a cycle",
+    "returns the longest common prefix of a list of strings",
+]
+
+
+def load_code_filler_pool(n: int, seed: int = 42) -> list[dict]:
+    """Independent code-generation prompts, in the driver's filler format."""
+    rng = random.Random(seed)
+    tasks = list(_CODE_TASKS)
+    rng.shuffle(tasks)
+    return [{"text": f"Write a Python function that {tasks[i % len(tasks)]}. "
+                     f"Include a short docstring.",
+             "gold": None, "subject": "code"}
+            for i in range(n)]
+
+
+def load_gsm8k_filler_pool(n: int, seed: int = 42) -> list[dict]:
+    """GSM8K word problems as free-form filler: no options, and the reply is a worked solution."""
+    ds = load_dataset("gsm8k", "main", split="train")
+    idx = list(range(len(ds)))
+    random.Random(seed).shuffle(idx)
+    return [{"text": ds[i]["question"], "gold": None, "subject": "gsm8k"} for i in idx[:n]]

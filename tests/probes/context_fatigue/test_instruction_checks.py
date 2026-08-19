@@ -162,3 +162,100 @@ def test_bundled_system_text_contains_every_canary_instruction():
     assert text.startswith("You are a doctor.")
     for spec in INSTRUCTIONS.values():
         assert spec.system_text in text
+
+
+# ── clinical answer-format compliance (E6) ──────────────────────────────
+
+VIGNETTE = ("The patient is a 43-year-old man. He reports a sore throat, a fever of 38.4C, "
+            "and swollen lymph nodes in the neck. He denies chest pain.")
+
+
+def test_format_check_accepts_a_fully_compliant_reply():
+    from src.probes.context_fatigue.instruction_checks import check_clinical_format
+    out = check_clinical_format("ANSWER: B\nSUPPORTING: sore throat; swollen lymph nodes",
+                                VIGNETTE)
+    assert out["has_answer"] and out["has_supporting"]
+    assert out["n_symptoms"] == 2
+    assert out["grounded_fraction"] == pytest.approx(1.0)
+    assert out["fully_compliant"] is True
+    assert out["answer"] == "B"
+
+
+def test_a_bare_letter_fails_every_component():
+    """The failure mode that matters: accumulation collapsing the reply to a bare letter."""
+    from src.probes.context_fatigue.instruction_checks import check_clinical_format
+    out = check_clinical_format("B", VIGNETTE)
+    assert out["has_answer"] is False
+    assert out["has_supporting"] is False
+    assert out["n_symptoms"] == 0
+    assert out["fully_compliant"] is False
+    assert out["answer"] == "B"  # still scoreable for accuracy
+
+
+def test_format_without_enough_symptoms_is_not_fully_compliant():
+    from src.probes.context_fatigue.instruction_checks import check_clinical_format
+    out = check_clinical_format("ANSWER: C\nSUPPORTING: fever", VIGNETTE)
+    assert out["has_answer"] and out["has_supporting"]
+    assert out["n_symptoms"] == 1
+    assert out["fully_compliant"] is False
+
+
+def test_ungrounded_symptoms_are_detected():
+    """Naming symptoms the patient never reported is a different failure from naming none."""
+    from src.probes.context_fatigue.instruction_checks import check_clinical_format
+    out = check_clinical_format("ANSWER: A\nSUPPORTING: chest pain; haemoptysis", VIGNETTE)
+    assert out["n_symptoms"] == 2
+    assert out["grounded_fraction"] == pytest.approx(0.5)  # 'chest pain' appears, the other does not
+
+
+def test_format_check_is_robust_to_case_and_spacing():
+    from src.probes.context_fatigue.instruction_checks import check_clinical_format
+    out = check_clinical_format("answer:  D\n  supporting:  Fever ;  Sore Throat ", VIGNETTE)
+    assert out["fully_compliant"] is True
+    assert out["answer"] == "D"
+
+
+def test_empty_response_is_a_violation_not_a_pass():
+    from src.probes.context_fatigue.instruction_checks import check_clinical_format
+    out = check_clinical_format("", VIGNETTE)
+    assert out["fully_compliant"] is False
+    assert out["answer"] is None
+
+
+OPTS = ["Bronchitis", "Epiglottitis", "Pneumonia", "Asthma", "GERD"]
+
+
+def test_a_pathology_name_in_the_answer_slot_is_compliant_and_scoreable():
+    """The model often names the diagnosis rather than its letter. That obeys the format.
+
+    Scoring it as 'no answer' both understates compliance and manufactures an accuracy failure,
+    which is how a checker bug turns into a fabricated finding.
+    """
+    from src.probes.context_fatigue.instruction_checks import check_clinical_format
+    out = check_clinical_format("ANSWER: Epiglottitis\nSUPPORTING: sore throat; fever",
+                                VIGNETTE, options=OPTS)
+    assert out["has_answer"] is True
+    assert out["answer"] == "B"          # Epiglottitis is option B
+    assert out["fully_compliant"] is True
+
+
+def test_a_letter_inside_prose_is_extracted_for_accuracy_but_is_not_compliance():
+    from src.probes.context_fatigue.instruction_checks import check_clinical_format
+    out = check_clinical_format("The most likely diagnosis is:\n\n**D) Pneumonia**\n\nReasoning...",
+                                VIGNETTE, options=OPTS)
+    assert out["answer"] == "D"           # scoreable
+    assert out["has_answer"] is False     # but it did not follow the format
+    assert out["fully_compliant"] is False
+
+
+def test_name_matching_is_case_insensitive_and_ignores_surrounding_punctuation():
+    from src.probes.context_fatigue.instruction_checks import check_clinical_format
+    out = check_clinical_format("ANSWER: **pneumonia**\nSUPPORTING: cough; fever",
+                                VIGNETTE, options=OPTS)
+    assert out["answer"] == "C"
+
+
+def test_a_bare_letter_answer_still_works_without_options():
+    from src.probes.context_fatigue.instruction_checks import check_clinical_format
+    out = check_clinical_format("ANSWER: B\nSUPPORTING: fever; sore throat", VIGNETTE)
+    assert out["answer"] == "B" and out["fully_compliant"] is True
