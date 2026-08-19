@@ -148,7 +148,39 @@ Our contributions are as follows:
         and the wrong account of competition.
 \end{itemize}
 
+\section{Background}
+
+\paragraph{Length as the suspected cause.}
+Most evidence for context rot comes from setups where the answer-bearing information sits inside a
+single long input. \citet{liu2023lost} showed that accuracy depends strongly on \emph{where} in the
+context the relevant passage sits, dipping when it falls in the middle. \citet{levy2024same} held a
+reasoning task fixed and padded the input with task-irrelevant text, finding degradation well
+before the models' advertised context limits. \citet{hong2025contextrot} ran a broad sweep over 18
+models and found that reliability falls with input length even on tasks as simple as retrieval and
+replication, and that the fall is not uniform: it depends on how similar the needle is to the
+question, and on whether distractors are present. \citet{laban2025lost} report a large multi-turn
+degradation, but locate its cause in the model committing early to a wrong reading and failing to
+recover---not in length as such.
+
+\paragraph{Confusable context as a separate suspect.}
+A second literature manipulates the \emph{content} of the surrounding context rather than its
+length. \citet{shi2023distracted} insert an irrelevant sentence into grade-school math problems and
+observe a sharp accuracy drop. In retrieval-augmented generation, \citet{cuconasu2024noise} find
+that documents retrieved as relevant but not containing the answer act as distractors and degrade
+accuracy.
+
+\paragraph{What is not separated.}
+In each of these setups the two candidate causes move together. Padding a prompt lengthens it
+\emph{and} pushes the evidence further from the query; adding a distractor document does the same
+while also supplying a competing answer. So a measured degradation cannot be assigned to
+accumulation, to the evidence becoming distant, or to the surrounding text becoming confusable. A
+mechanistic thread---\citet{liu2023lost}'s positional account, and attention-based explanations
+generally---suggests attention as the channel, but attention is measured alongside these
+manipulations rather than intervened on. This paper separates the three factors inside one harness
+and intervenes on attention directly.
+
 \section{Preliminaries}
+\label{sec:prelim}
 
 \paragraph{Localized task streams.}
 Our harness accumulates \textbf{individually localized tasks}: a stream of self-contained
@@ -179,9 +211,10 @@ Per-condition $n$ is bounded by the context window, so every clamp experiment is
 shared items and analysed with a paired bootstrap resampling \emph{cases} (10,000 draws), never
 heads or turns.
 
-\section{Two mechanisms, separated}
+\section{Results}
 
-\subsection{Accumulation alone costs nothing}
+\subsection{Accumulation}
+\label{sec:accumulation}
 
 Per-case accuracy does not fall as context fills; it is worst at the cold start and warms up
 ($\mathrm{corr}(\text{correct},\text{fill})=+0.11$ Instruct, $+0.07$ DPO). The obvious objection is
@@ -214,7 +247,8 @@ than proves, since the canaries were easy.
   \label{fig:dilution}
 \end{figure}
 
-\subsection{Displacement costs accuracy, and attention mass mediates it}
+\subsection{Displacement}
+\label{sec:displacement}
 
 We now vary only \emph{where the answer-bearing evidence lives}. Each DDXPlus probe's vignette is
 placed $k$ user turns before its question; mean fill is $0.688$ in every arm, the question text is
@@ -235,7 +269,7 @@ Distance and attention drain move together by construction, so Table~\ref{tab:di
 consistent with dilution but does not establish it---a purely positional account predicts the same
 table. Four interventions separate them.
 
-\paragraph{The drain is real, and observational correlations invert it.}
+\paragraph{Observational correlations.}
 Evidence share falls $0.0408\to0.0124$ across the ladder ($r=-0.83$ with distance) while the
 \emph{question}'s share stays flat, confirming only the evidence moved. A trap worth recording:
 \emph{within} an arm, higher evidence share predicts \emph{lower} accuracy
@@ -244,13 +278,13 @@ item difficulty---the model looks harder at confusing vignettes---and has the \e
 to the causal effect below. Anyone reading share-against-accuracy correlations off this data
 without intervening will conclude the reverse of the truth.
 
-\paragraph{Removing the mass is sufficient.}
+\paragraph{Mass removal.}
 Keeping the evidence at \texttt{local} and clamping its share down to the \emph{same item's own}
 \texttt{back\_20} share costs $+0.202$ $[+0.138,+0.267]$ (paired $n{=}174$) and lands at $0.333$
 against \texttt{back\_20}'s $0.365$---a difference of $-0.025$ $[-0.083,+0.035]$, indistinguishable.
 \textbf{Mass removal alone reproduces 114\% of the displacement penalty, with nothing moved.}
 
-\paragraph{The dose-response is smooth, and replicates itself.}
+\paragraph{Dose-response.}
 Sweeping the evidence's share at fixed position over seven levels (common subset $n{=}131$ present
 at every level) gives a monotone decline from $0.473$ at the natural share ($0.0441$) to $0.275$ at
 $0.012$ (Fig.~\ref{fig:dilution}b). Six of the seven levels differ significantly from the natural
@@ -262,7 +296,7 @@ runs, which is the strongest internal consistency check in the program. An earli
 work read a \emph{threshold} into two flat contrasts; the sweep refutes it. The relationship is
 \emph{graded}: a measured slope, not a cliff.
 
-\paragraph{Restoring the mass is not sufficient---probably the instrument.}
+\paragraph{Mass restoration.}
 The converse is only partial: clamping the displaced evidence's share back \emph{up} to its
 \texttt{local} level recovers a real but small $32\%$ of the penalty
 ($+0.055$ $[+0.017,+0.098]$), leaving a significant residual ($+0.123$ $[+0.054,+0.193]$). Our
@@ -271,7 +305,7 @@ restored mass. Full sufficiency with partial necessity is the signature of an in
 faithful in one direction and crude in the other, and we report it as one rather than as a second
 mechanism. A pattern-matched, per-head clamp is the test that would settle it.
 
-\paragraph{The drain is positional in tokens, not turns.}
+\paragraph{Tokens versus turns.}
 A partial $2{\times}2$ in (gap turns) $\times$ (filler length), total context equalized by padding,
 dissociates them: two arms matched on \emph{tokens} have effectively identical evidence share
 ($0.0104$ vs $0.0108$) despite a $4\times$ difference in turn count, while at matched turns share
@@ -280,7 +314,7 @@ attention that costs at most $9.4$ accuracy points ($+0.026$ $[-0.042,+0.094]$).
 tokens and not on gap turns. Attention drain is a function of token distance, as RoPE decay
 predicts; conversation structure is not what drains it.
 
-\paragraph{On the current query, there is no headroom.}
+\paragraph{The current query.}
 Accumulation drives the \emph{current query}'s share from ${\approx}0.35$ down to ${\approx}0.15$,
 and it is natural to ask whether that stops short of a floor. It does not. Clamping the query span
 on cold-start contexts, accuracy is flat from the natural share ($0.258$, accuracy $0.545$) down
@@ -292,7 +326,8 @@ interpretation.) That accuracy nonetheless stays flat under accumulation, while 
 reached by clamping costs points, is itself evidence that in-context learning is actively holding
 accuracy up.
 
-\subsection{Competition costs accuracy at constant attention mass}
+\subsection{Competition}
+\label{sec:competition}
 
 Burying a needle varies two things at once: the evidence becomes distant \emph{and} it becomes
 surrounded by plausible alternatives. So far we have isolated distance. We isolate the other half by
@@ -309,7 +344,7 @@ Near-duplicate context costs $-0.085$ $[-0.140,-0.030]$ against the natural stre
 $[-0.112,-0.006]$ against disjoint context; in a joint fit within this experiment, \textbf{option
 overlap carries the coefficient} ($\beta=-0.021$ $[-0.039,-0.003]$) and \textbf{fill carries none}
 ($\beta=-0.284$ $[-0.640,+0.075]$)---the same shape as the distance result, on a different
-variable. Two controls matter: the low-competition arms must land on \S3.2's \texttt{local} accuracy
+variable. Two controls matter: the low-competition arms must land on \S\ref{sec:displacement}'s \texttt{local} accuracy
 of $0.464$, and both do ($+0.049$ $[-0.037,+0.134]$ and $+0.021$ $[-0.065,+0.107]$); and context
 length does not order the arms, since \texttt{disjoint} is the \emph{longest} and mid-accuracy
 while \texttt{near\_dup} is the shortest, so length biases against the result. Restricted to
@@ -321,7 +356,7 @@ competitors that actively mislead; only the second is large enough to measure he
 claim that near-duplicate context is costly, \emph{not} that cost rises with overlap---one
 significant step, not a gradient.
 
-\paragraph{And it is a second mechanism, not more dilution.}
+\paragraph{Attention mass under competition.}
 Repeating the sweep with attention capture instead of generation (same probes, same seeds) shows
 the headline contrast moves accuracy $8.5$ points with \textbf{no detectable change in the
 evidence's attention mass}: \texttt{random} $-$ \texttt{near\_dup} $=-0.00027$
@@ -337,7 +372,7 @@ dilution'' is the right account of the first and the wrong account of the second
 needle-in-a-haystack benchmark varies both at once, which is precisely why they have not been
 told apart before.
 
-\subsection{The confidence signatures are in-context comfort}
+\subsection{Confidence signatures}
 
 If the entropy collapse were a generic depth effect it should survive on heterogeneous dialogue. It
 does not. On 150 organic WildChat conversations \citep{zhao2024wildchat} (Qwen-2.5-7B,
@@ -387,7 +422,7 @@ within-context predictor of a correct answer point in opposite directions.
 
 \paragraph{Limitations.}
 Per-condition $n$ is bounded by the context window, so every interval here depends on the paired
-analysis of \S2; resampling the arms independently inflates each one about $2.5\times$, enough to
+analysis of \S\ref{sec:prelim}; resampling the arms independently inflates each one about $2.5\times$, enough to
 report a real effect as null. The necessity direction of the mediation is only partially
 established and is plausibly instrument-limited, since the clamp is uniform across heads. The competition result is one
 significant step rather than a gradient---mild overlap is indistinguishable from none, and we do
@@ -417,10 +452,15 @@ necessity above is an instrument limitation or a second channel within displacem
 
 \small
 \begin{thebibliography}{9}
+\bibitem[Cuconasu et al.(2024)]{cuconasu2024noise} F.~Cuconasu et al. The power of noise: redefining retrieval for RAG systems. \emph{SIGIR}, 2024.
 \bibitem[Hendrycks et al.(2021)]{hendrycks2021mmlu} D.~Hendrycks et al. Measuring massive multitask language understanding. \emph{ICLR}, 2021.
+\bibitem[Hong et al.(2025)]{hong2025contextrot} K.~Hong, A.~Troynikov, and J.~Huber. Context rot: how increasing input tokens impacts LLM performance. Chroma technical report, 2025.
+\bibitem[Laban et al.(2025)]{laban2025lost} P.~Laban, H.~Hayashi, Y.~Zhou, and J.~Neville. LLMs get lost in multi-turn conversation. \emph{arXiv:2505.06120}, 2025.
+\bibitem[Levy et al.(2024)]{levy2024same} M.~Levy, A.~Jacoby, and Y.~Goldberg. Same task, more tokens: the impact of input length on the reasoning performance of large language models. \emph{ACL}, 2024.
 \bibitem[Liu et al.(2023)]{liu2023lost} N.~F. Liu et al. Lost in the middle: how language models use long contexts. \emph{TACL}, 2023.
 \bibitem[Lieberum et al.(2024)]{lieberum2024gemmascope} T.~Lieberum et al. Gemma Scope: open sparse autoencoders everywhere all at once on Gemma 2. 2024.
 \bibitem[OLMo Team(2024)]{olmo2024} OLMo Team. OLMo 2: open language models with a full post-training recipe. 2024.
+\bibitem[Shi et al.(2023)]{shi2023distracted} F.~Shi et al. Large language models can be easily distracted by irrelevant context. \emph{ICML}, 2023.
 \bibitem[Tchango et al.(2022)]{tchango2022ddxplus} A.~Fansi Tchango et al. DDXPlus: a new dataset for automatic medical diagnosis. \emph{NeurIPS Datasets and Benchmarks}, 2022.
 \bibitem[Zhao et al.(2024)]{zhao2024wildchat} W.~Zhao et al. WildChat: 1M ChatGPT interaction logs in the wild. \emph{ICLR}, 2024.
 \end{thebibliography}
