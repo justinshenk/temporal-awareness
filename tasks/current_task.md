@@ -143,7 +143,7 @@ Cost matters: E2a is 6 levels × n≥100 cases. Leaning **(B)** with a hard earl
       **Published number reproduced exactly:** −0.141 [−0.249, −0.031], n=91, at the real
       N_BOOT=10000.
 
-      **Provenance hazard found (pinned, not yet fixed at source).** That number comes *only* from
+      **Provenance hazard found — FIXED 2026-08-19 at the driver.** That number comes *only* from
       `results/random_context_topbin/turns_pooled.csv`. `final_bin_stats()` called with no path
       falls back to `results/random_context/turns.csv`, which yields **−0.187 [−0.373, −0.001],
       n=31** — a different headline number from the same function call, decided by which files
@@ -151,8 +151,11 @@ Cost matters: E2a is 6 levels × n≥100 cases. Leaning **(B)** with a hard earl
       `TURNS = POOLED_TURNS if POOLED_TURNS.exists() else None`, so a fresh clone missing the
       pooled artifact would regenerate NULL_STATISTICS.md with the n=31 number and no indication
       the provenance changed. `final_bin_regression()` always names the artifact it read, and a
-      test asserts that name. Worth deciding whether the silent fallback in the generator should
-      become a hard failure — that is a Paper B writeup-path change, so flagged rather than made.
+      test asserts that name. **Resolved:** `analyze_null_statistics.py` now passes `POOLED_TURNS`
+      explicitly on all three calls and raises `FileNotFoundError` naming the missing file, so a
+      clone without the pooled artifact stops instead of silently describing a different stream.
+      The library default is left alone — `tests/probes/context_fatigue/test_null_statistics.py`
+      pins its values, and the hazard was always the *driver* choosing a file by accident.
 - [ ] **§7.4** — GPU drivers, each behind a one-cell preflight.
   - [x] **E1 distance sweep — CONFIRMED.** `scripts/context_fatigue/run_distance_sweep.py`,
         report `results/context_fatigue/E1_DISTANCE_SWEEP.md`, artifacts in

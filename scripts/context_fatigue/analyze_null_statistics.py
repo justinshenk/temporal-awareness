@@ -31,10 +31,13 @@ from src.probes.context_fatigue.null_statistics import (
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 # The pooled stream (original 12 sessions at fill<=0.88 + the 2026-08-17 top-bin batch: 15
-# sessions/mode at fill<=0.93, disjoint seeds, overflow-guarded). Falls back to the original
-# artifact when the pooled file is absent so the script stays runnable from a fresh clone.
+# sessions/mode at fill<=0.93, disjoint seeds, overflow-guarded). Passed explicitly on every call
+# below: the helpers' no-path default reads a *different*, smaller artifact
+# (`results/random_context/turns.csv`, top bin n=31, max fill 0.8784), and it is precisely that
+# substitution that produced the top-bin dip this program went on to withdraw. Silently analysing
+# one file while the report names the other is the failure mode, so a missing pooled file stops
+# the run rather than quietly changing which stream is being described.
 POOLED_TURNS = REPO_ROOT / "results" / "random_context_topbin" / "turns_pooled.csv"
-TURNS = POOLED_TURNS if POOLED_TURNS.exists() else None
 OUT_JSON = REPO_ROOT / "results" / "context_fatigue" / "null_statistics.json"
 OUT_MD = REPO_ROOT / "results" / "context_fatigue" / "NULL_STATISTICS.md"
 FIG_PATH = REPO_ROOT / "context_fatigue_paper" / "figures" / "calibration_gap.pdf"
@@ -87,9 +90,13 @@ def render_markdown(payload: dict) -> str:
               "|---|---:|---:|---:|---|---|"]
     for mode, s in payload["final_bin"].items():
         d = s["diff_top_minus_rest"]
+        # A "significant" verdict inside a withdrawn section is precisely the cell someone would
+        # quote out of context, so the bootstrap's answer is struck through in place rather than
+        # left to a hand-edit that the next regeneration would silently undo.
+        verdict = "~~yes~~ **artifact**" if s["significant"] else "no"
         lines.append(
             f"| {mode} | {s['n_top_bin']} | {s['accuracy_top_bin']:.3f} | {s['accuracy_rest']:.3f} | "
-            f"{d['estimate']:+.3f} [{d['lo']:+.3f}, {d['hi']:+.3f}] | {'yes' if s['significant'] else 'no'} |"
+            f"{d['estimate']:+.3f} [{d['lo']:+.3f}, {d['hi']:+.3f}] | {verdict} |"
         )
     lines.append("")
 
@@ -178,10 +185,15 @@ def make_calibration_figure(cal: dict, path: Path) -> None:
 
 
 def main() -> None:
+    if not POOLED_TURNS.exists():
+        raise FileNotFoundError(
+            f"pooled stream missing: {POOLED_TURNS}. Re-run the random-context sweep rather than "
+            f"letting the analysis fall back to a different artifact."
+        )
     payload = {
-        "fill_slope": fill_slope_stats(TURNS),
-        "fill_slope_le80": fill_slope_stats(TURNS, max_fill=0.8),
-        "final_bin": final_bin_stats(TURNS),
+        "fill_slope": fill_slope_stats(POOLED_TURNS),
+        "fill_slope_le80": fill_slope_stats(POOLED_TURNS, max_fill=0.8),
+        "final_bin": final_bin_stats(POOLED_TURNS),
         "attention_inversion": attention_inversion_stats(),
         "layer_generality": layer_generality(),
         "calibration": calibration_by_fill(),

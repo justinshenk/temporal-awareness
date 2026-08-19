@@ -76,7 +76,7 @@ Evidence kept at `local` position; its span clamped to **the same item's own** `
 - for reference, `local` − `back_20` = +0.1772 [+0.1044, +0.2500]
 
 Starving the evidence's attention, with nothing moved, lands exactly on `back_20`'s accuracy:
-**116% of the distance penalty reproduced by mass alone.** Median clamp scale 0.152 (−1.89 nats),
+**114% of the distance penalty reproduced by mass alone.** Median clamp scale 0.152 (−1.89 nats),
 the same on-manifold magnitude E2a's 0.15 level used, far from the −4.7 to −6.1 ablation regime.
 
 ## E1d — mass restoration is not sufficient (paired n = 174)
@@ -198,12 +198,13 @@ decline with no threshold anywhere in it — the "graded, not a knee" conclusion
 now rests on a significant gradient rather than on a chain of nulls.
 
 **This experiment was run to confirm a knee and refuted it.** The hypothesis was that E1c (cutting
-0.041→0.012 at `local`, costing 0.207) and E1e's C2 (cutting 0.029→0.010 at `back_5`, costing
+0.041→0.012 at `local`, costing 0.202) and E1e's C2 (cutting 0.029→0.010 at `back_5`, costing
 nothing) could only both be true if the curve had a threshold between them. The real resolution is
 duller and better: **both are the same shallow gradient**, and E1e's single step was too small to
-detect. E1f's natural→0.012 contrast is **+0.198 [+0.084, +0.313]**, against E1c's independently
-measured **+0.207 [+0.103, +0.310]** for the same share change — agreement to within 0.01 across
-two separately-run experiments, which is the strongest internal consistency check in the program.
+detect. E1f's natural→0.012 contrast is **+0.198 [+0.115, +0.282]**, against E1c's independently
+measured **+0.202 [+0.138, +0.267]** for the same share change — agreement to within **0.004**
+across two separately-run experiments, which is the strongest internal consistency check in the
+program.
 
 ## Open
 

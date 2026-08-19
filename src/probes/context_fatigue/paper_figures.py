@@ -222,7 +222,7 @@ def fig_random_context(ax: plt.Axes) -> None:
     overall = random_context_overall()
     ax.text(
         0.97, 0.05,
-        f"corr(acc, fill): coherent {-0.01:+.2f}, random {-0.00:+.2f}",
+        f"overall: coherent {overall['coherent']:.2f}, random {overall['random']:.2f}",
         transform=ax.transAxes, ha="right", va="bottom", fontsize=7.5, color="#555555",
     )
 
