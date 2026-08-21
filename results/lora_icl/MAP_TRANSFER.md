@@ -25,9 +25,15 @@ brief `tasks/lora_map_transfer_execution.md`.
 | donor 7B | 0.130 | **0.970** | 0.140 |
 | recipient 1.5B | 0.140 | **0.900** | — |
 
-Floors sit below chance because the bare "You are a doctor." prompt yields prose the 6-token
-parse window misses; the parser is identical in every arm, so the comparison is internally
-consistent. Shuffled-label adapter ≈ floor: task-specificity clean.
+Floors sit below nominal chance (0.20) because both unadapted models are **constant-"B"
+guessers** on this prompt (donor 96/96 parsed predictions are "B", recipient 100/100; parse
+rates 0.96/1.00), and the panel's gold happens to be "B" on 14/100 items — a constant guesser
+scores exactly its letter's gold frequency (expected 0.134/0.140, observed 0.130/0.140). The
+right floor reference is therefore the constant-letter baseline 0.14, not 0.20. This sharpens
+the self-steer result: the vector does not move the model to a better constant — it breaks the
+collapse outright (steered prediction histogram A:32 B:18 C:22 D:13 E:15, tracking gold's
+A:30 B:14 C:19 D:15 E:22) and restores per-case discrimination. Shuffled-label adapter ≈
+floor: task-specificity clean.
 
 ## Within-model self-steering (the premise holds at home, twice)
 
