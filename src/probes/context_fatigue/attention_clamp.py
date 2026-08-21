@@ -235,6 +235,43 @@ def locate_turn_spans(tokenizer, text: str, contents) -> list[tuple[int, int]]:
     return spans
 
 
+def locate_phrase_spans(tokenizer, text: str, phrases, region: tuple[int, int]):
+    """Disjoint token spans covering every occurrence of any phrase inside a char region.
+
+    Built for E3c's competitor closure: ``phrases`` are the probe's option names and ``region``
+    is the context portion of the rendered transcript (everything before the evidence turn), so
+    the probe's own option list is never touched. Occurrences must lie wholly inside the region
+    — one straddling the boundary is not context and is excluded. Overlapping token spans (one
+    phrase containing another, or adjacent occurrences sharing a boundary token) are merged, so
+    the result is always accepted by :class:`SpanAttentionClamp`.
+    """
+    region_start, region_end = region
+    char_spans = []
+    for phrase in phrases:
+        pos = text.find(phrase, region_start)
+        while pos != -1 and pos + len(phrase) <= region_end:
+            char_spans.append((pos, pos + len(phrase)))
+            pos = text.find(phrase, pos + 1)
+    if not char_spans:
+        return []
+
+    offsets = tokenizer(text, return_offsets_mapping=True).offset_mapping
+    tok_spans = []
+    for a, b in char_spans:
+        hits = [i for i, (x, y) in enumerate(offsets) if x < b and y > a]
+        if hits:
+            tok_spans.append((hits[0], hits[-1] + 1))
+
+    tok_spans.sort()
+    merged = [tok_spans[0]]
+    for a, b in tok_spans[1:]:
+        if a < merged[-1][1]:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], b))
+        else:
+            merged.append((a, b))
+    return merged
+
+
 def solve_span_scale(model, input_ids, span, target_share: float, reference_layer: int,
                      layers=None, tol: float = 1e-4, max_iter: int = 60, attention_mask=None):
     """Find the ``scale`` whose clamped span share equals ``target_share`` at ``reference_layer``.

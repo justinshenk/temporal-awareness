@@ -47,7 +47,13 @@ from _cf_common import (
 )
 
 from src.probes.context_fatigue.attention_capture import SelectiveAttentionCapture
-from src.probes.context_fatigue.attention_clamp import locate_token_span, span_share
+from src.probes.context_fatigue.attention_clamp import (
+    SpanAttentionClamp,
+    locate_phrase_spans,
+    locate_token_span,
+    measure_span_share,
+    span_share,
+)
 from src.probes.context_fatigue.context_assembly import (
     ArmSpec,
     OverflowGuard,
@@ -92,6 +98,12 @@ def parse_args():
                    help="skip generation; measure the evidence span's attention share only. "
                         "Answers whether competition drains the evidence's mass (folding it into "
                         "the same account as distance) or is an independent channel.")
+    p.add_argument("--close-arms", action="store_true",
+                   help="E3c: paired near_dup arms closing (scale 0) every context occurrence of "
+                        "the probe's option names, against a size-matched random-closure control "
+                        "and the natural near_dup and random arms. Requires eager attention. "
+                        "Tests whether competition's cost is carried by *reading* the competitor "
+                        "instances at generation time (brief: tasks/e3c_competitor_close_brief.md).")
     p.add_argument("--preflight", action="store_true",
                    help="run two probes end-to-end, write them, and exit")
     return p.parse_args()
@@ -117,7 +129,9 @@ def main():
     print(f"Loading {args.model} ...", flush=True)
     tokenizer = AutoTokenizer.from_pretrained(args.model)
     model = AutoModelForCausalLM.from_pretrained(
-        args.model, dtype=torch.bfloat16, device_map=args.device).eval()
+        args.model, dtype=torch.bfloat16, device_map=args.device,
+        # closure biases the additive mask, which sdpa optimizes away on a causal-only prompt
+        **({"attn_implementation": "eager"} if args.close_arms else {})).eval()
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token_id = tokenizer.eos_token_id
     is_chat = tokenizer.chat_template is not None
@@ -170,6 +184,69 @@ def main():
                 break
             built_arms[arm] = (rendered, cases)
         if skip_probe:
+            continue
+
+        if args.close_arms:
+            rendered_nd, _ = built_arms["near_dup"]
+            rendered_rand, _ = built_arms["random"]
+            vig_start = rendered_nd.rindex(probe["vignette"])
+            comp_spans = locate_phrase_spans(
+                tokenizer, rendered_nd, probe["options"][:args.n_options],
+                region=(0, vig_start))
+            if not comp_spans:
+                starved += 1
+                continue
+            ids = tokenizer(rendered_nd, return_tensors="pt").input_ids.to(args.device)
+            # E3b rider: the competitor spans' union share before closure, all-layer mean, from
+            # one capture forward on the same transcript the closure arms will generate from.
+            comp_share = measure_span_share(model, ids, comp_spans,
+                                            list(range(len(model.model.layers))))
+            evid_start = locate_token_span(tokenizer, rendered_nd, probe["vignette"])[0]
+            intro_end = locate_token_span(tokenizer, rendered_nd, "Understood.")[1]
+            comp_tokens = sum(b - a for a, b in comp_spans)
+            # Size-matched random-closure control: same span count and sizes, sampled in the same
+            # context region, overlapping neither the competitor spans nor each other.
+            rng_probe = random.Random(args.seed * 1000 + idx)
+            taken = list(comp_spans)
+            rand_spans = []
+            for a, b in comp_spans:
+                width = b - a
+                for _ in range(200):
+                    s = rng_probe.randrange(intro_end, evid_start - width)
+                    if all(s + width <= x or s >= y for x, y in taken):
+                        rand_spans.append((s, s + width))
+                        taken.append((s, s + width))
+                        break
+            close_arms = [("near_dup", rendered_nd, None),
+                          ("near_dup_comp_close", rendered_nd, comp_spans),
+                          ("near_dup_rand_close", rendered_nd, sorted(rand_spans)),
+                          ("random", rendered_rand, None)]
+            for arm, rendered, spans in close_arms:
+                if spans:
+                    with SpanAttentionClamp(model, span=spans, scale=0.0):
+                        resp, ctx_len, entropy, _ = generate_with_entropy(
+                            model, tokenizer, rendered, args.device, args.max_new, args.max_ctx)
+                else:
+                    resp, ctx_len, entropy, _ = generate_with_entropy(
+                        model, tokenizer, rendered, args.device, args.max_new, args.max_ctx)
+                pred = extract_mcq_answer(resp) if resp else None
+                records.append({
+                    "probe": idx, "arm": arm,
+                    "comp_spans": len(comp_spans), "comp_tokens": comp_tokens,
+                    "comp_share_alllayer": comp_share,
+                    "closed_tokens": sum(b - a for a, b in spans) if spans else 0,
+                    "ctx_tokens": ctx_len, "context_fill": round(ctx_len / args.max_ctx, 4),
+                    "pathology": probe["pathology"], "gold": probe["gold"], "pred": pred,
+                    "correct": bool(pred == probe["gold"]), "parsed": pred is not None,
+                    "mean_entropy": entropy, "response": (resp or "")[:200],
+                })
+            torch.cuda.empty_cache()
+            pd.DataFrame(records).to_csv(turns_path, index=False)
+            if (idx + 1) % 25 == 0:
+                df = pd.DataFrame(records)
+                acc = df.groupby("arm")["correct"].mean().to_dict()
+                print(f"  [{idx + 1}/{len(probes)}] "
+                      + "  ".join(f"{a}={v:.3f}" for a, v in sorted(acc.items())), flush=True)
             continue
 
         for arm, (rendered, cases) in built_arms.items():
@@ -225,7 +302,9 @@ def main():
     df = pd.DataFrame(records)
     summary = {
         "model": args.model,
-        "arms": ArmSpec.overlap_arms(),
+        "arms": (sorted(df["arm"].unique()) if args.close_arms and len(df)
+                 else ArmSpec.overlap_arms()),
+        "close_arms": args.close_arms,
         "n_context": args.n_context,
         "min_overlap": args.min_overlap,
         "n_probes_requested": n_probes,
@@ -235,7 +314,10 @@ def main():
         "overflow": guard.report(n_seen=len(probes)),
         "by_arm": (df.groupby("arm")
                      .agg(n=("correct", "size"), accuracy=("correct", "mean"),
-                          mean_shared_options=("mean_shared_options", "mean"),
+                          **({"closed_tokens": ("closed_tokens", "mean"),
+                              "comp_share_alllayer": ("comp_share_alllayer", "mean")}
+                             if args.close_arms
+                             else {"mean_shared_options": ("mean_shared_options", "mean")}),
                           mean_fill=("context_fill", "mean"),
                           parse_rate=("parsed", "mean"),
                           **({"evidence_share": ("evidence_share", "mean"),
@@ -250,9 +332,10 @@ def main():
     print(f"probes used {summary['n_probes_used']}  |  gold leaks {leaks} (must be 0)  |  "
           f"starved {starved}  |  overflow skips {summary['overflow']['n_skipped']}")
     for row in summary["by_arm"]:
-        print(f"  {row['arm']:9s} n={row['n']:4d}  acc={row['accuracy']:.3f}  "
-              f"shared_opts={row['mean_shared_options']:.2f}  fill={row['mean_fill']:.3f}  "
-              f"parsed={row['parse_rate']:.3f}")
+        detail = (f"closed_tok={row['closed_tokens']:.1f}  comp_share={row['comp_share_alllayer']:.4f}"
+                  if args.close_arms else f"shared_opts={row['mean_shared_options']:.2f}")
+        print(f"  {row['arm']:20s} n={row['n']:4d}  acc={row['accuracy']:.3f}  {detail}  "
+              f"fill={row['mean_fill']:.3f}  parsed={row['parse_rate']:.3f}")
     print(f"\nSaved to {out_dir}/")
 
 

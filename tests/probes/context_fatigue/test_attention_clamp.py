@@ -356,6 +356,37 @@ def test_locate_turn_spans_anchors_repeats_forward_not_last():
     assert spans == [(0, 10), (11, 12), (16, 17)]
 
 
+def test_locate_phrase_spans_finds_every_occurrence_in_region():
+    from src.probes.context_fatigue.attention_clamp import locate_phrase_spans
+    #       0123456789012345678901234567890
+    text = "Flu or Cold? B. Flu again. Flu?"
+    spans = locate_phrase_spans(_CharTokenizer(), text, ["Flu", "Cold"], region=(0, 26))
+    # occurrences: Flu@0-3, Cold@7-11, Flu@16-19; the Flu@27 sits outside the region
+    assert spans == [(0, 3), (7, 11), (16, 19)]
+
+
+def test_locate_phrase_spans_merges_overlapping_phrases():
+    from src.probes.context_fatigue.attention_clamp import locate_phrase_spans
+    text = "Acute bronchitis is not bronchitis?"
+    spans = locate_phrase_spans(_CharTokenizer(), text, ["Acute bronchitis", "bronchitis"],
+                                region=(0, len(text)))
+    # "bronchitis" inside "Acute bronchitis" must merge, the free-standing one stays separate
+    assert spans == [(0, 16), (24, 34)]
+
+
+def test_locate_phrase_spans_empty_when_no_occurrences():
+    from src.probes.context_fatigue.attention_clamp import locate_phrase_spans
+    assert locate_phrase_spans(_CharTokenizer(), "no matches here", ["Flu"],
+                               region=(0, 15)) == []
+
+
+def test_locate_phrase_spans_excludes_occurrences_straddling_the_boundary():
+    from src.probes.context_fatigue.attention_clamp import locate_phrase_spans
+    text = "xxFluxx"
+    # region ends mid-occurrence: the occurrence is not inside the region and must not be closed
+    assert locate_phrase_spans(_CharTokenizer(), text, ["Flu"], region=(0, 4)) == []
+
+
 def test_locate_turn_spans_rejects_missing_content_by_turn():
     from src.probes.context_fatigue.attention_clamp import locate_turn_spans
     with pytest.raises(ValueError, match="turn 1"):
