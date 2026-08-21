@@ -99,6 +99,11 @@ def fit_lora(cfg, examples, out_dir, device, tokenizer) -> None:
     )
     model = get_peft_model(model, lora)
     model.print_trainable_parameters()
+    if cfg["train"].get("gradient_checkpointing"):
+        # frozen embeddings would otherwise give checkpointed blocks no grad path
+        model.enable_input_require_grads()
+        model.gradient_checkpointing_enable(
+            gradient_checkpointing_kwargs={"use_reentrant": False})
     model.train()
 
     loader = DataLoader(
@@ -142,6 +147,8 @@ def main() -> None:
                          "assumption; pair with --grad-accum to keep the effective batch)")
     ap.add_argument("--grad-accum", type=int, default=None,
                     help="override train.grad_accum")
+    ap.add_argument("--gradient-checkpointing", action="store_true",
+                    help="trade compute for activation memory (needed for 7B on 32 GB)")
     ap.add_argument("--adapter-dir", default=None,
                     help="override the output adapter directory")
     ap.add_argument("--device", default="cuda")
@@ -155,6 +162,8 @@ def main() -> None:
         cfg["train"]["micro_batch_size"] = args.micro_batch_size
     if args.grad_accum is not None:
         cfg["train"]["grad_accum"] = args.grad_accum
+    if args.gradient_checkpointing:
+        cfg["train"]["gradient_checkpointing"] = True
 
     out_dir = Path(
         args.adapter_dir if args.adapter_dir
