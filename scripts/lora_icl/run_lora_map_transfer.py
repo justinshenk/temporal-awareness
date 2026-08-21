@@ -301,7 +301,9 @@ def main():
             ids = icl_ids(c)
             capture.clear()
             with capture.capturing(), torch.no_grad():
-                base(ids, use_cache=False)
+                # decoder only: the LM head's full-sequence fp32 logits are ~5 GB at this
+                # context length and the capture never reads them
+                base.model(ids, use_cache=False)
             site = last_token_residual(capture.captured)
             icl_rows.append(np.stack([site[li] for li in capture.layers]).astype(np.float32))
             with torch.no_grad():
@@ -310,6 +312,7 @@ def main():
             text = tok.decode(gen[0, ids.shape[1]:], skip_special_tokens=True)
             m = re.search(r"[A-E]", text)
             correct += (m.group(0) if m else None) == c.gold_letter
+            torch.cuda.empty_cache()
         capture.remove()
         icl_states = np.stack(icl_rows)
         base_eval = np.load(out / "donor_eval_base.npy").astype(np.float64)

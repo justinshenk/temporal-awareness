@@ -82,8 +82,10 @@ def icl_messages(tokenizer, fillers, final_messages, max_ctx: int, fill_target: 
         trial = messages + chat_messages(fc.prompt_text) + [
             {"role": "assistant", "content": fc.gold_letter}
         ]
-        n = len(tokenizer.apply_chat_template(trial, add_generation_prompt=False, tokenize=True))
-        if n > budget:
+        ids = tokenizer.apply_chat_template(trial, add_generation_prompt=False, tokenize=True)
+        if not isinstance(ids, list):  # some tokenizers (Qwen) return a BatchEncoding, whose
+            ids = ids["input_ids"]     # len() counts keys and would defeat the budget entirely
+        if len(ids) > budget:
             break
         messages = trial
     return messages + list(final_messages)
