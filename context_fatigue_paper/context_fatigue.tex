@@ -100,13 +100,19 @@ questions:
         attention mass? We split dilution into its two components---the evidence becoming
         \emph{distant} and the context becoming \emph{confusable}---and test each causally.
   \item[\textbf{RQ3}] What erodes instruction-following under accumulation, if
-        (\S\ref{sec:accumulation}) adherence survives context fill?
+        (\S\ref{sec:accumulation}) adherence survives context fill? \citet{dongre2026attentioncloses}
+        recently showed that attention from responses to the system prompt closes over
+        accumulated filler and asked whether behavior survives that closure, finding the answer
+        architecture-indexed; our precedent arms take up their question with a graded instrument
+        on one architecture.
 \end{itemize}
 
 The answers: accumulation alone is free (RQ1); distance costs accuracy through attention mass
 while confusability costs accuracy at \emph{constant} mass (RQ2); and instructed output format is
 lost to a \emph{precedent contest} with demonstrated answer shapes, in which the instruction's
-attention mass is a causal weight but not the natural driver (RQ3).
+attention mass is a causal weight but not the natural driver---so whether behavior survives
+attention closure is decided by \emph{content}, by what the filler demonstrates, not by
+attention (RQ3).
 
 Our contributions are as follows:
 
@@ -211,7 +217,8 @@ space---so raw share declines say nothing by themselves. We therefore also repor
 in proportion to its size. The distinction does real work in \S\ref{sec:precedent}: raw system
 share falls ${\sim}10\times$ on the same curve in arms that erode and arms that do not, while
 enrichment separates nothing---and metrics that aggregate raw attention-to-goal share across a
-growing context build this arithmetic decline in by construction.
+growing context, such as the goal-accessibility ratio of \citet{dongre2026attentioncloses},
+build this arithmetic decline in by construction.
 
 \subsection{The span-attention clamp}
 \label{sec:clamp}
@@ -221,7 +228,9 @@ post-softmax share: a constant bias $b$ added to the span's key columns in the a
 mask scales the span's odds by exactly $e^{b}$, and softmax renormalizes. Nothing in the
 attention forward is reimplemented, so a scale of $1.0$ ($b{=}0$) is bit-identical to the
 unhooked model; a bisection on $b$ hits any target share at the reference layer to
-${\sim}10^{-4}$; and scale $0$ closes the span outright (the same operation as a causal mask).
+${\sim}10^{-4}$; and scale $0$ closes the span outright---the hard-masking intervention of
+\citet{dongre2026attentioncloses}, recovered as the clamp's endpoint, so their ablation and our
+graded doses live on one dial.
 The clamp is graded and bidirectional---it can remove a span's mass or restore it---which is what
 lets us test mediation in both directions rather than only ablate. It is uniform across heads
 and, unless stated, applied at every layer; per-head structure is measured separately
@@ -450,7 +459,9 @@ between two and four turns, at $-2.6$ nats, well clear of the near-ablation regi
 \S\ref{sec:displacement}---in a context containing no assistant turn collapses compliance from
 $0.99$ to $0.03$ (a suffix canary flips on $120$ of $120$ items) while accuracy moves
 $0.525\to0.467$ ($[-0.017,+0.133]$) at parse rate $0.967$: compliance is destroyed and
-competence is not. But one \emph{compliant} example in context pins compliance at ceiling at
+competence is not. This confirms \citet{dongre2026attentioncloses}'s ablation finding that
+system-prompt attention is causally necessary---and sharpens it: the collapse needs no masking,
+only a graded clamp to a share accumulation reaches by itself. But one \emph{compliant} example in context pins compliance at ceiling at
 every clamp level, and one bare-letter example pins it at floor even unclamped---replies
 byte-copy the previous assistant turn's format, with zero length variance across $720$
 generations per arm (Appendix~\ref{app:precedent-detail}). The instruction governs behaviour
@@ -488,6 +499,9 @@ model still solves the case---it answers in the demonstrated style. The system p
 does not carry the difference: its raw share falls on the same arithmetic curve in every arm, its
 per-token enrichment is flat-to-rising in all three (Fig.~\ref{fig:erosion}b), and \texttt{code}
 holds full compliance at half the raw share at which \texttt{mmlu} has already fully collapsed.
+This answers the survival question of \citet{dongre2026attentioncloses} on an axis their
+fixed-filler design cannot see: the same model at the same near-zero share survives or
+collapses depending on what the filler demonstrates.
 
 \paragraph{Reversal is total, by either lever.}
 At depth $42$ (natural compliance $0.000$, accuracy $0.675$), clamping the system span back to
