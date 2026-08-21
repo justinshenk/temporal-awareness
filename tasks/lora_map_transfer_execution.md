@@ -56,3 +56,13 @@ cos(mapped donor shift, recipient's own shift) = −0.19..+0.18 → the map conn
 function. Fifth driver phase `recipient-selfsteer` added mid-run to attribute the null. Next
 rungs if resumed: subspace (top-k) transfer, cross-layer pairing search, Procrustes maps,
 Qwen→Gemma at matched width.
+
+## E-A2 OUTCOME (2026-08-21): routes are behaviorally interchangeable, partially aligned
+
+ICL-derived mean shift steers clean prompts to 0.680/0.640 (L18/L21, norm-matched) vs the
+LoRA vector's 0.730/0.730; cos(icl, lora) = +0.07/+0.12/+0.32/+0.66 at L7/14/18/21 (depth
+convergence, same shape as E6's shared mode axis). ICL ceiling 0.760. Report:
+results/lora_icl/2026-08-21-icl-vs-lora-route.md. Fixed en route: icl_messages token budget
+inert on Qwen (BatchEncoding len; regression-tested) — audit any old Qwen ICL artifacts before
+quoting. Remaining rungs: E-A3 dose curve (nested 25/75/225/600), cross-model boundary already
+written up.
