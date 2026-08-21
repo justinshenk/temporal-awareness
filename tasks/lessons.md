@@ -276,3 +276,19 @@ no work — full cores are not progress.
 if needed). Reserve multi-thread BLAS for few large decompositions. Also: run long analyses
 unbuffered (`python -u`) with output tee'd to a file, so progress is observable and a kill
 doesn't destroy the evidence of where it was.
+
+## A null on one span's mass does not license "not attention-mediated"
+
+**Correction (2026-08-21, E3c — user-caught).** E3 measured the *evidence's* attention share
+unchanged under competition and the paper concluded competition "does not act through attention
+mass." The user pointed out the untested route: the filler's arm-constant mass lands on
+instances of the probe's own answer candidates in near_dup. Closing those spans recovered 59%
+of the penalty with a clean size-matched control — competition is attention-mediated,
+competitor-side, and the title claim built on the null was wrong.
+
+**Rule.** A mediation null is a claim about one span, not about attention. Before writing "not
+attention-mediated," enumerate the spans whose reading could carry the effect and close the
+treatment-loaded ones with a size-matched control. The aggregate that stays constant is exactly
+the one that can hide a redistribution of *what* is being read. Corollary: the closure clamp is
+cheap — when a mechanism claim rests on a negative, run the closure before the claim ships,
+not after a reader finds the hole.
