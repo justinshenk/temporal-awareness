@@ -161,6 +161,15 @@ Wei, Tay, et al., arXiv:2303.03846 (2023). Large models follow flipped-label exe
 semantic priors. DIFF: exemplars overriding a **trained prior**; ours override an **explicit
 in-context instruction**, and the exemplars are self-generated — the effect feeds itself.
 
+**anil2024manyshot** — *Many-shot Jailbreaking.* Anil, Durmus, Panickssery, et al.,
+NeurIPS 2024.
+Hundreds of in-context demonstrations of harmful compliance override safety training; attack
+effectiveness follows a power law in shot count.
+DIFF: adversarial demonstrations overriding *weight-level* safety training at hundreds of
+shots; ours are benign, self-generated demonstrations overriding an *in-context* instruction
+within three turns, with the contest's causal weight (instruction-span attention) identified
+and two full restorations demonstrated.
+
 **hong2025sycophancymultiturn** — *Measuring Sycophancy of Language Models in Multi-turn
 Dialogues.* Hong, Byun, Kim, et al., Findings of EMNLP 2025, arXiv:2505.23840. Stance-flipping
 under sustained user pressure. DIFF: conformity to the user's pressure vs our conformity to the

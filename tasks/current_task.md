@@ -362,10 +362,16 @@ Driver `run_format_erosion.py`, all arms n=40/depth, --max-new 256, OLMo-2-7B-In
   SPECIFIC install, replies reproduce the demonstrated registers verbatim in a zero-filler
   context; collateral acc cost 0.175 vs 0.375 (meandiff carries deep-context junk). α3 overdose.
   decode_time mode added to AdditionSteeringHook (tested; 61 safety tests green).
-- Report E6_FORMAT_EROSION.md complete through steering. Owed still: numbers.md rows, paper
-  Precedent section (three-mechanism restructure agreed), E1d paper paragraph edit, Anil et al.
-  many-shot-jailbreaking citation into related_work_citations.md, lessons.md entries (dose-
-  matched controls; single-thread BLAS for many tiny fits).
+- Report E6_FORMAT_EROSION.md complete through steering. Owed items CLOSED 2026-08-21: paper
+  restructured to three mechanisms (new \subsection{Precedent} folding E5+E6; title, abstract,
+  intro, contributions, background instructions-vs-demonstrations paragraph, conclusion,
+  limitations all updated), E1d "Mass restoration" paragraph now quotes the all-layer numbers
+  (0.28 [0.07, 0.61] recovered, share-matched all-layer), numbers.md gained a §3.4 precedent
+  section (E5+E6 rows) and the E1d all-layer rows, Anil et al. many-shot-jailbreaking entered
+  related_work_citations.md and the bibliography. lessons.md entries committed in 704aaac.
+  NOTE: no LaTeX toolchain on this box - the tex passed static checks (env/brace balance, all
+  17 cites defined and used, refs resolve) but has NOT been recompiled; rebuild before
+  submission. \workshoptitle is still the placeholder (user's call).
 - **Round 4 erase (probe's own direction, 2026-08-20 late) — NULL in both contexts, maximally
   clean.** probe2_direction_L21.npy (LDA backprojected; export via analyze_format_probes.py
   --export-direction). mmlu d42 transfer: 0.000/0.684 identical to natural and rand, zero

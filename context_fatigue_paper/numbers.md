@@ -45,8 +45,10 @@ The unpaired intervals previously reported are retained in that JSON for audit.
 | E1c sufficiency | +0.2021 [+0.1379, +0.2672], paired n=174 | `e1c_evidence_clamp/` |
 | E1c lands on `back_20` | −0.0249 [−0.0833, +0.0345] | same |
 | **114%** of the displacement penalty | 0.2021 / 0.1772 | same |
-| E1d necessity (partial) | +0.0546 [+0.0172, +0.0977] | `e1d_evidence_rescue/` |
-| E1d residual | +0.1226 [+0.0536, +0.1925] | same |
+| E1d necessity (partial, all-layer share-matched) | +0.047 [+0.010, +0.083] | `e1d_alllayer/`, `E1_MECHANISM.md` addendum |
+| E1d penalty (same paired panel) | +0.167 [+0.099, +0.240] | same |
+| E1d recovered fraction | 0.28 [0.07, 0.61] | same |
+| (superseded: L24-indexed rescue +0.0546 [+0.0172, +0.0977], residual +0.1226 [+0.0536, +0.1925] — `e1d_evidence_rescue/`; not in the tex) | | |
 | E1f endpoint | +0.1985 [+0.1145, +0.2824], n=131 balanced | `e1f_share_knee/` |
 | E1f largest adjacent step | +0.053 (natural → 0.036) | same |
 | E1f slope | 6.29 accuracy per unit share, R²=0.966 | derived from same |
@@ -104,7 +106,36 @@ the paper** — no number from it enters the tex, so it has no rows here. It was
 evidence in `E2B_DIP_RESCUE.md` and `NULL_STATISTICS.md` §2, which remain the record. Do not
 reintroduce it.
 
-## §3.4 — signatures (unchanged from the previous version)
+## §3.4 — precedent (E5 + E6)
+
+E5: `e5_neutral/`, `e5_system_clamp/`, `e5_profile`, report `E5_SYSTEM_CLAMP.md`. Share pooled
+over all 32 layers. E6: `e6_{code,gsm8k,mmlu}/` (+ `_spans/` re-runs, exact replication,
+max |Δ| = 0.000), `e6_mmlu_recovery/`, `e6_exemplar_close/`, `e6_format_probes/`,
+`e6_mode_steering{,_r2,_r3}/`, `e6_probe_dir_erase_{mmlu,gsm8k}/`, report `E6_FORMAT_EROSION.md`.
+
+| claim | value | artifact / report |
+|---|---|---|
+| natural system share, 0 → 8 prior cases | 0.1661 → 0.0210 (8×) | `e5_profile` |
+| neutral-context clamp | share 0.1652 → 0.0500 (−2.57 nats) | `e5_neutral/` |
+| compliance collapse | prefix canary 0.992 → 0.025 (+0.967 [+0.933, +0.992]); suffix 1.000 → 0.000, 120/120 flips | same |
+| accuracy under clamp | 0.525 → 0.467, +0.058 [−0.017, +0.133]; parse 0.967 | same |
+| demonstrated / undemonstrated arms | 3.00/3 vs 1.00/3 canaries at every clamp level; reply length 8 vs 1 chars, zero variance, 720/arm | `e5_system_clamp/` |
+| compliance ladders | code 0.875 → 1.000 (interpret to depth 12, fill 0.778); gsm8k ≥0.825 to depth 12, 0.600 at depth 15 (fill 0.480); mmlu 0.875 → 0.000 at depth 3 (fill 0.147) | `e6_{code,gsm8k,mmlu}/` |
+| matched fill ≈ 0.5 ordering | code 1.00 / gsm8k 0.60 / mmlu 0.00 | same |
+| mmlu accuracy through the collapse | 0.425 at depth 0; 0.500–0.684 at depths 3–42 | `e6_mmlu/` |
+| system enrichment (flat-to-rising) | code 1.51 → 3.07; gsm8k 1.51 → 2.04; mmlu 1.50 → 2.14 → 1.47 | same |
+| code compliant at half mmlu's collapsed share | code full compliance at raw share 0.061; mmlu collapsed by 0.11 | `E6_FORMAT_EROSION.md` |
+| answer−question enrichment gap | mmlu +1.28 [+1.22, +1.34] → +0.65; gsm8k +0.34 [+0.33, +0.36] → ~+0.10; code −0.08 to −0.17 (CIs exclude 0) | `e6_*_spans/` |
+| exemplar closure restores nothing | fa_close 0.000 / fa_matched 0.000 / fq_close 0.132 / rand1_close 0.000 compliant | `e6_exemplar_close/` |
+| probe 1: instruction presence | transfer AUC 1.000 at every depth 0–42, perm p = 0.000; layer-mean 0.985 → 0.791 | `e6_format_probes/` |
+| probe 2: upcoming compliance | LOO-AUC 0.822 at stack L21 (null 0.485, p = 0.000), n = 80 | same |
+| shared-axis cosine (mmlu, gsm8k mean-diffs) | median +0.746 (+0.747 at L21) | same |
+| decode-time install | real 0.000 vs matched-norm random 0.525 compliant (natural 0.875); acc 0.175 vs 0.375 | `e6_mode_steering_r3/` |
+| erase attempts | 4 strategies (1-layer, 11-layer, probe direction ×2 contexts) all null with clean controls | `e6_mode_steering*/`, `e6_probe_dir_erase_*/` |
+| L21 linear code rank | AUC 0.822 → 0.619 → 0.505 under iterative projection (rank ≈ 2) | CPU re-probe on `e6_format_probes/` captures |
+| recovery at depth 42 | natural 0.000/0.675 · upclamp 1.000/0.425 · refresh 1.000/0.500 · both 1.000/0.275 (compliance/accuracy) | `e6_mmlu_recovery/` |
+
+## §3.5 — signatures (unchanged from the previous version)
 
 | claim | value | artifact / report |
 |---|---|---|
