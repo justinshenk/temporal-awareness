@@ -85,6 +85,32 @@ models here** installed a format mode **within** a model in Paper B's E6 (0.000 
 against matched control). Direction-based behavior transmission is real; its currency is
 model-internal.
 
+## Addendum: where the adapter's remaining 25% lives (and where it does not)
+
+Three probes bound the input-conditional component (donor, `donor_multilayer_evals.json` +
+per-case geometry off the saved eval states):
+
+1. **The answer-site shift is essentially constant.** Per-case shifts align with their mean at
+   cos = 0.988 (L18) / 0.997 (L14): the adapter writes what is, to first order, one vector at
+   the prediction site. And the geometry does not predict the constant vector's failures —
+   solved vs missed cases differ by 0.001 in cosine.
+2. **The base already computed the answer.** The unadapted model is a constant-"B" guesser, yet
+   the steered prediction histogram tracks the gold letter distribution almost exactly — the
+   vector unlocks a readout of case information the base had all along. The task is ~70% a
+   *mode switch*.
+3. **Constants are exhausted at one layer.** Stacking the per-layer mean shifts degrades
+   monotonically: single L18 0.730, {14,18,21} 0.670, {10..24} 0.410 (parse 1.00 throughout) —
+   the layer-shifts share a direction, so stacking is overdose, not information. The remaining
+   gap to the 0.970 ceiling is therefore not reachable by any constant-injection scheme tried:
+   it is the adapter's input-conditional computation (LoRA's (x·v)u gating and modified
+   processing of the case tokens), concentrated in the 25 ceiling-only cases whose shifts are
+   geometrically unremarkable — i.e., the hard items where fixing the *features*, not the
+   readout, is what the adapter contributes.
+
+The recovered fraction of a self-steer against the adapter ceiling is thus a one-number
+**conditionality index** for a task-model pair: DDXPlus ≈ 0.7 (mostly mode), Paper B's E6
+format ≈ 1.0 (pure mode), GSM8K-on-base ≈ 0 predicted (pure computation).
+
 ## Caveats and next rungs
 
 - Mean shift is a rank-1 summary of a rank-16 adapter; subspace transfer (top-k principal
