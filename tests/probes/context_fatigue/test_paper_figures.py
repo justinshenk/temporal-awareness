@@ -81,7 +81,8 @@ def test_make_figures_writes_pdfs(tmp_path):
     paths = pf.make_figures(tmp_path)
     assert set(paths) == {"distance_ladder", "mass_dose", "competition",
                           "dose_response", "random_context", "attention_rot",
-                          "wildchat_homogeneity"}
+                          "wildchat_homogeneity", "format_erosion",
+                          "format_enrichment", "format_recovery"}
     for p in paths.values():
         assert p.exists() and p.suffix == ".pdf" and p.stat().st_size > 0
 
@@ -145,3 +146,35 @@ def test_competition_result_is_not_a_context_length_artifact():
     assert df.loc["near_dup", "accuracy"] == df["accuracy"].min()
     # ...and the *longest* arm is not the most accurate, so length does not order the arms at all
     assert df["fill"].idxmax() != df["accuracy"].idxmax()
+
+
+def test_format_erosion_ladders_match_reports():
+    """E6 ladders: erosion orders by applicability, and accuracy is the corrected grade."""
+    mm = pf.load_format_erosion("mmlu").set_index("depth")
+    # total, immediate collapse (E6_FORMAT_EROSION.md)
+    assert mm.loc[0, "compliance"] == pytest.approx(0.875)
+    assert mm.loc[3, "compliance"] == 0.0
+    assert (mm.loc[3:, "compliance"] <= 0.025).all()
+    # the corrected accuracy, not the CSV's stale pre-fix grade (0.075/0.275)
+    assert mm.loc[3, "accuracy"] == pytest.approx(0.500, abs=1e-3)
+    assert mm.loc[7, "accuracy"] == pytest.approx(0.525, abs=1e-3)
+    code = pf.load_format_erosion("code").set_index("depth")
+    assert (code["compliance"] >= 0.875).all()
+    assert code.loc[15, "n"] == 8  # overflow-starved cell, annotated in the figure
+    gsm = pf.load_format_erosion("gsm8k").set_index("depth")
+    assert gsm.loc[15, "compliance"] == pytest.approx(0.600)
+    # enrichment never falls with erosion: every arm ends at or above its cold-start value
+    for arm in pf.EROSION_ARMS:
+        df = pf.load_format_erosion(arm)
+        assert df["enrichment"].iloc[-1] >= df["enrichment"].iloc[0] - 0.05
+
+
+def test_format_recovery_matches_report():
+    df = pf.load_format_recovery().set_index("arm")
+    assert list(df.index) == pf.RECOVERY_ORDER
+    assert df.loc["natural", "compliance"] == 0.0
+    assert df.loc["natural", "accuracy"] == pytest.approx(0.675)
+    assert (df.loc[["upclamp", "refresh", "both"], "compliance"] == 1.0).all()
+    assert df.loc["upclamp", "accuracy"] == pytest.approx(0.425)
+    assert df.loc["refresh", "accuracy"] == pytest.approx(0.500)
+    assert df.loc["both", "accuracy"] == pytest.approx(0.275)

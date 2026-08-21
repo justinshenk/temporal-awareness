@@ -11,16 +11,24 @@ seed 42, bootstrap 10,000 draws resampling **cases**.
 
 | # | figure | builder | source artifact(s) |
 |---|---|---|---|
-| 1a | distance ladder, accuracy + evidence share | `fig_distance_ladder` | `e1_distance_sweep/turns.csv`, `e1_with_attention/turns.csv` |
-| 1b | share→accuracy dose-response | `fig_mass_dose` | `e1f_share_knee/turns.csv` (balanced panel), `e1c_evidence_clamp/` for the diamond |
-| 1c | competition arms | `fig_competition` | `e3_competition/turns.csv` |
-| 2a | attention reallocation vs fill | `fig_attention` | `olmo_attention/` (see `CONTEXT_ROT_ATTENTION.md`) |
-| 2b | WildChat homogeneity | `fig_wildchat` | `wildchat_homogeneity/WILDCHAT_HOMOGENEITY.md` (documented constants) |
-| 2c | calibration gap | pre-existing `calibration_gap.pdf` | pooled DDXPlus MCQ streams, n=154 |
+| 1 | framework diagram (four knobs) | TikZ inline in the tex | none (schematic) |
+| 2a | distance ladder, accuracy + evidence share | `fig_distance_ladder` | `e1_distance_sweep/turns.csv`, `e1_with_attention/turns.csv` |
+| 2b | share→accuracy dose-response | `fig_mass_dose` | `e1f_share_knee/turns.csv` (balanced panel), `e1c_evidence_clamp/` for the diamond |
+| 2c | competition arms | `fig_competition` | `e3_competition/turns.csv` |
+| 3a | E6 compliance ladders + mmlu accuracy | `fig_format_erosion` | `e6_{code,gsm8k,mmlu}/turns.csv`; accuracy re-graded from stored replies per `E6_FORMAT_EROSION.md` (lead-line fix; depths 3/7 = 0.500/0.525) |
+| 3b | E6 system enrichment by fill | `fig_format_enrichment` | same ladders |
+| 3c | E6 recovery arms at depth 42 | `fig_format_recovery` | `e6_mmlu_recovery/turns.csv` (natural = same run's depth-42 NaN-arm rows) |
+| 4a | attention reallocation vs fill | `fig_attention` | `olmo_attention/` (see `CONTEXT_ROT_ATTENTION.md`) |
+| 4b | WildChat homogeneity | `fig_wildchat` | `wildchat_homogeneity/WILDCHAT_HOMOGENEITY.md` (documented constants) |
+| 4c | calibration gap | pre-existing `calibration_gap.pdf` | pooled DDXPlus MCQ streams, n=154 |
+| A5a | post-training dose-response | `fig_dose_response` | `olmo_gradient/gradient.json` |
+| A5b | accuracy by fill, random vs coherent | `fig_random_context` | `random_context/accuracy_by_fill.csv` |
 
-Regenerate: `uv run python scripts/context_fatigue/make_paper_figures.py`.
+Regenerate: `uv run python scripts/context_fatigue/make_paper_figures.py`. Section numbers
+refer to the 2026-08-21 reconstruction (methodology/experimental-design/results-by-finding, with
+detailed analyses in Appendices A–H).
 
-## §3.2 — the distance sweep
+## §4.2 — displacement: the distance sweep
 
 | claim | value | artifact / report |
 |---|---|---|
@@ -32,7 +40,7 @@ Regenerate: `uv run python scripts/context_fatigue/make_paper_figures.py`.
 | `local` flat with fill | β = −0.294 [−0.767, +0.184] | same |
 | parsed-only ladder | 0.524 / 0.413 / 0.397 / 0.343 / 0.338 | same |
 
-## §3.2 — mass mediation (same subsection, the four interventions)
+## §4.2 — mass mediation (same subsection, the four interventions; tokens-vs-turns and the query floor now in Appendix F)
 
 **All contrasts PAIRED** (`paired_accuracy_gap`), recomputed 2026-08-19 into
 `results/context_fatigue/dilution_paired.json` by `scripts/context_fatigue/analyze_dilution_paired.py`.
@@ -57,7 +65,7 @@ The unpaired intervals previously reported are retained in that JSON for audit.
 | E2a natural share / accuracy | 0.258 / 0.545, n=110/level | `e2a_mass_clamp/`, `E2A_MASS_CLAMP.md` |
 | E2a cost at 0.15 | +0.164 [+0.036, +0.291] | same |
 
-## §3.3 — competition
+## §4.3 — competition
 
 | claim | value | artifact / report |
 |---|---|---|
@@ -73,7 +81,7 @@ The unpaired intervals previously reported are retained in that JSON for audit.
 | **evidence share unchanged** | −0.00027 [−0.00088, +0.00035] | `e3_attention/` |
 | mass-predicted share of the effect | 2.0% (6.5% at CI bound); 50× share change needed | derived from E1f slope |
 
-## §3.3 — per-layer and per-head structure
+## Appendix E — per-layer and per-head structure
 
 All 32 layers x 32 heads = 1,024 heads. An earlier pass measured layer 24 only; every head-identity
 conclusion from it was wrong and is superseded here.
@@ -106,7 +114,7 @@ the paper** — no number from it enters the tex, so it has no rows here. It was
 evidence in `E2B_DIP_RESCUE.md` and `NULL_STATISTICS.md` §2, which remain the record. Do not
 reintroduce it.
 
-## §3.4 — precedent (E5 + E6)
+## §4.4–4.5 + Appendix G — precedent (E5 + E6)
 
 E5: `e5_neutral/`, `e5_system_clamp/`, `e5_profile`, report `E5_SYSTEM_CLAMP.md`. Share pooled
 over all 32 layers. E6: `e6_{code,gsm8k,mmlu}/` (+ `_spans/` re-runs, exact replication,
@@ -135,7 +143,7 @@ max |Δ| = 0.000), `e6_mmlu_recovery/`, `e6_exemplar_close/`, `e6_format_probes/
 | L21 linear code rank | AUC 0.822 → 0.619 → 0.505 under iterative projection (rank ≈ 2) | CPU re-probe on `e6_format_probes/` captures |
 | recovery at depth 42 | natural 0.000/0.675 · upclamp 1.000/0.425 · refresh 1.000/0.500 · both 1.000/0.275 (compliance/accuracy) | `e6_mmlu_recovery/` |
 
-## §3.5 — signatures (unchanged from the previous version)
+## §4.6 + Appendix H — signatures (unchanged from the previous version)
 
 | claim | value | artifact / report |
 |---|---|---|

@@ -28,6 +28,7 @@ import numpy as np
 import pandas as pd
 
 from src.common.bootstrap_stats import bootstrap_interval
+from src.probes.context_fatigue.instruction_checks import check_clinical_format
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 RESULTS = REPO_ROOT / "results"
@@ -39,6 +40,16 @@ FILL_LABELS = ["0-25%", "25-50%", "50-75%", "75-100%"]
 # Post-training stages in dose order.
 DOSE_ORDER = ["base", "sft", "dpo", "instruct"]
 DOSE_LABELS = {"base": "base", "sft": "+SFT", "dpo": "+DPO", "instruct": "+Instruct\n(RLVR)"}
+
+# E6 format-erosion filler arms, ordered by the applicability of their demonstrated answer shape.
+EROSION_ARMS = ["code", "gsm8k", "mmlu"]
+EROSION_LABELS = {
+    "code": "code (inapplicable shape)",
+    "gsm8k": "gsm8k (loosely applicable)",
+    "mmlu": "mmlu (drop-in shape)",
+}
+EROSION_COLORS = {"code": "#55a868", "gsm8k": "#dd8452", "mmlu": "#c44e52"}
+RECOVERY_ORDER = ["natural", "upclamp", "refresh", "both"]
 
 # Reported summaries from results/context_fatigue/wildchat_*/ (see module docstring).
 WILDCHAT_SUMMARY = {
@@ -182,6 +193,104 @@ def load_share_dose() -> pd.DataFrame:
 def load_competition() -> pd.DataFrame:
     """E3: accuracy by context confusability at fixed distance and fill."""
     return _arm_accuracy(CF / "e3_competition" / "turns.csv", COMPETITION_ORDER)
+
+
+def _corrected_accuracy(df: pd.DataFrame) -> pd.Series:
+    """Per-row accuracy with the lead-line grader fix applied to stored replies.
+
+    The committed E6 CSVs predate the fix for bare-letter-line replies ("B\\n<prose>"), which
+    the original grader scored unparsed *and* wrong -- fabricating an accuracy collapse exactly
+    where compliance collapses. Rows the original grader parsed keep their options-aware grade
+    (its bug was only ever a failure to parse, never a mis-parse); rows it failed on are
+    re-graded with the current checker. Reproduces the corrected report numbers
+    (mmlu depths 3/7: 0.500/0.525, E6_FORMAT_EROSION.md).
+    """
+    regraded = [check_clinical_format(str(r) if pd.notna(r) else "", "")["answer"]
+                for r in df["response"]]
+    return pd.Series(
+        [bool(oc) if op else (rg == g)
+         for oc, op, rg, g in zip(df["correct"], df["parsed"], regraded, df["gold"])],
+        index=df.index,
+    )
+
+
+def load_format_erosion(arm: str) -> pd.DataFrame:
+    """E6: per-depth compliance, corrected accuracy, and system enrichment for one filler arm."""
+    df = pd.read_csv(CF / f"e6_{arm}" / "turns.csv")
+    df["corrected"] = _corrected_accuracy(df)
+    return (df.groupby("depth")
+              .agg(fill=("fill", "mean"), compliance=("fully_compliant", "mean"),
+                   accuracy=("corrected", "mean"), enrichment=("system_enrichment", "mean"),
+                   n=("fill", "size"))
+              .reset_index())
+
+
+def load_format_recovery() -> pd.DataFrame:
+    """E6 recovery arms at depth 42, with the same run's natural cell as the baseline."""
+    df = pd.read_csv(CF / "e6_mmlu_recovery" / "turns.csv")
+    df = df[df["depth"] == 42].copy()
+    df["arm"] = df["recovery_arm"].fillna("natural")
+    out = (df.groupby("arm")
+             .agg(compliance=("fully_compliant", "mean"), accuracy=("correct", "mean"),
+                  share=("system_share", "mean"), n=("fill", "size"))
+             .reindex(RECOVERY_ORDER).reset_index())
+    return out
+
+
+def fig_format_erosion(ax: plt.Axes) -> None:
+    """E6: compliance by fill per filler arm, with mmlu accuracy unharmed through its collapse."""
+    for arm in EROSION_ARMS:
+        df = load_format_erosion(arm)
+        ax.plot(df["fill"], df["compliance"], marker="o", color=EROSION_COLORS[arm],
+                label=EROSION_LABELS[arm])
+        thin = df[df["n"] < 20]
+        if not thin.empty:
+            ax.annotate(f"n={int(thin['n'].iloc[0])}", (thin["fill"].iloc[0],
+                        thin["compliance"].iloc[0] - 0.04), ha="center", va="top",
+                        fontsize=7, color="#555555")
+    mm = load_format_erosion("mmlu")
+    ax.plot(mm["fill"], mm["accuracy"], marker="D", markersize=4, color="#000000",
+            linestyle="--", linewidth=1, label="accuracy (mmlu)")
+    ax.set_xlabel("context fill")
+    ax.set_ylabel("format compliance / accuracy")
+    ax.set_ylim(-0.05, 1.1)
+    ax.set_title("(a) An applicable shape erodes the format;\naccuracy never pays", fontsize=9.5)
+    ax.legend(fontsize=7, frameon=False, loc="lower center", bbox_to_anchor=(0.62, 0.12))
+
+
+def fig_format_enrichment(ax: plt.Axes) -> None:
+    """E6: the system prompt's per-token attention is flat-to-rising in every arm."""
+    for arm in EROSION_ARMS:
+        df = load_format_erosion(arm)
+        ax.plot(df["fill"], df["enrichment"], marker="o", color=EROSION_COLORS[arm],
+                label=EROSION_LABELS[arm])
+    ax.axhline(1.0, color="#555555", linestyle=":", linewidth=1)
+    ax.text(0.02, 1.0, "token-share parity", transform=ax.get_yaxis_transform(), fontsize=7,
+            va="bottom", color="#555555")
+    ax.set_xlabel("context fill")
+    ax.set_ylabel("system-prompt enrichment\n(share / token fraction)")
+    ax.set_ylim(0, 3.4)
+    ax.set_title("(b) The instruction's per-token attention\nnever falls", fontsize=9.5)
+    ax.legend(fontsize=7, frameon=False, loc="upper left")
+
+
+def fig_format_recovery(ax: plt.Axes) -> None:
+    """E6: at depth 42, re-weighting and re-presenting each fully restore compliance."""
+    df = load_format_recovery()
+    x = np.arange(len(df))
+    colors = ["#8fb8de", "#4c72b0", "#55a868", "#dd8452"]
+    ax.bar(x, df["compliance"], 0.6, color=colors, label="compliance")
+    ax.plot(x, df["accuracy"], marker="D", color="#000000", linestyle="none",
+            label="accuracy")
+    for i, r in df.iterrows():
+        ax.annotate(f"{r['accuracy']:.2f}", (i, r["accuracy"] + 0.045), ha="center",
+                    fontsize=7.5, color="#333333")
+    ax.set_xticks(x)
+    ax.set_xticklabels(df["arm"], fontsize=8)
+    ax.set_ylabel("format compliance / accuracy")
+    ax.set_ylim(0, 1.18)
+    ax.set_title("(c) Either lever restores compliance;\nre-weighting pays in accuracy", fontsize=9.5)
+    ax.legend(fontsize=7.5, frameon=False, loc="upper left")
 
 
 def fig_dose_response(ax: plt.Axes) -> None:
@@ -347,6 +456,9 @@ def make_figures(outdir: str | Path) -> dict[str, Path]:
         "random_context": fig_random_context,
         "attention_rot": fig_attention,
         "wildchat_homogeneity": fig_wildchat,
+        "format_erosion": fig_format_erosion,
+        "format_enrichment": fig_format_enrichment,
+        "format_recovery": fig_format_recovery,
     }
     paths: dict[str, Path] = {}
     for name, builder in builders.items():
