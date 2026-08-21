@@ -232,3 +232,47 @@ anyone at that scale.
 **Where this already bit:** "competition heads move 9.6× the net change" is 0.0026 against 0.0003,
 both small next to a 0.041 evidence share; "50× larger share change needed" is the same
 arithmetic. State the shares, then the ratio.
+
+## Graders fail on real outputs, not imagined ones — sample generations before trusting any metric
+
+**Correction (2026-08-20, E6 mmlu arm).** Fourth grader bug of one experiment, all the same
+shape: a checker written against an imagined output format scored a real, common reply shape as a
+violation. Run 1: `ANSWER: Epiglottitis` scored as no-answer and wrong. Run 2: bulleted
+SUPPORTING lists scored as zero symptoms; 128-token truncation cut the component under test.
+Today: `"B\n<prose>"` — a correct answer in the exact style the filler demonstrates — fell
+through every fallback and was scored unparsed *and* wrong, fabricating a below-chance accuracy
+collapse (0.075) at exactly the depth where the finding lived. The corrected number is 0.500.
+
+**Rule.** Before reading any per-condition metric, pull 3-5 raw generations *from the condition
+where the effect appears* and hand-check them against the grader. A metric that moves exactly
+where the hypothesis predicts is the one most likely to be a grader artifact, because the
+treatment changes the output format, and the grader was written before seeing treated outputs.
+When a run's metric collapses, the first suspect is the parser, not the model — especially when
+parse rate moves with the metric (parse 0.35 at the "collapsed" depth was the tell).
+
+## A control must match the arm it controls for — dose by dose
+
+**Correction (2026-08-20, mode-vector steering).** Round 2 ran the real vector at α=1 and α=3
+but the random control only at α=3, where any vector that large breaks generation outright. The
+α=1 result — the interesting one — was left uncontrolled, and a third run existed only to add
+the missing arm. Round 1 had the complementary failure: the intervention itself was so strong
+that real and random were indistinguishable, which is a statement about the instrument, not the
+hypothesis.
+
+**Rule.** Every treatment arm gets a control matched on every nuisance parameter — norm, dose,
+application schedule, layer — at that arm's own setting. If controls are expensive, drop a
+treatment dose rather than sharing one control across doses. And when real and random produce
+the same large effect, the finding is "instrument too blunt", never "effect confirmed".
+
+## Thousands of tiny fits want one thread
+
+**Correction (2026-08-20, probe analysis).** Default multi-thread BLAS on ~20k small
+scaler→PCA→LDA fits burned 929 CPU-minutes without finishing; the same job single-threaded
+(`OMP_NUM_THREADS=1` etc.) completed in ~15 wall-minutes. Thread spin-up and synchronization
+dominate when each matrix op is milliseconds; CPU% looks impressively busy while doing almost
+no work — full cores are not progress.
+
+**Rule.** For many small fits, set the BLAS thread env vars to 1 (and parallelize across fits
+if needed). Reserve multi-thread BLAS for few large decompositions. Also: run long analyses
+unbuffered (`python -u`) with output tee'd to a file, so progress is observable and a kill
+doesn't destroy the evidence of where it was.

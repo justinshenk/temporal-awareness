@@ -185,9 +185,12 @@ def check_clinical_format(response: str, vignette: str, min_symptoms: int = 2,
     grounded = [s for s in symptoms if s.lower() in low_vignette]
     answer = answer_match
     if answer is None:
-        bare = re.fullmatch(r"\s*([A-Ea-e])\s*", text)
-        if bare:
-            answer = bare.group(1).upper()
+        # A bare letter alone on the first line — the whole reply, or followed by prose. The
+        # latter is the shape MCQ-contaminated replies take, and the letter is unambiguously
+        # the answer even though nothing about it follows the format.
+        lead = re.match(r"\s*([A-Ea-e])[.)]?\s*(?:\n|$)", text)
+        if lead:
+            answer = lead.group(1).upper()
         else:
             # A letter offered in prose ("**D) Pneumonia**") is scoreable for accuracy even though
             # it does not follow the format; the two are recorded separately on purpose.

@@ -284,3 +284,100 @@ Per brief §6 — each experiment states what confirms *and what falsifies* it; 
 is a result and gets reported. Per brief §9 — one standalone report per experiment under
 `results/context_fatigue/`, quoting artifact filenames, n per cell, overflow-guard skip counts, and
 the explicit verdict.
+
+## E6 format erosion — execution state (2026-08-20)
+
+Driver `run_format_erosion.py`, all arms n=40/depth, --max-new 256, OLMo-2-7B-Instruct.
+
+- **Box changed again** (RTX PRO 4500 Blackwell, 32 GB). `/usr/local/bin/python` gone → venv
+  resurrected via uv's standalone CPython 3.12.14 (`ln -sf` at /usr/local/bin/python; zero
+  package reinstalls). `HF_HOME=/workspace/.cache/huggingface` (persistent mount) must be set
+  explicitly — now in /root/.bashrc. Suite 221 green after repair.
+- **mmlu arm (`e6_mmlu/`)**: compliance 0.875 → 0.000 at depth 3 (fill 0.147), never recovers;
+  replies adopt bare-letter MCQ style. Enrichment flat-to-rising (1.50→2.14→1.47) → erosion is
+  NOT attention-mediated (brief's falsification clause for the attention hypothesis fires).
+  2 overflow skips.
+- **Grader bug #4, fixed test-first**: leading bare-letter-line replies (`"B\n<prose>"`) fell
+  through every answer fallback → scored unparsed+wrong → fabricated below-chance acc 0.075 at
+  depth 3. Fixed in `instruction_checks.py` (lead-line fallback; 39 tests green). Re-graded from
+  stored replies: acc 0.500/0.525 at depths 3/7, parse 1.00 everywhere. **Corrected story:
+  compliance collapses, accuracy completely unharmed** (0.425 → 0.5-0.68 rising).
+- **code arm run 3 (`e6_code/`)**: clean null confirmed without truncation — compliance
+  0.875→1.000, enrich 1.51→3.07, symptoms 6.0 @depth 15. **Caveat: 32 overflow skips, ALL at
+  depth 15 → n=8 there (shortest probes); interpret the ladder to depth 12 (fill 0.78, n=40).**
+  Run 2 archived at `e6_code_VOID_truncation/`.
+- **gsm8k arm (`e6_gsm8k/`)**: intermediate. Compliance holds ≥0.825 to depth 12, drops 0.600 at
+  depth 15 (fill 0.480); failure mode is GSM8K's worked-solution prose style ("most likely
+  diagnosis is: **X)** ... Reasoning:"). grounded_fraction 0.62→0.06: even compliant replies fill
+  SUPPORTING with explanations, not vignette findings. 0 skips.
+- **Reading**: each filler stamps its demonstrated answer shape on the reply; severity orders by
+  the shape's applicability to the probe (mmlu >> gsm8k > code), at matched fill. "Unlearnable
+  filler" framing retired (user, 2026-08-20): code is homogeneous and learnable but off-domain
+  with no applicable answer shape.
+- **Recovery arms (upclamp/refresh/both @ deepest depth)**: RUNNING. Key mechanistic test:
+  flat enrichment predicts upclamp fails, refresh works.
+- Parked pending user decision: filler-span attention addendum (does mmlu route generation-time
+  attention to filler answer spans vs code at matched fill).
+- Still queued: E1d all-layer re-run; E6_FORMAT_EROSION.md; numbers.md rows; lessons.md entry.
+- **Recovery arms (`e6_mmlu_recovery/`) — BOTH restore compliance 0.000 → 1.000 at depth 42.**
+  My prediction (flat enrichment → upclamp fails) was WRONG: upclamp (share 0.0196→0.1902) fully
+  restores. Attention mass is a causal weight in the format contest (E5 down = lose, E6 up = win)
+  even though its natural decline doesn't discriminate eroding from non-eroding arms. Costs:
+  upclamp acc 0.675→0.425, both 0.275 (zero-sum mass, E1c arithmetic); refresh acc 0.500, no
+  surgery. refresh's measured share (0.0934) is the restated copy (last-occurrence locator).
+- **Span-recording infra added** (user approved "check what it looks at"): `locate_turn_spans` +
+  `measure_multi_span_shares` in attention_clamp.py (measure_span_share now delegates),
+  `--record-spans` → spans.csv in run_format_erosion.py. 44 clamp tests green. Three arms
+  rerunning with identical seeds/depths → e6_{mmlu,code,gsm8k}_spans/ (also a free replication).
+- Report drafted: `E6_FORMAT_EROSION.md` (recovery section filled; spans section pending).
+- **Span addendum + exemplar-close (2026-08-20 evening).** spans re-runs replicate committed
+  ladders exactly (max |Δ|=0.000). Answer-span enrichment gap (fa−fq): mmlu +1.28→+0.65,
+  gsm8k +0.34→+0.10, code negative — ordering mirrors erosion. BUT closing the letters
+  (fa_close, fa_matched) restores NOTHING (0.000 compliant); fq_close 0.132 (≈renormalization);
+  rand1_close null. **Generation-time copying refuted; privileged letter-reading is
+  epiphenomenal.** Surviving account: mode installed at prefill (task-vector style),
+  self-sustaining; system-attention is an override input (upclamp works). My routing prediction
+  was wrong — recorded in report. Clamp extended: span lists + scale=0 closure (21 tests).
+- **Next decisive experiment: residual probes** (user asked; design agreed in chat): Probe 1
+  instruction-presence decodability across depth (predict flat AUC); Probe 2 upcoming-format
+  decodability pre-generation (localizes the mode). ~15 min GPU capture + sklearn.
+- E1d all-layer RUNNING (b79cn8mr8).
+- **Residual probes (2026-08-20 night) — BOTH POSITIVE.** Probe 1: instruction-presence transfer
+  AUC = 1.000 at EVERY depth 0→42 (perm nulls ~0.5, p=0.000); layer-mean 0.985→0.791 (signal
+  concentrates, peak drifts L1→L14). Three-level dissociation complete: attention flat →
+  representation perfect → behavior zero. Probe 2: upcoming-compliance LOO-AUC 0.822 @stack L21
+  (p=0.000, >0.8 from L18) within gsm8k matched cells — mode set pre-generation. Geometry:
+  cos(mmlu, gsm8k mean-diffs) median +0.746 (+0.747 @L21) — shared axis (caveat: generic
+  deep-context component). Dongre-comparable methodology (PCA→LDA, LOO, 200-perm nulls).
+  Ops lesson: multi-thread BLAS on thousands of tiny fits thrashed (929 CPU-min, killed);
+  single-thread finished in ~15 min.
+- **Mode-vector steering RUNNING** @stack L21 (decoder 20): install/erase × real/random-control,
+  meandiff vector. Report section stubbed.
+- **Mode-vector steering, 3 rounds (2026-08-20 night) — FINAL: sufficient as a direction, not
+  necessary as one.** R1 all-positions install invalid (rand identical); single-layer erase
+  clean null. R2 install_last α1: compliance 0.875→0.05, acc intact — but α1 rand control
+  missing (α3 rand overdosed; LESSON: norm-match controls per dose). erase_multi (11 layers)
+  refuted necessity again with clean rand control (and caused 1-char replies, acc 0.447).
+  R3 decode-time α1 with matched control: real 0.000 vs rand 0.525 compliant — DIRECTION-
+  SPECIFIC install, replies reproduce the demonstrated registers verbatim in a zero-filler
+  context; collateral acc cost 0.175 vs 0.375 (meandiff carries deep-context junk). α3 overdose.
+  decode_time mode added to AdditionSteeringHook (tested; 61 safety tests green).
+- Report E6_FORMAT_EROSION.md complete through steering. Owed still: numbers.md rows, paper
+  Precedent section (three-mechanism restructure agreed), E1d paper paragraph edit, Anil et al.
+  many-shot-jailbreaking citation into related_work_citations.md, lessons.md entries (dose-
+  matched controls; single-thread BLAS for many tiny fits).
+- **Round 4 erase (probe's own direction, 2026-08-20 late) — NULL in both contexts, maximally
+  clean.** probe2_direction_L21.npy (LDA backprojected; export via analyze_format_probes.py
+  --export-direction). mmlu d42 transfer: 0.000/0.684 identical to natural and rand, zero
+  collateral. gsm8k d15 in-distribution: erase 0.575 vs rand 0.600 vs natural 0.600 — null.
+  Four erasure strategies failed with clean controls. FINAL E6 mechanism claim: mode is
+  readable (0.822), writable direction-specifically (0.000 vs 0.525), NOT erasable by any
+  estimated linear direction → redundantly stored. Report complete. Driver gained --erase-only
+  / --erase-context {mmlu,gsm8k}.
+- **Iterative re-probing (CPU) corrects the redundancy story:** L21 linear code is rank-≈2
+  (0.822 → 0.619 after one projection → 0.505 chance after two), NOT redundant. So the live
+  erase null = behavior doesn't consume the linearly decodable component — the probe reads a
+  SHADOW of the mode, not its carrier (nonlinear / other layers / re-derived). Second correlate
+  causally retired. Report's final reading rewritten accordingly. Cheap open arm: live erase of
+  both L21 directions (L21 linear code to chance in vivo) → airtight "decision doesn't route
+  through this layer's linear code".

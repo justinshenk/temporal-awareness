@@ -295,3 +295,32 @@ def test_the_answer_slot_tolerates_letter_and_name_together():
     out = check_clinical_format("ANSWER: C) Pneumonia\nSUPPORTING: cough; fever",
                                 VIGNETTE, options=OPTS)
     assert out["answer"] == "C" and out["has_answer"] is True
+
+
+def test_a_leading_letter_line_is_extracted_for_accuracy_but_is_not_compliance():
+    """The mmlu-contaminated shape: a bare letter on the first line, then prose.
+
+    This is what the model produces once accumulated MCQ turns displace the format. The letter
+    is unambiguously the answer, so accuracy must stay scoreable — scoring it as unparsed turned
+    a format finding into a fabricated below-chance accuracy collapse at depth 3.
+    """
+    from src.probes.context_fatigue.instruction_checks import check_clinical_format
+    out = check_clinical_format(
+        "B\nFindings supporting the diagnosis of Chronic rhinosinusitis:\n- polyps", VIGNETTE)
+    assert out["answer"] == "B"
+    assert out["has_answer"] is False
+    assert out["fully_compliant"] is False
+
+
+def test_a_leading_letter_line_with_supporting_keeps_components_separate():
+    from src.probes.context_fatigue.instruction_checks import check_clinical_format
+    out = check_clinical_format("E\nSupporting: shortness of breath; weakness", VIGNETTE)
+    assert out["answer"] == "E"
+    assert out["has_supporting"] is True
+    assert out["fully_compliant"] is False
+
+
+def test_prose_starting_with_an_article_is_not_an_answer():
+    from src.probes.context_fatigue.instruction_checks import check_clinical_format
+    out = check_clinical_format("A 45-year-old man presents with fever and cough.", VIGNETTE)
+    assert out["answer"] is None

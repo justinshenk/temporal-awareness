@@ -336,3 +336,159 @@ def test_solve_hits_the_target_on_the_pooled_share():
     assert achieved == pytest.approx(target, abs=5e-3)
     with SpanAttentionClamp(model, span=SPAN, scale=scale):
         assert measure_span_share(model, ids, SPAN, layers) == pytest.approx(achieved, abs=1e-6)
+
+
+# ── multi-span measurement (E6 attention addendum) ──────────────────────
+
+def test_locate_turn_spans_finds_ordered_contents():
+    from src.probes.context_fatigue.attention_clamp import locate_turn_spans
+    text = "SYSxxQ1xxA1xxPROBE"
+    spans = locate_turn_spans(_CharTokenizer(), text, ["SYS", "Q1", "A1", "PROBE"])
+    assert spans == [(0, 3), (5, 7), (9, 11), (13, 18)]
+
+
+def test_locate_turn_spans_anchors_repeats_forward_not_last():
+    """An MCQ filler answers with a bare letter many times; each occurrence must anchor to its
+    own turn. locate_token_span's last-occurrence rule would put every one on the final 'B'."""
+    from src.probes.context_fatigue.attention_clamp import locate_turn_spans
+    text = "Q. B or C? B xx B yy"
+    spans = locate_turn_spans(_CharTokenizer(), text, ["Q. B or C?", "B", "B"])
+    assert spans == [(0, 10), (11, 12), (16, 17)]
+
+
+def test_locate_turn_spans_rejects_missing_content_by_turn():
+    from src.probes.context_fatigue.attention_clamp import locate_turn_spans
+    with pytest.raises(ValueError, match="turn 1"):
+        locate_turn_spans(_CharTokenizer(), "hello", ["hello", "absent"])
+
+
+def test_multi_span_shares_agree_with_single_span_measurement():
+    from src.probes.context_fatigue.attention_clamp import (measure_multi_span_shares,
+                                                            measure_span_share)
+    model = _olmo2_model()
+    ids = _ids()
+    layers = list(range(len(model.model.layers)))
+    spans = [(0, 3), (3, SEQ_LEN - 3), SPAN]
+    multi = measure_multi_span_shares(model, ids, spans, layers)
+    for s, got in zip(spans, multi):
+        assert got == pytest.approx(measure_span_share(model, ids, s, layers), abs=1e-9)
+
+
+def test_multi_span_shares_of_a_partition_sum_to_one():
+    from src.probes.context_fatigue.attention_clamp import measure_multi_span_shares
+    model = _olmo2_model()
+    ids = _ids()
+    spans = [(0, 3), (3, SEQ_LEN - 3), SPAN]
+    assert sum(measure_multi_span_shares(model, ids, spans, 0)) == pytest.approx(1.0, abs=1e-5)
+
+
+# ── multi-span clamping and channel closure (E6 exemplar-close arms) ────
+
+def test_multi_span_clamp_equals_stacked_single_clamps(family):
+    """Biasing two disjoint spans in one clamp must equal composing two single-span clamps."""
+    model = MODEL_BUILDERS[family]()
+    ids = _ids()
+    s1, s2 = (1, 3), (5, 7)
+    with SpanAttentionClamp(model, span=[s1, s2], scale=0.4):
+        combined = _logits(model, ids)
+    with SpanAttentionClamp(model, span=s1, scale=0.4), \
+         SpanAttentionClamp(model, span=s2, scale=0.4):
+        stacked = _logits(model, ids)
+    assert torch.equal(combined, stacked)
+
+
+def test_multi_span_scale_one_is_bit_identical(family):
+    model = MODEL_BUILDERS[family]()
+    ids = _ids()
+    baseline = _logits(model, ids)
+    with SpanAttentionClamp(model, span=[(1, 3), (5, 7)], scale=1.0):
+        clamped = _logits(model, ids)
+    assert torch.equal(baseline, clamped)
+
+
+def test_scale_zero_closes_the_spans():
+    """scale=0 is Dongre-style channel closure: the spans' share goes to ~0 and the rest
+    renormalizes, exactly as if those key columns were causally masked."""
+    from src.probes.context_fatigue.attention_clamp import measure_multi_span_shares
+    model = _olmo2_model()
+    ids = _ids()
+    closed = [(1, 3), (5, 7)]
+    clamp = SpanAttentionClamp(model, span=closed, scale=0.0)
+    try:
+        shares = measure_multi_span_shares(model, ids, closed + [(0, SEQ_LEN)], 0)
+    finally:
+        clamp.remove()
+    assert shares[0] < 1e-6 and shares[1] < 1e-6
+    assert shares[2] == pytest.approx(1.0, abs=1e-4)  # everything renormalizes
+
+
+def test_overlapping_spans_are_rejected():
+    model = _olmo2_model()
+    with pytest.raises(ValueError, match="overlap"):
+        SpanAttentionClamp(model, span=[(1, 4), (3, 6)], scale=0.5)
+
+
+# ── direction-projection steering hook (E6 mode-vector erase arm) ───────
+
+def test_projection_hook_zeroes_the_direction_component():
+    from src.probes.safety.steering_hook import DirectionProjectionHook
+    model = _olmo2_model()
+    ids = _ids()
+    torch.manual_seed(7)
+    v = torch.randn(model.config.hidden_size)
+    captured = {}
+    proj = DirectionProjectionHook(model, {0: v})
+    # The observer must register AFTER the projection hook: hooks fire in registration order,
+    # and observing first would read the un-projected output.
+    h = model.model.layers[0].register_forward_hook(
+        lambda m, i, o: captured.update(out=(o[0] if isinstance(o, tuple) else o).detach()))
+    try:
+        with torch.no_grad():
+            model(ids)
+        comp = captured["out"].float() @ (v / v.norm())
+        assert comp.abs().max() < 1e-4
+        proj.remove()
+        with torch.no_grad():
+            model(ids)
+        comp = captured["out"].float() @ (v / v.norm())
+        assert comp.abs().max() > 1e-2  # without the hook the component is naturally nonzero
+    finally:
+        proj.remove()
+        h.remove()
+
+
+def test_decode_time_steering_hits_prefill_last_and_decode_steps():
+    """decode_time mode: the vector lands on the final prefill position and on every
+    single-token decode step, and never on the context positions."""
+    from src.probes.safety.steering_hook import AdditionSteeringHook
+    model = _olmo2_model()
+    ids = _ids()
+    torch.manual_seed(11)
+    v = torch.randn(model.config.hidden_size)
+    captured = {}
+    steer = AdditionSteeringHook(model, {0: v}, decode_time=True)
+    obs = model.model.layers[0].register_forward_hook(
+        lambda m, i, o: captured.update(out=(o[0] if isinstance(o, tuple) else o).detach()))
+    try:
+        with torch.no_grad():
+            model(ids)
+        steered_full = captured["out"].clone()
+        steer.enabled = False
+        with torch.no_grad():
+            model(ids)
+        base_full = captured["out"].clone()
+        delta = steered_full - base_full
+        assert torch.allclose(delta[0, :-1], torch.zeros_like(delta[0, :-1]), atol=1e-5)
+        assert torch.allclose(delta[0, -1], v, atol=1e-4)
+
+        steer.enabled = True
+        with torch.no_grad():
+            model(ids[:, -1:])  # a single-token step, as in cached decoding
+        steered_step = captured["out"].clone()
+        steer.enabled = False
+        with torch.no_grad():
+            model(ids[:, -1:])
+        assert torch.allclose(steered_step[0, 0] - captured["out"][0, 0], v, atol=1e-4)
+    finally:
+        steer.remove()
+        obs.remove()

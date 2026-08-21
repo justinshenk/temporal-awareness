@@ -216,3 +216,17 @@ program.
   Switching to `paired_accuracy_gap` cuts the half-width to ~0.03–0.08 on the same data and turns
   four previously-null contrasts significant, including E1d's necessity result. What remains true
   is the prescription — prefer a paired design over shared items — which these runs had all along.
+
+## E1d addendum (2026-08-20): the 32% is not a layer-24 artifact — all-layer rescue is significant and still partial
+
+Re-run with the restoration target indexed on the all-32-layer mean share instead of layer 24
+(`e1d_alllayer/`, n=192/arm, `--reference-layer 0..31`). back_20 natural share 0.0302 → clamped
+to local's 0.0758. Accuracy: back_20 0.370, clamped 0.417, local 0.536. Paired bootstrap:
+rescue **+0.047 [+0.010, +0.083]** (now significant, where the L24-indexed run's +0.058
+[−0.046, +0.161] was not), penalty +0.167 [+0.099, +0.240], recovered fraction
+**0.28 [0.07, 0.61]**. The layer hole in the mediation argument is closed: matched all-layer
+share still recovers only about a quarter of the penalty, so the asymmetry with removal (116%)
+stands, and the remaining candidate for the shortfall is per-head structure — the uniform
+across-head bias can set a span's total mass but not the head pattern the model built at local
+position. Paper edit owed: the "Mass restoration" paragraph should quote these numbers and say
+"share-matched (all-layer)" rather than "layer-24-indexed".

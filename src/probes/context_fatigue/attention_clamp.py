@@ -91,14 +91,21 @@ class SpanAttentionClamp:
     """
 
     def __init__(self, model, span, scale: float = 1.0, layers=None):
-        start, end = span
-        if end <= start:
-            raise ValueError(f"span must be non-empty, got {span}")
-        if scale <= 0:
-            raise ValueError(f"scale must be positive (it multiplies odds), got {scale}")
+        spans = span if isinstance(span[0], (tuple, list)) else [span]
+        self.spans = sorted((int(a), int(b)) for a, b in spans)
+        for a, b in self.spans:
+            if b <= a:
+                raise ValueError(f"span must be non-empty, got {(a, b)}")
+        for (_, b1), (a2, _) in zip(self.spans, self.spans[1:]):
+            if a2 < b1:
+                raise ValueError(f"spans overlap at {b1}..{a2}; merge them before clamping")
+        if scale < 0:
+            raise ValueError(f"scale must be non-negative (it multiplies odds), got {scale}")
 
-        self.span = (int(start), int(end))
-        self.bias = math.log(scale)
+        self.span = self.spans[0]
+        # scale == 0 is channel closure: the spans' key columns are masked outright, the same
+        # operation as a causal mask — attention to them is exactly zero after softmax.
+        self.bias = math.log(scale) if scale > 0 else None
         self.layers = (list(range(len(model.model.layers))) if layers is None
                        else list(layers))
         self.hooks = []
@@ -109,13 +116,13 @@ class SpanAttentionClamp:
 
     @property
     def scale(self) -> float:
-        return math.exp(self.bias)
+        return math.exp(self.bias) if self.bias is not None else 0.0
 
     @scale.setter
     def scale(self, value: float):
-        if value <= 0:
-            raise ValueError(f"scale must be positive, got {value}")
-        self.bias = math.log(value)
+        if value < 0:
+            raise ValueError(f"scale must be non-negative, got {value}")
+        self.bias = math.log(value) if value > 0 else None
 
     def _bias_mask(self, mask, dtype=torch.float32):
         """Return ``mask`` with the span's key columns shifted by ``self.bias``.
@@ -134,8 +141,11 @@ class SpanAttentionClamp:
             mask = torch.zeros_like(mask, dtype=dtype).masked_fill(
                 ~mask, torch.finfo(dtype).min)
         add = torch.zeros_like(mask)
-        add[..., self.span[0]:self.span[1]] = self.bias
-        # Causally-masked entries sit at ~-3.4e38; a finite bias leaves them masked.
+        fill = torch.finfo(dtype).min if self.bias is None else self.bias
+        for a, b in self.spans:
+            add[..., a:b] = fill
+        # Causally-masked entries sit at ~-3.4e38; a finite bias leaves them masked, and
+        # closure's min+min overflows to -inf, which softmax treats identically.
         return mask + add
 
     def _make_hook(self):
@@ -173,6 +183,20 @@ def measure_span_share(model, input_ids, span, layer, attention_mask=None) -> fl
 
     ``attention_mask`` must be passed on the sdpa path: a purely causal mask is optimized away to
     ``None`` before it reaches ``self_attn``, and the clamp needs an explicit mask to bias.
+
+    ``span`` may also be a list of disjoint spans, in which case the union's share is returned —
+    which makes :func:`solve_span_scale` solve for a multi-span clamp's aggregate share unchanged.
+    """
+    spans = span if isinstance(span[0], (tuple, list)) else [span]
+    return float(sum(measure_multi_span_shares(model, input_ids, spans, layer, attention_mask)))
+
+
+def measure_multi_span_shares(model, input_ids, spans, layer, attention_mask=None) -> list[float]:
+    """Shares for several spans read off one captured forward.
+
+    Same readout as :func:`measure_span_share`, but a single capture pass serves every span —
+    what the E6 attention addendum needs to ask where the final position looks (system prompt,
+    each filler question, each filler answer, the probe) without one forward per span.
     """
     layers = [layer] if isinstance(layer, int) else list(layer)
     capture = SelectiveAttentionCapture(model, layers)
@@ -180,10 +204,35 @@ def measure_span_share(model, input_ids, span, layer, attention_mask=None) -> fl
     try:
         with torch.no_grad():
             model(input_ids, attention_mask=attention_mask)
-        shares = [span_share(capture.captured[li], span) for li in layers]
-        return float(sum(shares) / len(shares))
+        return [float(sum(span_share(capture.captured[li], s) for li in layers) / len(layers))
+                for s in spans]
     finally:
         capture.remove()
+
+
+def locate_turn_spans(tokenizer, text: str, contents) -> list[tuple[int, int]]:
+    """Token spans for an ordered sequence of turn contents inside a rendered transcript.
+
+    Forward search from a moving cursor — each content is looked up *after* the previous turn's
+    end — so a short repeated content (an MCQ filler's bare-letter answer) anchors to its own
+    turn, where :func:`locate_token_span`'s last-occurrence rule would put every copy on the
+    final one. Boundary-straddling tokens are included, as in :func:`locate_token_span`.
+    """
+    offsets = tokenizer(text, return_offsets_mapping=True).offset_mapping
+    spans, cursor = [], 0
+    for ti, content in enumerate(contents):
+        try:
+            char_start = text.index(content, cursor)
+        except ValueError:
+            raise ValueError(f"turn {ti} content not found after char {cursor}: "
+                             f"{content[:60]!r}") from None
+        char_end = char_start + len(content)
+        cursor = char_end
+        hits = [i for i, (a, b) in enumerate(offsets) if a < char_end and b > char_start]
+        if not hits:
+            raise ValueError(f"turn {ti} not found in the tokenizer's offset mapping")
+        spans.append((hits[0], hits[-1] + 1))
+    return spans
 
 
 def solve_span_scale(model, input_ids, span, target_share: float, reference_layer: int,

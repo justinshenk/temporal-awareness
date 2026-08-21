@@ -16,11 +16,19 @@ class AdditionSteeringHook:
     ``last_token=True`` steers only the final prefill position (the generation site) and
     skips cached decode steps — the function-vector-style application that leaves the
     per-token content of earlier positions untouched.
+
+    ``decode_time=True`` steers the final prefill position *and* every cached decode step, but
+    never the context positions — the mode is present for the whole generation without touching
+    how the context itself was encoded.
     """
 
-    def __init__(self, model, vectors: dict[int, torch.Tensor], last_token: bool = False):
+    def __init__(self, model, vectors: dict[int, torch.Tensor], last_token: bool = False,
+                 decode_time: bool = False):
+        if last_token and decode_time:
+            raise ValueError("last_token and decode_time are mutually exclusive")
         self.vectors = {li: v.detach().float() for li, v in vectors.items()}
         self.last_token = last_token
+        self.decode_time = decode_time
         self.enabled = True
         self._hooks = []
         for li in self.vectors:
@@ -32,8 +40,8 @@ class AdditionSteeringHook:
                 return output
             hs = output[0] if isinstance(output, tuple) else output
             v = self.vectors[layer_idx].to(device=hs.device, dtype=hs.dtype)
-            if self.last_token:
-                if hs.shape[1] <= 1:  # skip cached decode steps
+            if self.last_token or self.decode_time:
+                if hs.shape[1] <= 1 and not self.decode_time:  # skip cached decode steps
                     return output
                 hs = hs.clone()
                 hs[:, -1, :] = hs[:, -1, :] + v
@@ -225,6 +233,39 @@ class ProjectionSteeringHook:
             centered = hs + v - mean
             hs = mean + (centered @ V) @ V.t()
             return (hs,) + tuple(output[1:]) if isinstance(output, tuple) else hs
+        return hook_fn
+
+    def remove(self) -> None:
+        for h in self._hooks:
+            h.remove()
+        self._hooks = []
+
+
+class DirectionProjectionHook:
+    """Remove a direction from each named decoder layer's output: ``h → h − (h·v̂)v̂``.
+
+    The ablation counterpart of :class:`AdditionSteeringHook` — used to test a direction's
+    *necessity* by erasing its component at every position, decode steps included.
+    """
+
+    def __init__(self, model, vectors: dict[int, torch.Tensor]):
+        self.units = {li: (v.detach().float() / v.detach().float().norm())
+                      for li, v in vectors.items()}
+        self.enabled = True
+        self._hooks = [model.model.layers[li].register_forward_hook(self._make_hook(li))
+                       for li in self.units]
+
+    def _make_hook(self, layer_idx: int):
+        def hook_fn(module, inputs, output):
+            if not self.enabled:
+                return output
+            hs = output[0] if isinstance(output, tuple) else output
+            u = self.units[layer_idx].to(device=hs.device, dtype=hs.dtype)
+            hs = hs - (hs @ u).unsqueeze(-1) * u
+            if isinstance(output, tuple):
+                return (hs,) + tuple(output[1:])
+            return hs
+
         return hook_fn
 
     def remove(self) -> None:

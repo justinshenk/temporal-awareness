@@ -39,6 +39,8 @@ from _cf_common import (
 from src.probes.context_fatigue.attention_clamp import (
     SpanAttentionClamp,
     locate_token_span,
+    locate_turn_spans,
+    measure_multi_span_shares,
     measure_span_share,
     solve_span_scale,
 )
@@ -86,6 +88,14 @@ def parse_args():
                    help="at the deepest depth, additionally run recovery arms: clamp the system "
                         "span back up to its no-context share, restate the policy in the latest "
                         "user turn, or both. Requires eager attention for the clamp.")
+    p.add_argument("--close-arms", action="store_true",
+                   help="at the deepest depth, close or dose-match the attention channel to the "
+                        "filler answer spans (fa_close / fa_matched), with filler-question "
+                        "closure (fq_close) as the control. Requires eager attention.")
+    p.add_argument("--record-spans", action="store_true",
+                   help="also write spans.csv: the final position's attention share on every "
+                        "turn (system, each filler question/answer, the probe), from the same "
+                        "captured forward the system share already uses")
     p.add_argument("--preflight", action="store_true")
     return p.parse_args()
 
@@ -101,7 +111,7 @@ def main():
         args.model, dtype=torch.bfloat16, device_map=args.device,
         # the clamp needs an explicit additive mask, which sdpa optimizes away on a causal-only
         # prompt; only pay for eager when a recovery arm will actually use it
-        **({"attn_implementation": "eager"} if args.recovery else {})).eval()
+        **({"attn_implementation": "eager"} if args.recovery or args.close_arms else {})).eval()
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token_id = tokenizer.eos_token_id
     is_chat = tokenizer.chat_template is not None
@@ -153,7 +163,7 @@ def main():
     for d in depths:
         snapshots.setdefault(d, list(conv))
 
-    records, skipped = [], 0
+    records, span_records, skipped = [], [], 0
     turns_path = out_dir / "turns.csv"
     for depth in depths:
         prefix = snapshots[depth]
@@ -169,8 +179,21 @@ def main():
             # learnable filler stream should drain the system span while an unlearnable one does
             # not -- and compliance should follow the mass, not the token count.
             ids = tokenizer(text, return_tensors="pt").input_ids.to(args.device)
-            sys_span = locate_token_span(tokenizer, text, CLINICAL_FORMAT_SYSTEM)
-            sys_share = measure_span_share(model, ids, sys_span, reference_layers)
+            if args.record_spans:
+                spans = locate_turn_spans(tokenizer, text, [t["content"] for t in turns])
+                shares = measure_multi_span_shares(model, ids, spans, reference_layers)
+                kinds = (["system"]
+                         + ["filler_q" if t["role"] == "user" else "filler_a"
+                            for t in turns[1:-1]]
+                         + ["probe"])
+                span_records += [
+                    {"depth": depth, "probe": pi, "turn": ti, "kind": kind,
+                     "n_tokens": b - a, "ctx_tokens": int(ids.shape[1]), "share": share}
+                    for ti, (kind, (a, b), share) in enumerate(zip(kinds, spans, shares))]
+                sys_span, sys_share = spans[0], shares[0]
+            else:
+                sys_span = locate_token_span(tokenizer, text, CLINICAL_FORMAT_SYSTEM)
+                sys_share = measure_span_share(model, ids, sys_span, reference_layers)
             # The span is a fixed number of tokens while the context grows, so raw share falls by
             # arithmetic alone. Enrichment -- share divided by the span's share of tokens -- is
             # what says whether the model is actually consulting the instruction less.
@@ -196,6 +219,8 @@ def main():
                 "response": resp or "",
             })
         pd.DataFrame(records).to_csv(turns_path, index=False)
+        if span_records:
+            pd.DataFrame(span_records).to_csv(out_dir / "spans.csv", index=False)
         d = pd.DataFrame(records)
         cur = d[d.depth == depth]
         print(f"  depth {depth:2d}: fill={cur['fill'].mean():.3f}  "
@@ -257,6 +282,70 @@ def main():
         rec = rec[rec.get("recovery_arm").notna()] if "recovery_arm" in rec else rec
         for arm, g in rec.groupby("recovery_arm"):
             print(f"  {arm:>9s}: share={g['system_share'].mean():.4f}  "
+                  f"compliant={g['fully_compliant'].mean():.3f}  "
+                  f"acc={g['correct'].mean():.3f}", flush=True)
+
+    if args.close_arms:
+        deepest = max(depths)
+        prefix = snapshots[deepest]
+        print(f"\nexemplar-close at depth {deepest}: intervening on the filler channels, "
+              f"system span untouched", flush=True)
+        for pi, probe in enumerate(probes):
+            question = format_case_question(probe["options"], args.n_options, answer_cue=False)
+            turns = prefix + [{"role": "user", "content": probe["vignette"] + question}]
+            text = render_prompt(tokenizer, turns, is_chat)
+            if not guard.fits(text, used=0, index=pi):
+                continue
+            ids = tokenizer(text, return_tensors="pt").input_ids.to(args.device)
+            spans = locate_turn_spans(tokenizer, text, [t["content"] for t in turns])
+            fa = [s for s, t in zip(spans[1:-1], turns[1:-1], strict=True)
+                  if t["role"] == "assistant"]
+            fq = [s for s, t in zip(spans[1:-1], turns[1:-1], strict=True)
+                  if t["role"] == "user"]
+            ctx = int(ids.shape[1])
+            # Size-matched causal control: one random token inside each filler question — the
+            # same count and span size as the answer letters, so if fa_close works through span
+            # geometry rather than content, this arm works too.
+            r1 = random.Random(args.seed * 1000 + pi)
+            rand1 = sorted((j, j + 1) for j in (r1.randrange(a, b) for a, b in fq))
+            for arm, target_spans, scale in (("fa_close", fa, 0.0),
+                                             ("fa_matched", fa, None),
+                                             ("fq_close", fq, 0.0),
+                                             ("rand1_close", rand1, 0.0)):
+                if scale is None:
+                    # Dose control: bring the answer spans' union share to the per-token level
+                    # code-arm answers get (enrichment 0.3) rather than to zero — closure and
+                    # near-ablation read differently (E2a), so both arms exist.
+                    tok = sum(b - a for a, b in target_spans)
+                    scale, achieved = solve_span_scale(
+                        model, ids, span=target_spans, target_share=0.3 * tok / ctx,
+                        reference_layer=reference_layers, tol=5e-4)
+                else:
+                    achieved = 0.0
+                with SpanAttentionClamp(model, span=target_spans, scale=scale):
+                    resp, ctx_len, entropy, _ = generate_with_entropy(
+                        model, tokenizer, text, args.device, args.max_new, args.max_ctx)
+                graded = check_clinical_format(resp or "", probe["vignette"],
+                                               options=probe["options"][:args.n_options])
+                records.append({
+                    "depth": deepest, "probe": pi, "recovery_arm": arm,
+                    "closed_share": achieved,
+                    "ctx_tokens": ctx_len, "fill": round(ctx_len / args.max_ctx, 4),
+                    "gold": probe["gold"], "pred": graded["answer"],
+                    "correct": bool(graded["answer"] == probe["gold"]),
+                    "parsed": graded["answer"] is not None,
+                    "response_chars": len(resp or ""),
+                    "mean_entropy": entropy,
+                    **{k: graded[k] for k in ("has_answer", "has_supporting", "n_symptoms",
+                                              "grounded_fraction", "fully_compliant")},
+                    "response": resp or "",
+                })
+            torch.cuda.empty_cache()
+        pd.DataFrame(records).to_csv(turns_path, index=False)
+        rec = pd.DataFrame(records)
+        rec = rec[rec["recovery_arm"].notna()] if "recovery_arm" in rec else rec
+        for arm, g in rec.groupby("recovery_arm"):
+            print(f"  {arm:>10s}: closed_share={g['closed_share'].mean():.4f}  "
                   f"compliant={g['fully_compliant'].mean():.3f}  "
                   f"acc={g['correct'].mean():.3f}", flush=True)
 
