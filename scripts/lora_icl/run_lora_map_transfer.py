@@ -60,7 +60,7 @@ def parse_args():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("phase", choices=["capture-donor", "capture-recipient",
                                      "fit-maps", "run-steering", "recipient-selfsteer",
-                                     "icl-route"])
+                                     "icl-route", "dose-curve"])
     p.add_argument("--donor-config", default="configs/lora_icl/ddxplus_qwen_lora.yaml")
     p.add_argument("--recipient-config", default="configs/lora_icl/ddxplus_qwen1.5b_lora.yaml")
     p.add_argument("--out-dir", default="results/lora_icl/map_transfer")
@@ -341,6 +341,53 @@ def main():
                 print(f"  {arm} acc={evals[arm]['accuracy']:.3f} "
                       f"parse={evals[arm]['parse_rate']:.2f}", flush=True)
         (out / "icl_route_evals.json").write_text(json.dumps(evals, indent=2))
+
+    elif args.phase == "dose-curve":
+        # E-A3: the conditionality index against LoRA training-set size. Nested seeded slices
+        # ([:25] c [:75] c [:225] c [:600]) trained separately; per dose: ceiling, mean shift,
+        # self-steer at the two best layers, plus the shift's norm and its cosine to the full-
+        # dose shift. Hypothesis on record: the constant/register component is learned first.
+        doses = [25, 75, 225]
+        adapter_dirs = {d: f"results/safety/qwen_sweep/adapter_d{d}" for d in doses}
+        tok = AutoTokenizer.from_pretrained(donor_cfg["base_model"])
+        base = AutoModelForCausalLM.from_pretrained(
+            donor_cfg["base_model"], torch_dtype=torch.bfloat16, device_map=args.device).eval()
+        capture = PerTokenResidualCapture(base, list(range(len(base.model.layers))))
+        base_eval = np.load(out / "donor_eval_base.npy").astype(np.float64)
+        delta_600 = np.load(out / "delta_real.npy")
+        first = doses[0]
+        lora = PeftModel.from_pretrained(base, adapter_dirs[first],
+                                         adapter_name=f"d{first}").eval()
+        for d in doses[1:]:
+            lora.load_adapter(adapter_dirs[d], adapter_name=f"d{d}")
+        evals = {}
+        for d in doses:
+            lora.set_adapter(f"d{d}")
+            states = capture_states(lora, capture, tok, eval_cases, args.device)
+            delta = (states.astype(np.float64) - base_eval).mean(axis=0)
+            np.save(out / f"delta_d{d}.npy", delta)
+            evals[f"ceiling_d{d}"] = eval_accuracy(lora, tok, eval_cases, args.device,
+                                                   args.max_new)
+            print(f"  ceiling_d{d} acc={evals[f'ceiling_d{d}']['accuracy']:.3f}", flush=True)
+            with lora.disable_adapter():
+                for li in (18, 21):
+                    hook = AdditionSteeringHook(
+                        base, {li: torch.tensor(delta[li], dtype=torch.float32)},
+                        decode_time=True)
+                    arm = f"selfsteer_d{d}_L{li}"
+                    evals[arm] = eval_accuracy(lora, tok, eval_cases, args.device,
+                                               args.max_new)
+                    hook.remove()
+                    print(f"  {arm} acc={evals[arm]['accuracy']:.3f}", flush=True)
+            for li in (18, 21):
+                a, b = delta[li], delta_600[li]
+                evals[f"geometry_d{d}_L{li}"] = {
+                    "norm": float(np.linalg.norm(a)),
+                    "norm_d600": float(np.linalg.norm(b)),
+                    "cos_to_d600": float(a @ b / (np.linalg.norm(a) * np.linalg.norm(b))),
+                }
+        capture.remove()
+        (out / "dose_curve_evals.json").write_text(json.dumps(evals, indent=2))
 
     print("phase done:", args.phase)
 
