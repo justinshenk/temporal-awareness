@@ -31,7 +31,7 @@
 \captionsetup[sub]{skip=1pt}
 \setlist[itemize]{nosep,leftmargin=1.4em,topsep=2pt}
 
-\title{Context Rot Is Three Mechanisms:\\Only Displacement Acts Through Attention Mass}
+\title{Context Rot Is Three Mechanisms:\\Starved Evidence, Attended Impostors, Installed Precedent}
 
 % REQUIRED for the workshop track: the footnote on page 1 reads "Workshop: <this>."
 \workshoptitle{WORKSHOP TITLE}
@@ -56,16 +56,22 @@ span-attention clamp that can \emph{set} any span's post-softmax attention share
 bounded nulls. (2)~Displacing the evidence costs $0.19$--$0.21$ accuracy, and the cost is
 \emph{causally mediated by attention mass}: removing the evidence's share with nothing moved
 reproduces $114\%$ of the penalty, the mass$\to$accuracy curve is smooth with no threshold, and
-two separately-run clamp experiments agree to $0.004$. (3)~Two further costs are \emph{not}
-mediated that way. Near-duplicate context costs $0.085$ accuracy at unchanged evidence share
-($-0.0003$ $[-0.0009,+0.0004]$); and accumulated filler that demonstrates an \emph{applicable}
+two separately-run clamp experiments agree to $0.004$. (3)~Near-duplicate context
+costs $0.085$--$0.093$ accuracy at \emph{unchanged evidence share} ($-0.0003$
+$[-0.0009,+0.0004]$)---but closing the context's occurrences of the probe's own answer
+candidates at generation time recovers $59\%$ of that penalty ($+0.060$ $[+0.008,+0.112]$
+against a size-matched random-closure control at zero), so competition is attention-mediated
+too, through the \emph{competitors} rather than the evidence. (4)~Accumulated filler that
+demonstrates an \emph{applicable}
 answer shape erodes an instructed output format totally ($0.875\to0.000$ by fill $0.15$, accuracy
 unharmed) while the instruction's per-token attention is flat-to-rising and its content stays
 perfectly linearly decodable. Attention mass is nonetheless a causal \emph{weight} in that
 contest: clamping the instruction's share down collapses compliance where nothing competes,
 clamping it up restores it against $42$ counter-exemplars, and restating the policy restores it
-without surgery. Context rot, as measured, is not a decay of competence with length: it is
-displacement, competition, and precedent---and only displacement is attention dilution.
+without surgery---and the same closure that rescues competition restores nothing here: the
+mode is installed at prefill. Context rot, as measured, is not a decay of competence with
+length: it is displacement (the evidence starved of attention), competition (attended
+impostors), and precedent (an installed mode)---attention dilution proper is only the first.
 \end{abstract}
 
 \section{Introduction}
@@ -107,8 +113,10 @@ questions:
         on one architecture.
 \end{itemize}
 
-The answers: accumulation alone is free (RQ1); distance costs accuracy through attention mass
-while confusability costs accuracy at \emph{constant} mass (RQ2); and instructed output format is
+The answers: accumulation alone is free (RQ1); distance costs accuracy through the
+\emph{evidence's} attention mass, while confusability costs accuracy at constant evidence mass
+through attention to the \emph{competing instances} themselves---closing them recovers most of
+the penalty (RQ2); and instructed output format is
 lost to a \emph{precedent contest} with demonstrated answer shapes, in which the instruction's
 attention mass is a causal weight but not the natural driver---so whether behavior survives
 attention closure is decided by \emph{content}, by what the filler demonstrates, not by
@@ -125,8 +133,9 @@ Our contributions are as follows:
         nothing moved reproduces $114\%$ of the displacement penalty, and the mass$\to$accuracy
         relationship is smooth and graded with no threshold in it (\S\ref{sec:displacement}).
   \item A dissociation establishing a \emph{second} mechanism: competition costs accuracy at
-        constant attention mass, so ``attention dilution'' is the right account of displacement
-        and the wrong account of competition (\S\ref{sec:competition}).
+        constant \emph{evidence} mass, yet closing the competitor mentions recovers $59\%$ of
+        the penalty---both accuracy mechanisms are attentional, on different spans, and
+        span-targeted closure tells them apart (\S\ref{sec:competition}).
   \item A \emph{third} mechanism at the compliance level: accumulated demonstrations erode an
         instructed format only when their shape is applicable, immediately and with accuracy
         unharmed; the erosion is not attention-mediated, yet re-weighting or re-presenting the
@@ -401,7 +410,7 @@ in \emph{tokens}, not turns---a $64\%$ mass cut from token distance alone costs 
 points---consistent with RoPE decay rather than conversation structure
 (Appendix~\ref{app:displacement-detail}).
 
-\subsection{Competition acts at constant attention mass}
+\subsection{Competition acts through the competitors, at constant evidence mass}
 \label{sec:competition}
 
 Burying a needle varies two things at once: the evidence becomes distant \emph{and} it becomes
@@ -443,6 +452,24 @@ displacement bites hardest at layers 0--3 and 16, competition at 17--18. That th
 contrast has opposite attention signatures in different layers is evidence for two mechanisms
 which no single-layer measurement could supply. Per-head structure---including the null result
 that no head hides a large countervailing move---is in Appendix~\ref{app:heads}.
+
+\paragraph{The competitor-closure test.}
+Constant evidence mass rules out starvation; it does not rule out the other attentional route,
+in which the filler's (arm-constant) mass lands on \emph{instances of the probe's own answer
+candidates} and reading them is what misleads. We test it directly: closing every context
+occurrence of the probe's option names at generation time (scale $0$; $30.0$ spans, $127.9$
+tokens, union share $0.0077$ per probe) recovers \textbf{59\%} of the competition penalty
+($+0.055$ $[+0.006,+0.104]$, paired $n{=}365$; $+0.060$ $[+0.008,+0.112]$ against a
+size-matched random-closure control that lands at zero, $-0.006$ $[-0.036,+0.025]$), and the
+residual gap to \texttt{random} no longer excludes zero ($+0.038$ $[-0.011,+0.088]$). The
+rescue survives restriction to parsed responses ($+0.058$ $[+0.003,+0.113]$). \textbf{So
+competition is attention-mediated after all---through the competitors, not the evidence}: less
+than $1\%$ of the attention distribution carries the effect, and removing it removes most of
+the cost. The claim that survives is sharper than the one it replaces: displacement is the
+evidence \emph{starved} of mass, competition is impostors \emph{attended}, and the evidence-mass
+measurement dissociates them because it is blind to the second by construction. What remains
+open is whether the ${\sim}40\%$ residual is prefill-borne interference or instrument slack
+(closure covers verbatim option-name mentions only).
 
 \subsection{Precedent: instructions lose to applicable demonstrations}
 \label{sec:precedent}
@@ -525,7 +552,10 @@ filler questions: $+1.28$ in \texttt{mmlu}, $+0.34$ in \texttt{gsm8k}, negative 
 exemplar answer's key columns at generation time restores nothing ($0.000$ compliant; a
 size-matched random-masking control is equally null), so the privileged reading is an
 epiphenomenon of the template's installation at prefill, task-vector style
-\citep{hendel2023taskvectors}.
+\citep{hendel2023taskvectors}. The contrast with \S\ref{sec:competition} is the sharpest
+dissociation in the paper: the \emph{same} scale-$0$ closure that recovers $59\%$ of the
+competition penalty restores nothing here. Competition is generation-time \emph{reading};
+precedent is prefill \emph{installation}. One intervention, opposite outcomes, two mechanisms.
 
 Residual-stream probes (\S\ref{sec:probes}) complete a three-level dissociation: the
 instruction's presence remains perfectly linearly decodable at every depth (transfer AUC
@@ -596,14 +626,16 @@ With accumulation, displacement, competition and precedent separated inside one 
 accumulation produces a real, monotone reallocation of attention and a real collapse of
 \emph{confidence}, but no loss of accuracy and no loss of instruction adherence. Displacing the
 evidence produces a large accuracy cost that is causally mediated by its attention mass, graded
-in that mass, and positional in tokens. Making the context confusable produces a further cost
-that is \emph{not} mediated by that mass at all. Accumulating an applicable demonstrated answer
+in that mass, and positional in tokens. Making the context confusable produces a further cost at constant evidence mass that is
+carried instead by attention to the competing instances themselves---under $1\%$ of the
+distribution, and closing it recovers most of the cost. Accumulating an applicable demonstrated answer
 shape erodes not accuracy but \emph{compliance}, in a precedent contest the instruction loses
 with its attention intact---and which either re-weighting or re-presenting the instruction wins
 back completely. The literature's central claim is therefore \emph{correct but misattributed,
 and under-counted}: context rot is not a decay with length, it is displacement, competition and
-precedent, three mechanisms with different signatures, of which length is merely the usual way
-of causing them at once. The test we would run next is the pattern-matched, per-head clamp that
+precedent---starved evidence, attended impostors, an installed mode---three mechanisms with
+different signatures, of which length is merely the usual way of causing them at once, and of
+which only the first is attention dilution proper. The test we would run next is the pattern-matched, per-head clamp that
 would settle whether displacement's partial necessity is an instrument limitation or a second
 channel within displacement itself.
 
@@ -615,6 +647,10 @@ $2.5\times$, enough to report a real effect as null. The necessity direction of 
 only partially established and is plausibly instrument-limited, since the clamp is uniform
 across heads. The competition result is one significant step rather than a gradient---mild
 overlap is indistinguishable from none, and we do not claim cost rises with confusability. The
+competitor-closure rescue is substantial, not total: the residual is not distinguishable from
+zero but its point estimate leaves ${\sim}40\%$ of the gap unexplained, closure covers verbatim
+option-name mentions only, and the parsed-only contrast against the random-closure control sits
+exactly at the interval boundary. The
 instruction-canary null is a floor effect, the WildChat figures are summary values from
 teacher-forced analyses, and the causal program runs on one model family. The precedent results
 are one instruction family, graded by a rule-based checker at $n{=}40$ per cell; and the carrier
@@ -782,9 +818,9 @@ probability models (accuracy in percentage points is the quoted scale) with case
 coefficient intervals. Probe analyses use leave-one-out cross-validation at episode level with
 200-shuffle permutation nulls. The overflow guard skips items that would not fit whole
 (prompt $+$ generation headroom) and reports per-arm counts: $0/192$ in the distance sweep,
-$4$ skipped $+15$ starved in competition, $2$ in the mmlu erosion arm, and $32$---all at the
-deepest depth, leaving $n{=}8$ there---in the code arm, whose ladder is therefore interpreted
-to depth 12 (fill $0.78$).
+$4$ skipped $+15$ starved in competition (and the identical panel in the competitor-closure
+run), $2$ in the mmlu erosion arm, and $32$---all at the deepest depth, leaving $n{=}8$
+there---in the code arm, whose ladder is therefore interpreted to depth 12 (fill $0.78$).
 
 \section{Per-layer and per-head structure}
 \label{app:heads}

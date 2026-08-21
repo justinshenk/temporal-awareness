@@ -81,6 +81,26 @@ The unpaired intervals previously reported are retained in that JSON for audit.
 | **evidence share unchanged** | −0.00027 [−0.00088, +0.00035] | `e3_attention/` |
 | mass-predicted share of the effect | 2.0% (6.5% at CI bound); 50× share change needed | derived from E1f slope |
 
+## §4.3 — the competitor-closure test (E3c)
+
+Run 2026-08-21, eager, paired n=365 (same panel as `e3_competition/`: 15 starved + 4 skips),
+artifacts `e3c_competitor_close/`, report `E3C_COMPETITOR_CLOSE.md`, driver
+`run_competition_sweep.py --close-arms`, brief `tasks/e3c_competitor_close_brief.md`.
+
+| claim | value | artifact / report |
+|---|---|---|
+| arm accuracies | near_dup 0.4192 / comp_close 0.4740 / rand_close 0.4137 / random 0.5123 | `e3c_competitor_close/turns.csv` |
+| rescue: comp_close − natural | +0.0548 [+0.0055, +0.1041] sig | same, `paired_accuracy_gap` |
+| control: rand_close − natural | −0.0055 [−0.0356, +0.0247] n.s. | same |
+| net vs control | +0.0603 [+0.0082, +0.1123] sig | same |
+| competition gap (in-run replication) | +0.0932 [+0.0384, +0.1479] (committed +0.085) | same |
+| residual: random − comp_close | +0.0384 [−0.0110, +0.0877] n.s. | same |
+| recovered fraction | 0.59 | same |
+| competitor spans / tokens / union share | 30.0 / 127.9 / 0.0077 (all-layer) | same |
+| parsed-only rescue | +0.0581 [+0.0031, +0.1131], n=327 | same |
+| parsed-only net vs control | +0.0568 [+0.0000, +0.1136], n=317 (boundary) | same |
+| harness anchors | near_dup 0.419 vs committed 0.427; random 0.512 vs 0.512 | same |
+
 ## Appendix E — per-layer and per-head structure
 
 All 32 layers x 32 heads = 1,024 heads. An earlier pass measured layer 24 only; every head-identity

@@ -387,3 +387,18 @@ Driver `run_format_erosion.py`, all arms n=40/depth, --max-new 256, OLMo-2-7B-In
   causally retired. Report's final reading rewritten accordingly. Cheap open arm: live erase of
   both L21 directions (L21 linear code to chance in vivo) → airtight "decision doesn't route
   through this layer's linear code".
+
+## E3c competitor closure (2026-08-21) — RESCUE; title claim revised
+
+User-raised: constant evidence mass doesn't rule out the competitor-reading route. Built
+`locate_phrase_spans` (test-first) + `--close-arms` on the competition driver; ran paired
+n=365 (same panel as committed E3, anchors match: near_dup 0.419/0.427, random 0.512/0.512).
+**Closing the context's option-name mentions recovers 59% of the competition penalty**
+(+0.055 [+0.006, +0.104]; net vs size-matched rand-closure control +0.060 [+0.008, +0.112],
+control itself −0.006 n.s.; residual to random +0.038 n.s.; parsed-only survives, net at
+boundary [+0.000, +0.114]). So competition IS attention-mediated — competitor-side. Paper
+revised: title now "Starved Evidence, Attended Impostors, Installed Precedent"; §4.3 retitled
++ closure paragraph; abstract/intro/conclusion/limitations updated; §4.5 gains the
+one-intervention-two-outcomes contrast (same closure restores nothing in E6). Report
+`E3C_COMPETITOR_CLOSE.md`; numbers.md §4.3 rows added. Open: is the ~40% residual prefill
+interference or instrument slack (verbatim mentions only); per-layer localization of the route.
