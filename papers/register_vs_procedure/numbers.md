@@ -46,6 +46,7 @@ GPU box; the reports that quote them are committed.
 | GSM8K oracle @L20 | 0.75 | `temporal_oracle_L20.json` (periodic_1) | 2026-08-13 |
 | MuSiQue oracle @L20 | 0.75 / +0.76 sweep | `temporal_oracle_multihop_L20.json`, `lockstep_multihop_single.json` | 2026-08-13 |
 | GSM8K ridge steer @L20 | +0.03 [0.01, 0.08] CoT-window map — **revised to +0.09**, see below | `steer_results_layers.json`, `steer_results_allpos.json` | P5 / S2d |
+| GSM8K constant self-steer (mean shift, decode-time, L8/16/20/24) | 0.000 recovery at every layer (floor 0.000, ceiling 0.620, n=100) — the conditionality index's computation pole; same estimator recovers 0.71/0.68 on DDXPlus (Qwen 7B/1.5B) | `selfsteer_gsm8k/selfsteer_evals.json`, `2026-08-21-conditionality-index-gsm8k.md` | 2026-08-21 |
 | GSM8K ridge steer @L24 | +0.12 [0.07, 0.19], n=200 — **reproduced at +0.12** by the all-positions map | `steer_results_layers.json`, `steer_results_allpos.json` | P5 / S2d |
 | MuSiQue ridge steer @L24 | +0.45 [0.35, 0.56] | `steer_multihop_layers.json` | P2b |
 | GSM8K L20 held-out R²_te (CoT window) | 0.610 @ λ*=3.16e3 | `sweep.json` | P5, 2026-08-10 |
