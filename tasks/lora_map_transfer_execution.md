@@ -46,3 +46,13 @@ untrained Qwen2.5-1.5B-Instruct through per-layer linear maps between their acti
 - `scripts/lora_icl/run_lora_map_transfer.py` — subcommands `capture-donor`, `fit-maps`,
   `run-recipient`.
 - Artifacts → `results/lora_icl/map_transfer/`; report `results/lora_icl/MAP_TRANSFER.md`.
+
+## OUTCOME (2026-08-21) — NULL, maximally attributed. Report: results/lora_icl/MAP_TRANSFER.md
+
+Self-steer works in BOTH models (donor 0.73, recipient 0.67 vs floors 0.13/0.14, ceilings
+0.97/0.90); maps R2 0.72–0.82; transfer zero everywhere; mapped vectors direction-specifically
+destroy generation at 2x dose while norm-matched random is harmless; closing geometry:
+cos(mapped donor shift, recipient's own shift) = −0.19..+0.18 → the map connects states, not
+function. Fifth driver phase `recipient-selfsteer` added mid-run to attribute the null. Next
+rungs if resumed: subspace (top-k) transfer, cross-layer pairing search, Procrustes maps,
+Qwen→Gemma at matched width.

@@ -58,7 +58,7 @@ N_MAP_CORPUS = 400
 def parse_args():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("phase", choices=["capture-donor", "capture-recipient",
-                                     "fit-maps", "run-steering"])
+                                     "fit-maps", "run-steering", "recipient-selfsteer"])
     p.add_argument("--donor-config", default="configs/lora_icl/ddxplus_qwen_lora.yaml")
     p.add_argument("--recipient-config", default="configs/lora_icl/ddxplus_qwen1.5b_lora.yaml")
     p.add_argument("--out-dir", default="results/lora_icl/map_transfer")
@@ -242,6 +242,34 @@ def main():
                     print(f"  {arm} acc={evals[arm]['accuracy']:.3f} "
                           f"parse={evals[arm]['parse_rate']:.2f}", flush=True)
         (out / "steering_evals.json").write_text(json.dumps(evals, indent=2))
+
+    elif args.phase == "recipient-selfsteer":
+        # Interpretive control for a transfer null: steer the recipient with its OWN adapter's
+        # mean shift. If this is null too, the failure is the recipient's steerability (or the
+        # mean-shift summary at 1.5B scale), not the cross-model map.
+        tok = AutoTokenizer.from_pretrained(recip_cfg["base_model"])
+        base = AutoModelForCausalLM.from_pretrained(
+            recip_cfg["base_model"], torch_dtype=torch.bfloat16, device_map=args.device).eval()
+        capture = PerTokenResidualCapture(base, list(range(len(base.model.layers))))
+        base_eval = capture_states(base, capture, tok, eval_cases, args.device)
+        lora = PeftModel.from_pretrained(base, recip_cfg["output"]["adapter_dir"]).eval()
+        lora_eval = capture_states(lora, capture, tok, eval_cases, args.device)
+        capture.remove()
+        delta = (lora_eval.astype(np.float64) - base_eval).mean(axis=0)
+        np.save(out / "delta_recipient_own.npy", delta)
+        evals = {}
+        with lora.disable_adapter():
+            for li in STEER_LAYERS:
+                for alpha in ALPHAS:
+                    vec = torch.tensor(delta[li] * alpha, dtype=torch.float32)
+                    hook = AdditionSteeringHook(base, {li: vec}, decode_time=True)
+                    arm = f"recip_selfsteer_L{li}_a{alpha:g}"
+                    evals[arm] = eval_accuracy(lora, tok, eval_cases, args.device,
+                                               args.max_new)
+                    hook.remove()
+                    print(f"  {arm} acc={evals[arm]['accuracy']:.3f} "
+                          f"parse={evals[arm]['parse_rate']:.2f}", flush=True)
+        (out / "recipient_selfsteer_evals.json").write_text(json.dumps(evals, indent=2))
 
     print("phase done:", args.phase)
 
