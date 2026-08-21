@@ -137,6 +137,11 @@ def main() -> None:
                     help="train on permuted answers (task-specificity control)")
     ap.add_argument("--n-train-cases", type=int, default=None,
                     help="override data.n_train_cases (LoRA dose for the safety sweep)")
+    ap.add_argument("--micro-batch-size", type=int, default=None,
+                    help="override train.micro_batch_size (the config's value is a box "
+                         "assumption; pair with --grad-accum to keep the effective batch)")
+    ap.add_argument("--grad-accum", type=int, default=None,
+                    help="override train.grad_accum")
     ap.add_argument("--adapter-dir", default=None,
                     help="override the output adapter directory")
     ap.add_argument("--device", default="cuda")
@@ -146,6 +151,10 @@ def main() -> None:
     set_seed(cfg["seed"])
     if args.n_train_cases is not None:
         cfg["data"]["n_train_cases"] = args.n_train_cases
+    if args.micro_batch_size is not None:
+        cfg["train"]["micro_batch_size"] = args.micro_batch_size
+    if args.grad_accum is not None:
+        cfg["train"]["grad_accum"] = args.grad_accum
 
     out_dir = Path(
         args.adapter_dir if args.adapter_dir
