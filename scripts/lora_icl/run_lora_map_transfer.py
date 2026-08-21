@@ -39,6 +39,7 @@ from src.probes.lora_icl.ddxplus_cases import (
     build_cases,
     chat_messages,
     disjoint_split,
+    icl_messages,
     select_valid_indices,
 )
 from src.probes.lora_icl.linear_map_transfer import (
@@ -58,7 +59,8 @@ N_MAP_CORPUS = 400
 def parse_args():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("phase", choices=["capture-donor", "capture-recipient",
-                                     "fit-maps", "run-steering", "recipient-selfsteer"])
+                                     "fit-maps", "run-steering", "recipient-selfsteer",
+                                     "icl-route"])
     p.add_argument("--donor-config", default="configs/lora_icl/ddxplus_qwen_lora.yaml")
     p.add_argument("--recipient-config", default="configs/lora_icl/ddxplus_qwen1.5b_lora.yaml")
     p.add_argument("--out-dir", default="results/lora_icl/map_transfer")
@@ -270,6 +272,72 @@ def main():
                     print(f"  {arm} acc={evals[arm]['accuracy']:.3f} "
                           f"parse={evals[arm]['parse_rate']:.2f}", flush=True)
         (out / "recipient_selfsteer_evals.json").write_text(json.dumps(evals, indent=2))
+
+    elif args.phase == "icl-route":
+        # E-A2: does the context route install the same direction as the weight route? Capture
+        # the donor's ICL shift (same case, with vs without accumulated demonstrations), compare
+        # its mean to the LoRA shift's mean per layer, and steer *clean* prompts with the mean
+        # ICL shift — dose-matched to the LoRA delta whose behavioral effect is known (0.73).
+        tok = AutoTokenizer.from_pretrained(donor_cfg["base_model"])
+        base = AutoModelForCausalLM.from_pretrained(
+            donor_cfg["base_model"], torch_dtype=torch.bfloat16, device_map=args.device).eval()
+        n_layers = len(base.model.layers)
+        capture = PerTokenResidualCapture(base, list(range(n_layers)))
+        fillers = corpus  # disjoint from the eval panel by construction
+        max_ctx, fill_target = 4096, 0.85
+
+        def icl_ids(case):
+            msgs = icl_messages(tok, fillers, chat_messages(case.prompt_text),
+                                max_ctx, fill_target)
+            ids = tok.apply_chat_template(msgs, add_generation_prompt=True, tokenize=True)
+            if not isinstance(ids, list):
+                ids = ids["input_ids"]
+            return torch.tensor([ids], device=args.device)
+
+        print("icl-route: capturing ICL states + icl ceiling", flush=True)
+        icl_rows = []
+        correct = 0
+        for c in eval_cases:
+            ids = icl_ids(c)
+            capture.clear()
+            with capture.capturing(), torch.no_grad():
+                base(ids, use_cache=False)
+            site = last_token_residual(capture.captured)
+            icl_rows.append(np.stack([site[li] for li in capture.layers]).astype(np.float32))
+            with torch.no_grad():
+                gen = base.generate(ids, max_new_tokens=args.max_new, do_sample=False,
+                                    pad_token_id=tok.pad_token_id or tok.eos_token_id)
+            text = tok.decode(gen[0, ids.shape[1]:], skip_special_tokens=True)
+            m = re.search(r"[A-E]", text)
+            correct += (m.group(0) if m else None) == c.gold_letter
+        capture.remove()
+        icl_states = np.stack(icl_rows)
+        base_eval = np.load(out / "donor_eval_base.npy").astype(np.float64)
+        icl_delta = (icl_states.astype(np.float64) - base_eval).mean(axis=0)
+        np.save(out / "delta_icl.npy", icl_delta)
+        lora_delta = np.load(out / "delta_real.npy")
+        evals = {"icl_ceiling": {"n": len(eval_cases), "accuracy": correct / len(eval_cases)}}
+        print(f"  icl_ceiling acc={correct / len(eval_cases):.3f}", flush=True)
+        cos_profile = {}
+        for li in range(n_layers):
+            a, b = icl_delta[li], lora_delta[li]
+            cos_profile[li] = float(a @ b / (np.linalg.norm(a) * np.linalg.norm(b)))
+        (out / "icl_lora_cos_profile.json").write_text(json.dumps(cos_profile, indent=2))
+        print("  cos(icl, lora) at steer layers: "
+              + "  ".join(f"L{li}={cos_profile[li]:+.3f}" for li in STEER_LAYERS), flush=True)
+
+        for li in STEER_LAYERS:
+            raw = icl_delta[li]
+            matched = raw * (np.linalg.norm(lora_delta[li]) / np.linalg.norm(raw))
+            for tag, vec in (("raw", raw), ("normmatched", matched)):
+                hook = AdditionSteeringHook(
+                    base, {li: torch.tensor(vec, dtype=torch.float32)}, decode_time=True)
+                arm = f"iclsteer_L{li}_{tag}"
+                evals[arm] = eval_accuracy(base, tok, eval_cases, args.device, args.max_new)
+                hook.remove()
+                print(f"  {arm} acc={evals[arm]['accuracy']:.3f} "
+                      f"parse={evals[arm]['parse_rate']:.2f}", flush=True)
+        (out / "icl_route_evals.json").write_text(json.dumps(evals, indent=2))
 
     print("phase done:", args.phase)
 
