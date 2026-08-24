@@ -22,9 +22,15 @@ code 0.916).
 2. **Closure degeneracy, exact on Qwen.** Under scale-0 closure the recipient's system span
    is unreadable, so the recipient's identity drops out: `pure_a ≡ pure_b` bit-identically,
    `patch_ab ≡ patch_aa`, `patch_ba ≡ patch_bb`, and ΔΔ_B→A = −ΔΔ_A→B by construction — the
-   two directions are ONE measurement mirrored, not two confirmations. (This also holds on
-   OLMo up to a one-token boundary leak; its Stage-1 report's two directions should be read
-   the same way.)
+   two directions are ONE measurement mirrored, not two confirmations.
+   **CORRECTED (verification pass 2026-08-24, OLMo box):** the original note claimed this
+   also holds on OLMo up to a negligible boundary leak. Measured on the OLMo artifacts the
+   degeneracy does NOT hold there: max |pure_a − pure_b| on S_A is 0.19 nats (code) / 0.55
+   (mmlu), and |patch_ab − patch_aa| is 0.18 / 0.27 — larger than OLMo's measured ΔΔ effects
+   (±0.06–0.08). Recipient identity genuinely enters on OLMo despite closure, so its
+   Stage-1 two-direction result stands as two partially independent measurements (verified
+   exact on Qwen: all four identities 0.000000). The ΔΔ estimand is unaffected in both
+   families — recipient-side leakage cancels against the self-patch baseline.
 3. **The pure-state delivery probe is vacuous under exact closure** — with `pure_a` and
    `pure_b` states identical, it has no trainable direction (AUC 0.500 by construction).
    Delivery is instead tested on the patched states directly: donor identity decodes at
