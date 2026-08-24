@@ -300,11 +300,13 @@ $[-0.10,+0.05]$, $n{=}699$; coherent single-subject: $\mathrm{corr}=+0.01$, $n{=
 nulls are \emph{bounded}: the 95\% interval on upper-minus-lower-half accuracy excludes declines
 beyond $4.1$ points (coherent) and $9.4$ (random). Checkable instruction adherence---the canary
 instructions---stays at ceiling throughout ($\mathrm{corr}(\text{violation},\text{fill})=0$).
-The canaries were easy, so this null bounds rather than proves; \S\ref{sec:precedent} shows what
-it does and does not mean. Accumulation does drive the \emph{current query}'s attention share
-down to exactly the level at which clamping the same share starts to cost points
-(Appendix~\ref{app:displacement-detail}); that accuracy nonetheless stays flat is itself
-evidence that in-context learning is actively holding it up.
+This null is narrower than it looks: the canaries were easy, and the accumulated history in
+these streams is itself compliant, so it shows adherence surviving \emph{compliant} history;
+\S\ref{sec:precedent} shows it does not survive history that demonstrates a competing format.
+Accumulation also drives the current query's attention share down to ${\approx}0.15$, the level
+at which clamping the same share on a cold-start context begins to cost accuracy
+(Appendix~\ref{app:displacement-detail}). That accuracy stays flat anyway indicates that
+in-context learning compensates for the lost attention.
 
 \begin{figure}[t]
   \centering
