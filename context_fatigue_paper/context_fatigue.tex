@@ -329,7 +329,8 @@ evidence that in-context learning is actively holding it up.
 
 We now vary only \emph{where the answer-bearing evidence sits}. Each DDXPlus probe's vignette is
 placed $k$ user turns before its question; mean fill is $0.688$ in every arm, the question text is
-byte-identical, and the overflow guard skipped $0$ of $192$ probes. Every gap's CI excludes zero
+byte-identical, and the overflow guard skipped $0$ of $192$ probes (an example transcript with
+its generations is in Appendix~\ref{app:examples}). Every gap's CI excludes zero
 (Table~\ref{tab:distance}, Fig.~\ref{fig:dilution}a). In a joint fit of accuracy on fill and
 distance, \textbf{distance carries the coefficient} ($\beta=-0.00761$ $[-0.01173,-0.00346]$,
 significant) and \textbf{fill carries none} ($\beta=-0.00725$ $[-0.21006,+0.18658]$). Within the
@@ -418,7 +419,8 @@ much the accumulated cases' differentials overlap the current probe's (\texttt{d
 shared options, \texttt{random} $0.80$, \texttt{near\_dup} $3.75$ of $5$, always with a
 \emph{different} gold, so the context never displays the probe's answer as correct). Paired
 over $n{=}365$ probes, accuracy is \texttt{random} $0.512$, \texttt{disjoint} $0.485$,
-\texttt{near\_dup} $\mathbf{0.427}$ (Fig.~\ref{fig:dilution}c).
+\texttt{near\_dup} $\mathbf{0.427}$ (Fig.~\ref{fig:dilution}c; an example transcript with its
+generations is in Appendix~\ref{app:examples}).
 
 Near-duplicate context costs $-0.085$ $[-0.140,-0.030]$ against the natural stream and $-0.058$
 $[-0.112,-0.006]$ against disjoint context. In a joint fit within this experiment, \textbf{option
@@ -804,6 +806,94 @@ matched depth: mmlu accumulates ${\sim}0.018$ fill per turn against code's ${\si
 The adherence and system-clamp arms use a three-part canary instruction (reply prefix marker,
 suffix tag, and a forbidden phrase); the forbidden-phrase canary is satisfied trivially by short
 replies, so two canaries are informative.
+
+\section{Example transcripts and generations}
+\label{app:examples}
+
+Both examples are the first probe of their committed runs, reconstructed byte-exactly from the
+run's seed and validated against the stored artifacts (token counts, pathology, gold); the
+generations are quoted verbatim from each run's stored \texttt{turns.csv}, truncated where the
+$32$-token generation cap truncated them. Transcripts are abridged; $[\dots]$ marks elided
+text.
+
+\paragraph{Displacement (\S\ref{sec:displacement}).}
+Session 0's first depth-21 probe: gold D (acute pulmonary edema), fill $0.50$ in every arm.
+The transcript accumulates $21$ answered MMLU filler exchanges; the vignette and the question
+are byte-identical across arms and only the vignette's position differs---in \texttt{local} it
+is the user turn directly before the question, in \texttt{back\_10} the same turn sits ten
+filler exchanges earlier.
+
+\begin{quote}\small
+\texttt{[user]} You are answering a mixed stream of questions. Some are multiple-choice
+knowledge questions; some describe a patient. Answer each one as it arrives.\par\smallskip
+\texttt{[assistant]} Understood.\par\smallskip
+\texttt{[user]} Which of the following ions CANNOT be used as a dopant in germanium to make an
+n-type semiconductor? A) As B) P C) Sb D) B. Reply with only the letter\dots\par\smallskip
+\texttt{[assistant]} D\par\smallskip
+$[\dots\text{19 more filler exchanges}\dots]$\par\smallskip
+\texttt{[user]} Patient: 76-year-old Female. Chief complaint: Are your symptoms worse when
+lying down and alleviated while sitting up. Symptoms: pain (tedious, sensitive, heavy) in the
+lower and posterior chest, intensity 9, radiating to biceps, chin, jaw, shoulders; shortness of
+breath; bouts of choking that wake you up at night; swelling in ankles, calves, tibia
+$[\dots]$ History: fluid in the lungs; dialysis; high blood pressure; heart attack or angina;
+heart failure $[\dots]$\par\smallskip
+\texttt{[assistant]} Noted.\par\smallskip
+\texttt{[user]} For the patient described earlier, most likely diagnosis: A) Pulmonary
+embolism B) Possible NSTEMI / STEMI C) Anaphylaxis D) Acute pulmonary edema E) Pericarditis.
+Answer:
+\end{quote}
+
+\noindent In \texttt{back\_10} the vignette turn and its \texttt{Noted.} sit above ten of the
+filler exchanges instead of none. The generations for this item:
+
+\begin{quote}\small
+\texttt{local:} ``D'' \hfill (parsed, correct)\par\smallskip
+\texttt{back\_10:} ``Given the symptoms described for the patient, such as sudden onset of
+severe chest pain that is worse when lying down and alleviated by sitting up, shortness of''
+\hfill (unparsed, wrong)
+\end{quote}
+
+\noindent The displaced reply paraphrases the vignette accurately---the model is not blind to
+the evidence---but never commits to a letter; \texttt{back\_2}, \texttt{back\_5} and
+\texttt{back\_20} fail the same way on this item. This is the unparsed failure mode whose rate
+rises with fill; the ladder survives restriction to parsed responses (\S\ref{sec:displacement}),
+where the failures are wrong letters instead.
+
+\paragraph{Competition (\S\ref{sec:competition}).}
+Probe 0: gold E (viral pharyngitis). Every arm holds the vignette at the current query
+(distance $0$) and accumulates eight answered DDXPlus cases; only option overlap differs. A
+representative \texttt{near\_dup} context case---four of its five options are the probe's, its
+gold is not:
+
+\begin{quote}\small
+\texttt{[user]} Patient: 64-year-old Male $[\dots]$ Symptoms: $[\dots]$ diffuse muscle pain;
+loss of appetite; nasal congestion or a clear runny nose; a cough. History: smokes cigarettes;
+is immunosuppressed $[\dots]$ Most likely diagnosis: A) Influenza B) Bronchitis C) Viral
+pharyngitis D) HIV (initial infection) E) URTI. Answer:\par\smallskip
+\texttt{[assistant]} A\par\smallskip
+$[\dots\text{7 more such cases}\dots]$\par\smallskip
+\texttt{[user]} Patient: 13-year-old Male. Chief complaint: nasal congestion or a clear runny
+nose. Symptoms: burning pain in both tonsils, thyroid cartilage, pharynx, under the jaw,
+intensity 4; fever; nasal congestion; a cough. History: contact with a person with similar
+symptoms; lives with 4 or more people; is immunosuppressed $[\dots]$\par\smallskip
+\texttt{[assistant]} Noted.\par\smallskip
+\texttt{[user]} For the patient described earlier, most likely diagnosis: A) Bronchitis
+B) Acute laryngitis C) Influenza D) URTI E) Viral pharyngitis. Answer:
+\end{quote}
+
+\noindent The generations for this item:
+
+\begin{quote}\small
+\texttt{disjoint:} ``E'' \hfill (correct)\par\smallskip
+\texttt{random:} ``E'' \hfill (correct)\par\smallskip
+\texttt{near\_dup:} ``D\quad The patient's symptoms include a cough, fever, and nasal
+congestion, which are common in upper respiratory tract infections (URTIs). The fact that
+the'' \hfill (parsed, wrong)
+\end{quote}
+
+\noindent Under near-duplicate context the model picks URTI---an option that recurs in six of
+the eight context cases---over the gold, and justifies it from symptoms the context's cases
+share; with the same vignette over disjoint or random context it answers correctly.
 
 \section{Statistical procedures}
 \label{app:stats}

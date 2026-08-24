@@ -40,7 +40,7 @@ detailed analyses in Appendices A–H).
 | `local` flat with fill | β = −0.294 [−0.767, +0.184] | same |
 | parsed-only ladder | 0.524 / 0.413 / 0.397 / 0.343 / 0.338 | same |
 
-## §4.2 — mass mediation (same subsection, the four interventions; tokens-vs-turns and the query floor now in Appendix F)
+## §4.2 — mass mediation (same subsection, the four interventions; tokens-vs-turns and the query floor now in Appendix G)
 
 **All contrasts PAIRED** (`paired_accuracy_gap`), recomputed 2026-08-19 into
 `results/context_fatigue/dilution_paired.json` by `scripts/context_fatigue/analyze_dilution_paired.py`.
@@ -101,7 +101,7 @@ artifacts `e3c_competitor_close/`, report `E3C_COMPETITOR_CLOSE.md`, driver
 | parsed-only net vs control | +0.0568 [+0.0000, +0.1136], n=317 (boundary) | same |
 | harness anchors | near_dup 0.419 vs committed 0.427; random 0.512 vs 0.512 | same |
 
-## Appendix E — per-layer and per-head structure
+## Appendix F — per-layer and per-head structure
 
 All 32 layers x 32 heads = 1,024 heads. An earlier pass measured layer 24 only; every head-identity
 conclusion from it was wrong and is superseded here.
@@ -134,7 +134,7 @@ the paper** — no number from it enters the tex, so it has no rows here. It was
 evidence in `E2B_DIP_RESCUE.md` and `NULL_STATISTICS.md` §2, which remain the record. Do not
 reintroduce it.
 
-## §4.4–4.5 + Appendix G — precedent (E5 + E6)
+## §4.4–4.5 + Appendix H — precedent (E5 + E6)
 
 E5: `e5_neutral/`, `e5_system_clamp/`, `e5_profile`, report `E5_SYSTEM_CLAMP.md`. Share pooled
 over all 32 layers. E6: `e6_{code,gsm8k,mmlu}/` (+ `_spans/` re-runs, exact replication,
@@ -163,7 +163,7 @@ max |Δ| = 0.000), `e6_mmlu_recovery/`, `e6_exemplar_close/`, `e6_format_probes/
 | L21 linear code rank | AUC 0.822 → 0.619 → 0.505 under iterative projection (rank ≈ 2) | CPU re-probe on `e6_format_probes/` captures |
 | recovery at depth 42 | natural 0.000/0.675 · upclamp 1.000/0.425 · refresh 1.000/0.500 · both 1.000/0.275 (compliance/accuracy) | `e6_mmlu_recovery/` |
 
-## §4.6 + Appendix H — signatures (unchanged from the previous version)
+## §4.6 + Appendix I — signatures (unchanged from the previous version)
 
 | claim | value | artifact / report |
 |---|---|---|
@@ -178,3 +178,19 @@ max |Δ| = 0.000), `e6_mmlu_recovery/`, `e6_exemplar_close/`, `e6_format_probes/
 | F90871 clamp | 0.442 → 0.465 vs clean 0.293 | `results/f90871_steering/` |
 | calibration gap | 0.85→0.95, r=+0.72 [+0.64,+0.79]; wrong 0.86→0.95, r=+0.69 | pooled DDXPlus, n=154 |
 | instruction adherence | corr(violation, fill) = 0 | `instruction_adherence/` |
+
+## Appendix D — example transcripts
+
+Both transcripts are reconstructed byte-exactly from the committed seeds by
+`scripts/context_fatigue/dump_example_transcripts.py`, which asserts the reconstruction against
+the stored artifacts (E1 local 2049 tokens, E3 near_dup 3343 / random 2984 tokens, pathologies,
+golds) and writes `results/context_fatigue/example_transcripts/`. Generations are quoted from
+the runs' own `turns.csv` (row set: E1 session 0 probe 0, all arms; E3 probe 0, all arms).
+
+| claim | value | artifact |
+|---|---|---|
+| E1 example: gold / fill | D (Acute pulmonary edema) / 0.5002 every arm | `e1_distance_sweep/turns.csv` rows 0–4 |
+| E1 example generations | local "D" correct; back_2/5/10/20 unparsed prose | same |
+| E3 example: gold | E (Viral pharyngitis) | `e3_competition/turns.csv` rows 0–2 |
+| E3 example generations | disjoint "E", random "E", near_dup "D" (URTI) | same |
+| near_dup context overlap | 4 of 5 options shared in each of 8 cases; URTI in 6 of 8 | `example_transcripts/metadata.json` |
