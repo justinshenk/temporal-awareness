@@ -63,7 +63,11 @@ from src.probes.context_fatigue.activation_patch import (
     SpanActivationPatch,
     capture_layer_states,
 )
-from src.probes.context_fatigue.attention_clamp import SpanAttentionClamp, locate_token_span
+from src.probes.context_fatigue.attention_clamp import (
+    SpanAttentionClamp,
+    locate_token_span,
+    locate_turn_spans,
+)
 from src.probes.context_fatigue.context_assembly import OverflowGuard
 from src.probes.context_fatigue.ddxplus_cases import (
     format_case_question,
@@ -115,6 +119,14 @@ def parse_args():
     p.add_argument("--prefix-b", default=PREFIX_B_DEFAULT)
     p.add_argument("--patch-layers", type=int, nargs="+", default=None,
                    help="decoder layers to patch (default: all — the Stage-1 maximal patch)")
+    p.add_argument("--patch-positions", default="all",
+                   choices=["all", "assistant_turns", "user_turns", "last_1", "last_2",
+                            "last_4"],
+                   help="Stage-2 position subsets: the context's assistant turns, its user "
+                        "turns, or its last k turns (any role); 'all' is the Stage-1 patch")
+    p.add_argument("--random-control", action="store_true",
+                   help="replace the position subset with a size-matched uniform sample of "
+                        "intervening positions (Stage-2 control; meaningless with 'all')")
     p.add_argument("--no-close", action="store_true",
                    help="secondary arms: score with the system span's attention open")
     p.add_argument("--generate-n", type=int, default=0,
@@ -202,6 +214,41 @@ def accumulate_filler(model, tokenizer, args, depth, is_chat):
         conv = conv + [{"role": "assistant",
                         "content": answer[:8] if args.filler == "mmlu" else answer}]
     return conv[1:], probes  # context turns without the system turn
+
+
+def position_spans(tokenizer, text, context, mode, region):
+    """Token spans for a Stage-2 position subset, clipped to the patchable region.
+
+    ``context`` is the shared filler turn list; subsets follow the brief's bisection:
+    the context's assistant turns, its user turns, or its last k turns of either role.
+    """
+    if mode == "all":
+        return [region]
+    turn_spans = locate_turn_spans(tokenizer, text, [t["content"] for t in context])
+    roles = [t["role"] for t in context]
+    if mode == "assistant_turns":
+        chosen = [s for s, r in zip(turn_spans, roles) if r == "assistant"]
+    elif mode == "user_turns":
+        chosen = [s for s, r in zip(turn_spans, roles) if r == "user"]
+    else:
+        chosen = turn_spans[-int(mode.rsplit("_", 1)[1]):]
+    clipped = [(max(a, region[0]), min(b, region[1])) for a, b in chosen]
+    spans = [(a, b) for a, b in clipped if b > a]
+    if not spans:
+        raise ValueError(f"position subset {mode!r} is empty inside region {region}")
+    return spans
+
+
+def random_spans(region, n_tokens, rng):
+    """A size-matched uniform sample of positions in ``region``, merged into spans."""
+    positions = sorted(rng.sample(range(region[0], region[1]), n_tokens))
+    spans = []
+    for p in positions:
+        if spans and p == spans[-1][1]:
+            spans[-1] = (spans[-1][0], p + 1)
+        else:
+            spans.append((p, p + 1))
+    return spans
 
 
 def prefix_logprob(model, tokenizer, ids, prefix_ids, device):
@@ -328,6 +375,17 @@ def main():
         unrel_span = (unrel_end,
                       locate_token_span(tokenizer, texts["x"], user["content"])[0])
 
+        spans_ab = position_spans(tokenizer, texts["a"], context,
+                                  args.patch_positions, patch_span)
+        spans_xy = position_spans(tokenizer, texts["x"], context,
+                                  args.patch_positions, unrel_span)
+        if args.random_control:
+            rng_pos = random.Random(args.seed + 7919 * pi)
+            spans_ab = random_spans(patch_span,
+                                    sum(b - a for a, b in spans_ab), rng_pos)
+            spans_xy = random_spans(unrel_span,
+                                    sum(b - a for a, b in spans_xy), rng_pos)
+
         if args.preflight:  # §6: the A→A no-op is exact, asserted before anything is scored
             with torch.no_grad():
                 base = model(ids["a"]).logits
@@ -343,13 +401,13 @@ def main():
         conditions = [
             ("pure_a", "a", None, None),
             ("pure_b", "b", None, None),
-            ("patch_ab", "b", "a", patch_span),
-            ("patch_bb", "b", "b", patch_span),   # self-patch baseline for patch_ab
-            ("patch_ba", "a", "b", patch_span),
-            ("patch_aa", "a", "a", patch_span),   # self-patch baseline for patch_ba
+            ("patch_ab", "b", "a", spans_ab),
+            ("patch_bb", "b", "b", spans_ab),   # self-patch baseline for patch_ab
+            ("patch_ba", "a", "b", spans_ab),
+            ("patch_aa", "a", "a", spans_ab),   # self-patch baseline for patch_ba
             ("unrel_pure_y", "y", None, None),
-            ("unrel_patch_xy", "y", "x", unrel_span),
-            ("unrel_patch_yy", "y", "y", unrel_span),
+            ("unrel_patch_xy", "y", "x", spans_xy),
+            ("unrel_patch_yy", "y", "y", spans_xy),
         ]
         for name, rkey, dkey, pspan in conditions:
             rid, sys_span = ids[rkey], spans[rkey]
@@ -363,7 +421,7 @@ def main():
                 "probe": pi, "condition": name, "filler": args.filler, "depth": depth,
                 "closed": not args.no_close, "ctx_tokens": int(rid.shape[1]),
                 "fill": round(int(rid.shape[1]) / args.max_ctx, 4),
-                "patch_tokens": (pspan[1] - pspan[0]) if pspan else 0,
+                "patch_tokens": sum(b - a for a, b in pspan) if pspan else 0,
                 "gold": probe["gold"], **got,
             })
 
@@ -421,6 +479,7 @@ def main():
         "closed": not args.no_close, "n_probes": len(probes), "skipped": skipped,
         "format_b": format_b, "prefix_a": args.prefix_a, "prefix_b": args.prefix_b,
         "patch_layers": args.patch_layers,
+        "patch_positions": args.patch_positions, "random_control": args.random_control,
         "mean_contrast_by_condition": {k: float(v.mean()) for k, v in contrast.items()},
         "dd_ab": dd_ab, "dd_ba": dd_ba, "dd_unrelated": dd_unrel,
     }
