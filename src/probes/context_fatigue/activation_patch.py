@@ -106,6 +106,11 @@ class SpanActivationPatch:
             if hidden.shape[0] != 1:
                 raise RuntimeError(f"patching is batch-1 by design, got batch "
                                    f"{hidden.shape[0]} at layer {li}")
+            if hidden.shape[1] == 1 and self.donor_len > 1:
+                # A cached decode step: its single position lies beyond every patched span
+                # (the patch was applied at prefill and lives on in the KV cache), so there
+                # is nothing to patch here — pass the step through untouched.
+                return output
             if hidden.shape[1] != self.donor_len:
                 raise RuntimeError(
                     f"donor/recipient length mismatch at layer {li}: donor {self.donor_len} "

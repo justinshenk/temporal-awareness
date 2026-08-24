@@ -131,6 +131,19 @@ def test_length_mismatch_raises(family):
         assert patch.hooks  # the failed forward must not have detached the patch
 
 
+def test_single_token_decode_step_passes_through(family):
+    """A cached decode step (seq len 1) is beyond every patched span — never an error."""
+    model = MODEL_BUILDERS[family]()
+    donor_states = capture_layer_states(model, _ids(20))
+    step = _ids(21, seq_len=1)
+    baseline = _logits(model, step)
+
+    with SpanActivationPatch(model, donor_states, span=SPAN):
+        stepped = _logits(model, step)
+
+    assert float((stepped - baseline).abs().max()) == 0.0
+
+
 def test_span_outside_donor_raises(family):
     model = MODEL_BUILDERS[family]()
     donor_states = capture_layer_states(model, _ids(10))
