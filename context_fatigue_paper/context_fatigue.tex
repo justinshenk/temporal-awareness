@@ -415,9 +415,13 @@ surrounded by plausible alternatives. We isolate the second by holding the evide
 current query and fill fixed, and varying only how \emph{confusable} the accumulated context is.
 Every arm accumulates eight prior DDXPlus cases, each answered in the transcript with its gold
 letter, so format and in-context-learning affordance are constant. The arms differ only in how
-much the accumulated cases' differentials overlap the current probe's (\texttt{disjoint} $0$
-shared options, \texttt{random} $0.80$, \texttt{near\_dup} $3.75$ of $5$, always with a
-\emph{different} gold, so the context never displays the probe's answer as correct). Paired
+much the accumulated cases' differentials overlap the current probe's five options:
+\texttt{random} samples context cases uniformly with no overlap constraint---the natural
+stream, whose overlap averages $0.80$ shared options; \texttt{disjoint} filters to zero
+overlap; \texttt{near\_dup} selects for at least $3$ shared options ($3.75$ on average). No
+arm admits a context case with the \emph{same} gold as the probe, so the context never
+displays the probe's answer as correct---in \texttt{near\_dup} the probe's gold routinely
+appears as a context case's \emph{distractor}, which is the manipulation. Paired
 over $n{=}365$ probes, accuracy is \texttt{random} $0.512$, \texttt{disjoint} $0.485$,
 \texttt{near\_dup} $\mathbf{0.427}$ (Fig.~\ref{fig:dilution}c; an example transcript with its
 generations is in Appendix~\ref{app:examples}).
