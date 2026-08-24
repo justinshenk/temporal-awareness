@@ -292,3 +292,14 @@ treatment-loaded ones with a size-matched control. The aggregate that stays cons
 the one that can hide a redistribution of *what* is being read. Corollary: the closure clamp is
 cheap — when a mechanism claim rests on a negative, run the closure before the claim ships,
 not after a reader finds the hole.
+
+## Report numbers are read from artifacts, never asserted from intent
+
+**What happened (E7, 2026-08-24):** the Stage-1 report claimed "0 probes skipped in either
+arm" and "fill ≈0.6" for the code arm. The OLMo box's verification pass found 6 overflow
+skips (n=34, not 40) and fill 0.943 — the claims were written from the design's intent, not
+from `turns.csv`. The ΔΔ estimands were all exact; only the unread metadata was wrong.
+
+**Rule:** every n, fill, skip count, and parse rate in a report is computed from the
+artifact in the same session that writes the report — `groupby` the turns file and paste,
+never transcribe from memory or the plan. If a number was not computed, it does not go in.
