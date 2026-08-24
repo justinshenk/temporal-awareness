@@ -137,3 +137,21 @@ share accumulation reaches, and there is no comfortable margin below it.
 - The padded input is used for *every* condition including the unclamped baseline, so within-E2
   comparisons are exact. Versus an unpadded forward the sdpa mask path moves logits by ~2% of
   scale (argmax agreement 97.7%, last-token argmax unchanged).
+
+## E2a addendum (2026-08-24): the ladder re-denominates fractionally — and accumulation passes the edge
+
+All-layer re-run (`e2a_alllayer/`, n=110, `--reference-layer 0..31`, levels at the committed
+run's fractions of natural). Natural all-layer query share 0.463, accuracy 0.536. Paired
+contrasts vs natural: 0.54 (above natural) +0.000 [−0.036, +0.036]; 0.36 (0.775×) +0.045
+[−0.018, +0.118] n.s.; **0.27 (0.581×) +0.118 [+0.027, +0.209]** significant. Levels 0.18 and
+below are excluded by the committed degeneracy criterion (−3.63 to −5.98 nats; modal answer
+"A" on 99–110 of 110). The fractional structure is identical to the committed L24 ladder:
+flat through 0.775× natural, significant cost at 0.581×.
+
+Accumulated trajectory in the same units (20 items/point, the driver's own construction):
+0.464 (cold) → 0.295 (1 case) → 0.245 (2) → 0.218 (4) → 0.208 (6) → **0.202 (8 cases)**.
+Where the L24 readout said accumulation stops *at* the cost edge (0.15 both), the all-layer
+readout says it passes it: 0.202 sits below the first significantly costly clamp level
+(0.27). Accuracy nonetheless stays flat under accumulation (§4.1's null), so the
+ICL-compensation reading strengthens — accumulation does not stop short of the harmful
+region; it enters it and in-context learning pays the difference.
