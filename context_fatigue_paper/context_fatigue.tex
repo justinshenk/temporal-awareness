@@ -383,7 +383,10 @@ Keeping the evidence at \texttt{local} and clamping its share down to the \emph{
 \texttt{back\_20} share costs $+0.202$ $[+0.138,+0.267]$ (paired $n{=}174$) and lands at $0.333$
 against \texttt{back\_20}'s $0.365$---a difference of $-0.025$ $[-0.083,+0.035]$,
 indistinguishable. \textbf{Mass removal alone reproduces 114\% of the displacement penalty, with
-nothing moved.}
+nothing moved.} The result is not an artifact of the layer-24 dose indexing: re-run with the
+dose share-matched on the all-32-layer mean, removal reproduces $0.91$ $[0.60,1.46]$ of the
+penalty---the interval includes full reproduction---and the clamped arm again lands on
+\texttt{back\_20} ($+0.016$ $[-0.052,+0.083]$).
 
 \paragraph{Dose-response.}
 Sweeping the evidence's share at fixed position over seven levels (common subset $n{=}131$ present
@@ -395,7 +398,10 @@ $+0.198$ $[+0.115,+0.282]$, matches the independently-run clamp experiment's
 $+0.202$ $[+0.138,+0.267]$ for the same share change: agreement to $0.004$ across two separate
 runs, the strongest internal consistency check in the program. An earlier draft of this work
 read a \emph{threshold} into two flat contrasts; the sweep refutes it. The relationship is
-\emph{graded}: a slope, not a cliff.
+\emph{graded}: a slope, not a cliff. Both properties survive re-denomination onto the
+all-32-layer mean share: the all-layer sweep is monotone with largest adjacent step $0.060$
+and no threshold, and its endpoint at the displaced share matches the all-layer removal
+experiment to $0.017$ ($+0.168$ $[+0.102,+0.234]$ vs $+0.151$ $[+0.099,+0.208]$).
 
 \paragraph{Mass restoration.}
 The converse is only partial: clamping the displaced evidence's share back \emph{up} to its
@@ -978,9 +984,13 @@ not. Clamping the query span on cold-start contexts, accuracy is flat from the n
 ($+0.164$ $[+0.036,+0.291]$)---exactly the share accumulation reaches. Accumulation stops
 \emph{at} the edge of the flat region, not short of it. (Levels below $0.15$ require $-4.7$ to
 $-6.1$ nats, near-ablation rather than points on a dose-response, and are excluded from
-interpretation.) That accuracy nonetheless stays flat under accumulation, while the same share
-reached by clamping costs points, is itself evidence that in-context learning is actively
-holding accuracy up.
+interpretation.) The ladder re-denominates fractionally onto the all-32-layer mean share:
+natural $0.463$, no cost above natural, flat at $0.775\times$ natural ($+0.045$
+$[-0.018,+0.118]$), significant cost at $0.581\times$ ($+0.118$ $[+0.027,+0.209]$), the same
+structure as at layer 24. In those units accumulation lands at $0.202$ over eight
+cases---\emph{past} the first costly level, not at its edge. That accuracy nonetheless stays
+flat under accumulation, while the same share reached by clamping costs points, is itself
+evidence that in-context learning is actively holding accuracy up.
 
 \section{Precedent details}
 \label{app:precedent-detail}

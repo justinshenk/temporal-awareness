@@ -194,3 +194,19 @@ the runs' own `turns.csv` (row set: E1 session 0 probe 0, all arms; E3 probe 0, 
 | E3 example: gold | E (Viral pharyngitis) | `e3_competition/turns.csv` rows 0–2 |
 | E3 example generations | disjoint "E", random "E", near_dup "D" (URTI) | same |
 | near_dup context overlap | 4 of 5 options shared in each of 8 cases; URTI in 6 of 8 | `example_transcripts/metadata.json` |
+
+## §4.2 + Appendix G — all-layer re-denomination (2026-08-24)
+
+Re-runs of the three L24-dose experiments with the clamp target share-matched on the
+all-32-layer mean (`--reference-layer 0..31`). Reports: `E1_MECHANISM.md` (E1c/E1f addenda),
+`E2A_MASS_CLAMP.md` (E2a addendum).
+
+| claim | value | artifact |
+|---|---|---|
+| E1c all-layer removal cost | +0.151 [+0.099, +0.208], paired n=192 | `e1c_alllayer/` |
+| E1c all-layer penalty / recovered fraction | +0.167 [+0.094, +0.240] / 0.91 [0.60, 1.46] | same |
+| E1c all-layer clamped − back_20 | +0.016 [−0.052, +0.083] | same |
+| E1f all-layer sweep | 0.497 → 0.305, balanced n=167, largest step 0.060 | `e1f_alllayer/` |
+| E1f↔E1c all-layer agreement | +0.168 [+0.102, +0.234] vs +0.151 [+0.099, +0.208] (0.017) | both |
+| E2a all-layer ladder | natural 0.463/0.536; 0.775× +0.045 n.s.; 0.581× +0.118 [+0.027, +0.209]; ≤0.18 degenerate (−3.63 nats, modal-A 99/110) | `e2a_alllayer/` |
+| all-layer accumulated query trajectory | 0.464 → 0.202 over 8 cases (20 items/point) | `E2A_MASS_CLAMP.md` addendum |
