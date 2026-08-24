@@ -40,6 +40,7 @@ import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from _cf_common import generate_with_entropy, render_prompt
+from run_evidence_clamp import _normalise_layers
 
 from src.probes.context_fatigue.attention_clamp import (
     SpanAttentionClamp,
@@ -64,7 +65,10 @@ def parse_args():
     p = argparse.ArgumentParser()
     p.add_argument("--model", default="allenai/OLMo-2-1124-7B-Instruct")
     p.add_argument("--max-ctx", type=int, default=4096)
-    p.add_argument("--reference-layer", type=int, default=24)
+    p.add_argument("--reference-layer", type=int, nargs="+", default=[24],
+                   help="layer(s) the span share is read from; the clamp biases every layer "
+                        "regardless. Default [24] reproduces the committed runs exactly; pass "
+                        "every layer for the pooled readout.")
     p.add_argument("--levels", type=float, nargs="+", default=LEVELS)
     p.add_argument("--cold-start-cases", type=int, default=0,
                    help="prior DDXPlus cases before the probe; 0 = coldest start")
@@ -81,7 +85,7 @@ def parse_args():
     p.add_argument("--n-sessions", type=int, default=14)
     p.add_argument("--max-new", type=int, default=8)
     p.add_argument("--preflight", action="store_true")
-    return p.parse_args()
+    return _normalise_layers(p.parse_args())
 
 
 def letter_token_ids(tokenizer):
