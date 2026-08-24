@@ -230,3 +230,20 @@ stands, and the remaining candidate for the shortfall is per-head structure — 
 across-head bias can set a span's total mass but not the head pattern the model built at local
 position. Paper edit owed: the "Mass restoration" paragraph should quote these numbers and say
 "share-matched (all-layer)" rather than "layer-24-indexed".
+
+## E1c addendum (2026-08-24): sufficiency is not a layer-24 artifact — all-layer removal reproduces ~91%
+
+Re-run with the removal target indexed on the all-32-layer mean share instead of layer 24
+(`e1c_alllayer/`, n=192 paired triplets, `--reference-layer 0..31`, same panel construction as
+`e1d_alllayer/`). local natural share 0.0758 → clamped to back_20's 0.0302 (achieved 0.0302).
+Accuracy: local 0.536, local_clamped 0.385, back_20 0.370. Paired bootstrap: removal cost
+**+0.151 [+0.099, +0.208]**, displacement penalty +0.167 [+0.094, +0.240], clamped − back_20
++0.016 [−0.052, +0.083] (indistinguishable — the clamped arm lands on back_20). Recovered
+fraction **0.91 [0.60, 1.46]**; the interval includes 1.0.
+
+Reading: the committed L24-indexed sufficiency (114%, +0.202 of +0.177) becomes ~91% in
+all-layer coordinates with a CI spanning full reproduction. The overshoot past 100% was a
+coordinate artifact; the sufficiency claim itself survives the re-denomination. Together with
+the E1d all-layer addendum, both directions of the mediation are now established in
+layer-agnostic units: removal reproduces the penalty (~0.91, CI includes 1), restoration
+recovers 0.28 [0.07, 0.61] of it.
