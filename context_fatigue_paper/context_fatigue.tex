@@ -50,28 +50,27 @@ Long conversations are said to wear language models down, but the standard evalu
 \emph{accumulation} (more context) with \emph{dilution} (the answer-bearing tokens becoming a
 smaller, more distant, more contested fraction of it). We build a harness that separates them:
 streams of individually localized tasks in which context length, evidence distance, context
-confusability, and demonstrated answer shape become four independent knobs, instrumented with a
-span-attention clamp that can \emph{set} any span's post-softmax attention share. Three findings.
+confusability, and demonstrated answer shape are four independent variables, instrumented with a
+span-attention clamp that can \emph{set} any span's post-softmax attention share. Four findings.
 (1)~Accumulation alone is free: accuracy and instruction adherence are flat to $90\%$ fill, with
 bounded nulls. (2)~Displacing the evidence costs $0.19$--$0.21$ accuracy, and the cost is
 \emph{causally mediated by attention mass}: removing the evidence's share with nothing moved
 reproduces $114\%$ of the penalty, the mass$\to$accuracy curve is smooth with no threshold, and
-two separately-run clamp experiments agree to $0.004$. (3)~Near-duplicate context
-costs $0.085$--$0.093$ accuracy at \emph{unchanged evidence share} ($-0.0003$
-$[-0.0009,+0.0004]$)---but closing the context's occurrences of the probe's own answer
-candidates at generation time recovers $59\%$ of that penalty ($+0.060$ $[+0.008,+0.112]$
-against a size-matched random-closure control at zero), so competition is attention-mediated
-too, through the \emph{competitors} rather than the evidence. (4)~Accumulated filler that
-demonstrates an \emph{applicable}
-answer shape erodes an instructed output format totally ($0.875\to0.000$ by fill $0.15$, accuracy
-unharmed) while the instruction's per-token attention is flat-to-rising and its content stays
-perfectly linearly decodable. Attention mass is nonetheless a causal \emph{weight} in that
-contest: clamping the instruction's share down collapses compliance where nothing competes,
-clamping it up restores it against $42$ counter-exemplars, and restating the policy restores it
-without surgery---and the same closure that rescues competition restores nothing here: the
-mode is installed at prefill. Context rot, as measured, is not a decay of competence with
-length: it is displacement (the evidence starved of attention), competition (attended
-impostors), and precedent (an installed mode)---attention dilution proper is only the first.
+two separately-run clamp experiments agree to $0.004$. (3)~Near-duplicate context costs
+$0.085$--$0.093$ accuracy at \emph{unchanged evidence share} ($-0.0003$ $[-0.0009,+0.0004]$).
+Closing the context's occurrences of the probe's own answer candidates at generation time
+recovers $59\%$ of that penalty ($+0.060$ $[+0.008,+0.112]$ against a size-matched
+random-closure control at zero), so competition is attention-mediated too---through the
+\emph{competitors}, not the evidence. (4)~Accumulated filler that demonstrates an
+\emph{applicable} answer shape erodes an instructed output format completely ($0.875\to0.000$ by
+fill $0.15$, accuracy unharmed), while the instruction's per-token attention is flat-to-rising
+and its content stays perfectly linearly decodable. Attention mass is still a causal
+\emph{weight} in that contest: clamping the instruction's share down collapses compliance where
+nothing competes, clamping it up restores compliance against $42$ counter-exemplars, and
+restating the instruction restores it without surgery. The same closure that rescues competition
+restores nothing here: the mode is installed at prefill. Context rot, as measured, is not a
+decay of competence with length. It is displacement, competition, and precedent, and attention
+dilution proper is only the first.
 \end{abstract}
 
 \section{Introduction}
@@ -79,21 +78,21 @@ impostors), and precedent (an installed mode)---attention dilution proper is onl
 A recurring worry about long conversations is \emph{context rot}: as turns accumulate, the model
 is said to degrade. The phenomenology is real. On a repeating multiple-choice task,
 instruction-tuned models become dramatically more confident as context fills---next-token entropy
-drops $3$--$4\times$ on Qwen-2.5-7B and Llama-3.1-8B, in both question orders---and the last
-token's attention shifts systematically away from the system prompt and the current query toward
-the most recent prior cases, with the distribution diffusing (at layer 24 of OLMo-2-Instruct:
+drops $3$--$4\times$ on Qwen-2.5-7B and Llama-3.1-8B, in both question orders. The last token's
+attention also shifts away from the system prompt and the current query toward the most recent
+prior cases, and the distribution diffuses (at layer 24 of OLMo-2-Instruct:
 system$\leftrightarrow$fill $-0.93$, recent$\leftrightarrow$fill $+0.89$,
 current$\leftrightarrow$fill $-0.71$, entropy$\leftrightarrow$fill $+0.95$, all monotone in fill).
 By every visual diagnostic this is a strong effect that grows with context.
 
-The tempting reading is that the model is being worn down by length. But almost every context-rot
+The tempting reading is that length wears the model down. But almost every context-rot
 evaluation embeds the answer-bearing information inside \emph{one long task}---a long document, a
-buried needle, a growing codebase. There, longer context mechanically \emph{dilutes} the relevant
-tokens among irrelevant ones, so a measured degradation conflates the cost of accumulation per se
-with the cost of the target being harder to attend to (``lost in the middle,''
-\citealp{liu2023lost}). These cannot be told apart in that setup, and the distinction matters
-practically: an agent transcript of finished, locally-scoped steps accumulates without diluting,
-and the two accounts make opposite predictions about it. (Appendix~\ref{app:related} places this
+buried needle, a growing codebase. Longer context then mechanically \emph{dilutes} the relevant
+tokens among irrelevant ones, so a measured degradation conflates the cost of accumulation with
+the cost of the target being harder to attend to (``lost in the middle,''
+\citealp{liu2023lost}). The two cannot be told apart in that setup, and the distinction matters
+in practice: an agent transcript of finished, locally-scoped steps accumulates without diluting,
+and the two accounts predict opposite outcomes for it. (Appendix~\ref{app:related} places this
 work in the literature.)
 
 We separate the candidate causes inside one harness (Fig.~\ref{fig:framework}) and ask three
@@ -105,22 +104,21 @@ questions:
   \item[\textbf{RQ2}] When dilution does cost accuracy, is the cost mediated by the evidence's
         attention mass? We split dilution into its two components---the evidence becoming
         \emph{distant} and the context becoming \emph{confusable}---and test each causally.
-  \item[\textbf{RQ3}] What erodes instruction-following under accumulation, if
-        (\S\ref{sec:accumulation}) adherence survives context fill? \citet{dongre2026attentioncloses}
-        recently showed that attention from responses to the system prompt closes over
-        accumulated filler and asked whether behavior survives that closure, finding the answer
+  \item[\textbf{RQ3}] If adherence survives context fill (\S\ref{sec:accumulation}), what
+        erodes instruction-following under accumulation? \citet{dongre2026attentioncloses}
+        showed that attention from responses to the system prompt closes over accumulated filler
+        and asked whether behavior survives that closure, finding the answer
         architecture-indexed; our precedent arms take up their question with a graded instrument
         on one architecture.
 \end{itemize}
 
-The answers: accumulation alone is free (RQ1); distance costs accuracy through the
-\emph{evidence's} attention mass, while confusability costs accuracy at constant evidence mass
+The answers: accumulation alone is free (RQ1). Distance costs accuracy through the
+\emph{evidence's} attention mass; confusability costs accuracy at constant evidence mass,
 through attention to the \emph{competing instances} themselves---closing them recovers most of
-the penalty (RQ2); and instructed output format is
-lost to a \emph{precedent contest} with demonstrated answer shapes, in which the instruction's
-attention mass is a causal weight but not the natural driver---so whether behavior survives
-attention closure is decided by \emph{content}, by what the filler demonstrates, not by
-attention (RQ3).
+the penalty (RQ2). Instructed output format is lost to a \emph{precedent contest} with
+demonstrated answer shapes, in which the instruction's attention mass is a causal weight but not
+the natural driver: whether behavior survives attention closure is decided by what the filler
+demonstrates, not by attention (RQ3).
 
 Our contributions are as follows:
 
@@ -205,14 +203,14 @@ Our harness accumulates \textbf{individually localized tasks}: a stream of self-
 $5$-option medical cases (DDXPlus, \citealp{tchango2022ddxplus}) or discrete factual questions
 (MMLU, \citealp{hendrycks2021mmlu}). Each answer depends only on the \emph{current} question,
 which always sits at the end of the context; prior turns are never required to answer it.
-Accumulation therefore grows the context without ever diluting the information the current
-answer needs, and dilution becomes a set of \emph{independent knobs} (Fig.~\ref{fig:framework}):
-holding the item, the model, the total fill and the metric fixed, we can move the evidence $k$
-user turns back (\emph{displacement}), replace the filler with near-duplicate cases
-(\emph{competition}), or let the filler's replies demonstrate a competing answer shape
-(\emph{precedent})---with question text byte-identical across arms and the same filler in every
-arm unless the filler is the treatment. Distance, fill, confusability, and demonstration, welded
-together in a long-document setup, move independently here.
+Accumulation therefore grows the context without diluting the information the current answer
+needs, and each component of dilution becomes an \emph{independent variable}
+(Fig.~\ref{fig:framework}). Holding the item, the model, the total fill, and the metric fixed,
+we can move the evidence $k$ user turns back (\emph{displacement}), replace the filler with
+near-duplicate cases (\emph{competition}), or let the filler's replies demonstrate a competing
+answer shape (\emph{precedent}). Question text is byte-identical across arms, and the filler is
+identical unless it is the treatment. Distance, fill, confusability, and demonstration---
+inseparable in a long-document setup---vary independently here.
 
 \subsection{Span share and enrichment}
 \label{sec:share}
@@ -221,13 +219,13 @@ For a token span $A$ (the evidence, the system prompt, a filler answer), its \em
 final position's post-softmax attention mass on $A$, averaged over heads at a reference layer
 (layer 24 unless stated) or over all 32 layers where noted. A fixed-size span's raw share falls
 mechanically as context grows---a $48$-token system prompt is a shrinking fraction of the key
-space---so raw share declines say nothing by themselves. We therefore also report
+space---so a raw share decline says nothing by itself. We therefore also report
 \emph{enrichment}: share divided by the span's token fraction, which is $1$ for a span attended
-in proportion to its size. The distinction does real work in \S\ref{sec:precedent}: raw system
-share falls ${\sim}10\times$ on the same curve in arms that erode and arms that do not, while
-enrichment separates nothing---and metrics that aggregate raw attention-to-goal share across a
-growing context, such as the goal-accessibility ratio of \citet{dongre2026attentioncloses},
-build this arithmetic decline in by construction.
+in proportion to its size. The distinction matters in \S\ref{sec:precedent}: raw system share
+falls ${\sim}10\times$ on the same curve in arms that erode and arms that do not, so it
+separates nothing. Metrics that aggregate raw attention-to-goal share across a growing context,
+such as the goal-accessibility ratio of \citet{dongre2026attentioncloses}, build this arithmetic
+decline in by construction.
 
 \subsection{The span-attention clamp}
 \label{sec:clamp}
@@ -236,16 +234,15 @@ To intervene on attention rather than position, we use a clamp that \emph{sets} 
 post-softmax share: a constant bias $b$ added to the span's key columns in the additive attention
 mask scales the span's odds by exactly $e^{b}$, and softmax renormalizes. Nothing in the
 attention forward is reimplemented, so a scale of $1.0$ ($b{=}0$) is bit-identical to the
-unhooked model; a bisection on $b$ hits any target share at the reference layer to
-${\sim}10^{-4}$; and scale $0$ closes the span outright---the hard-masking intervention of
+unhooked model. A bisection on $b$ hits any target share at the reference layer to
+${\sim}10^{-4}$, and scale $0$ closes the span outright---the hard-masking intervention of
 \citet{dongre2026attentioncloses}, recovered as the clamp's endpoint, so their ablation and our
-graded doses live on one dial.
-The clamp is graded and bidirectional---it can remove a span's mass or restore it---which is what
-lets us test mediation in both directions rather than only ablate. It is uniform across heads
-and, unless stated, applied at every layer; per-head structure is measured separately
-(Appendix~\ref{app:heads}). Unlike attention-steering methods aimed at improving compliance
-\citep{zhang2023pasta}, the clamp is a measurement instrument: its no-op is exact, its dose is
-solvable, and its near-ablation regime is excluded from interpretation
+graded doses sit on one dial. The clamp is graded and bidirectional---it can remove a span's
+mass or restore it---so mediation can be tested in both directions rather than only ablated. It
+is uniform across heads and, unless stated, applied at every layer; per-head structure is
+measured separately (Appendix~\ref{app:heads}). Unlike attention-steering methods aimed at
+improving compliance \citep{zhang2023pasta}, the clamp is a measurement instrument: its no-op is
+exact, its dose is solvable, and its near-ablation regime is excluded from interpretation
 (\S\ref{sec:displacement}). Validation is in Appendix~\ref{app:instruments}.
 
 \subsection{Residual probes and mode-vector steering}
@@ -294,20 +291,19 @@ skip counts (Appendix~\ref{app:stats}).
 \label{sec:accumulation}
 
 Per-case accuracy does not fall as context fills; it is worst at the cold start and warms up
-($\mathrm{corr}(\text{correct},\text{fill})=+0.11$ Instruct, $+0.07$ DPO). The obvious objection
-is that a homogeneous repeating task lets in-context learning mask a hidden decay, so we remove
-that crutch: in a \emph{random-subject} stream each question is drawn uniformly from all 56 MMLU
-subjects, so prior context carries no predictive information about the next question---only the
-answer \emph{format} is learnable. Accuracy is still flat (random: $\mathrm{corr}=-0.02$
+($\mathrm{corr}(\text{correct},\text{fill})=+0.11$ Instruct, $+0.07$ DPO). A homogeneous
+repeating task could let in-context learning mask a hidden decay, so we remove that possibility:
+in a \emph{random-subject} stream each question is drawn uniformly from all 56 MMLU subjects, so
+prior context carries no predictive information about the next question---only the answer
+\emph{format} is learnable. Accuracy is still flat (random: $\mathrm{corr}=-0.02$
 $[-0.10,+0.05]$, $n{=}699$; coherent single-subject: $\mathrm{corr}=+0.01$, $n{=}1001$). These
 nulls are \emph{bounded}: the 95\% interval on upper-minus-lower-half accuracy excludes declines
 beyond $4.1$ points (coherent) and $9.4$ (random). Checkable instruction adherence---the canary
-instructions---stays at ceiling throughout
-($\mathrm{corr}(\text{violation},\text{fill})=0$), an honest null that bounds rather than
-proves, since the canaries were easy; \S\ref{sec:precedent} shows what it does and does not
-mean. Accumulation does drive the \emph{current query}'s attention share down to exactly the
-shoulder at which clamping the same share starts to cost points
-(Appendix~\ref{app:displacement-detail})---that accuracy nonetheless stays flat is itself
+instructions---stays at ceiling throughout ($\mathrm{corr}(\text{violation},\text{fill})=0$).
+The canaries were easy, so this null bounds rather than proves; \S\ref{sec:precedent} shows what
+it does and does not mean. Accumulation does drive the \emph{current query}'s attention share
+down to exactly the level at which clamping the same share starts to cost points
+(Appendix~\ref{app:displacement-detail}); that accuracy nonetheless stays flat is itself
 evidence that in-context learning is actively holding it up.
 
 \begin{figure}[t]
@@ -331,7 +327,7 @@ evidence that in-context learning is actively holding it up.
 \subsection{Displacement acts through attention mass}
 \label{sec:displacement}
 
-We now vary only \emph{where the answer-bearing evidence lives}. Each DDXPlus probe's vignette is
+We now vary only \emph{where the answer-bearing evidence sits}. Each DDXPlus probe's vignette is
 placed $k$ user turns before its question; mean fill is $0.688$ in every arm, the question text is
 byte-identical, and the overflow guard skipped $0$ of $192$ probes. Every gap's CI excludes zero
 (Table~\ref{tab:distance}, Fig.~\ref{fig:dilution}a). In a joint fit of accuracy on fill and
@@ -339,7 +335,7 @@ distance, \textbf{distance carries the coefficient} ($\beta=-0.00761$ $[-0.01173
 significant) and \textbf{fill carries none} ($\beta=-0.00725$ $[-0.21006,+0.18658]$). Within the
 \texttt{local} arm---the one that reproduces the accumulation design---accuracy is flat with
 fill ($\beta=-0.294$ $[-0.767,+0.184]$). The effect survives restriction to parsed responses and
-is then fully monotone ($0.524\to0.413\to0.397\to0.343\to0.338$). One honest qualification: the
+is then fully monotone ($0.524\to0.413\to0.397\to0.343\to0.338$). One qualification: the
 decline saturates by $k{\approx}10$ rather than deepening to $k{=}20$, and those two arms are not
 distinguishable from each other. So the same model, on the same items at the same fill, degrades
 when the evidence is displaced and does not degrade when it is not. The localized null is not a
@@ -371,12 +367,12 @@ table. Four interventions separate them.
 
 \paragraph{Observational correlations.}
 Evidence share falls $0.0408\to0.0124$ across the ladder ($r=-0.83$ with distance) while the
-\emph{question}'s share stays flat, confirming only the evidence moved. A trap worth recording:
+\emph{question}'s share stays flat, confirming only the evidence moved. One caution:
 \emph{within} an arm, higher evidence share predicts \emph{lower} accuracy
 ($\beta=-11.2$ $[-20.0,-2.6]$, stronger controlling for vignette length). Attention there tracks
 item difficulty---the model looks harder at confusing vignettes---and has the \emph{opposite sign}
-to the causal effect below. Anyone reading share-against-accuracy correlations off this data
-without intervening will conclude the reverse of the truth.
+to the causal effect below. Reading share--accuracy correlations off this data without
+intervening yields the wrong sign.
 
 \paragraph{Mass removal.}
 Keeping the evidence at \texttt{local} and clamping its share down to the \emph{same item's own}
@@ -392,10 +388,10 @@ $0.012$ (Fig.~\ref{fig:dilution}b). Six of the seven levels differ significantly
 share---including a cut of less than a fifth of the mass---and no step is a threshold: the largest
 adjacent step is $0.053$ and the decline is smooth throughout. The endpoint contrast,
 $+0.198$ $[+0.115,+0.282]$, matches the independently-run clamp experiment's
-$+0.202$ $[+0.138,+0.267]$ for the same share change---agreement to $0.004$ across two separate
-runs, which is the strongest internal consistency check in the program. An earlier draft of this
-work read a \emph{threshold} into two flat contrasts; the sweep refutes it. The relationship is
-\emph{graded}: a measured slope, not a cliff.
+$+0.202$ $[+0.138,+0.267]$ for the same share change: agreement to $0.004$ across two separate
+runs, the strongest internal consistency check in the program. An earlier draft of this work
+read a \emph{threshold} into two flat contrasts; the sweep refutes it. The relationship is
+\emph{graded}: a slope, not a cliff.
 
 \paragraph{Mass restoration.}
 The converse is only partial: clamping the displaced evidence's share back \emph{up} to its
@@ -403,10 +399,10 @@ The converse is only partial: clamping the displaced evidence's share back \emph
 real but small $0.28$ $[0.07,0.61]$ of the penalty ($+0.047$ $[+0.010,+0.083]$ of
 $+0.167$ $[+0.099,+0.240]$), leaving most of it in place. Our uniform clamp can strip mass
 faithfully but cannot reconstruct \emph{which} heads should carry the restored mass. Full
-sufficiency with partial necessity is the signature of an instrument that is faithful in one
-direction and crude in the other, and we report it as one rather than as a second mechanism. A
-pattern-matched, per-head clamp is the test that would settle it. The drain itself is positional
-in \emph{tokens}, not turns---a $64\%$ mass cut from token distance alone costs at most $9.4$
+sufficiency with partial necessity is the signature of an instrument faithful in one direction
+and crude in the other, and we report it as that rather than as a second mechanism. A
+pattern-matched, per-head clamp would settle it. The drain itself is positional in
+\emph{tokens}, not turns---a $64\%$ mass cut from token distance alone costs at most $9.4$
 points---consistent with RoPE decay rather than conversation structure
 (Appendix~\ref{app:displacement-detail}).
 
@@ -414,49 +410,48 @@ points---consistent with RoPE decay rather than conversation structure
 \label{sec:competition}
 
 Burying a needle varies two things at once: the evidence becomes distant \emph{and} it becomes
-surrounded by plausible alternatives. We isolate the other half by holding the evidence at the
+surrounded by plausible alternatives. We isolate the second by holding the evidence at the
 current query and fill fixed, and varying only how \emph{confusable} the accumulated context is.
 Every arm accumulates eight prior DDXPlus cases, each answered in the transcript with its gold
-letter, so format and in-context-learning affordance are constant; the arms differ only in how
+letter, so format and in-context-learning affordance are constant. The arms differ only in how
 much the accumulated cases' differentials overlap the current probe's (\texttt{disjoint} $0$
 shared options, \texttt{random} $0.80$, \texttt{near\_dup} $3.75$ of $5$, always with a
-\emph{different} gold, so the context never displays the probe's answer as a correct one). Paired
+\emph{different} gold, so the context never displays the probe's answer as correct). Paired
 over $n{=}365$ probes, accuracy is \texttt{random} $0.512$, \texttt{disjoint} $0.485$,
 \texttt{near\_dup} $\mathbf{0.427}$ (Fig.~\ref{fig:dilution}c).
 
 Near-duplicate context costs $-0.085$ $[-0.140,-0.030]$ against the natural stream and $-0.058$
-$[-0.112,-0.006]$ against disjoint context; in a joint fit within this experiment, \textbf{option
+$[-0.112,-0.006]$ against disjoint context. In a joint fit within this experiment, \textbf{option
 overlap carries the coefficient} ($\beta=-0.021$ $[-0.039,-0.003]$) and \textbf{fill carries none}
 ($\beta=-0.284$ $[-0.640,+0.075]$)---the same shape as the distance result, on a different
-variable. Two controls matter: the low-competition arms must land on
-\S\ref{sec:displacement}'s \texttt{local} accuracy of $0.464$, and both do ($+0.049$
-$[-0.037,+0.134]$ and $+0.021$ $[-0.065,+0.107]$); and context length does not order the arms,
-since \texttt{disjoint} is the \emph{longest} and mid-accuracy while \texttt{near\_dup} is the
-shortest, so length biases against the result. Restricted to parsed responses only,
-\texttt{random} $-$ \texttt{near\_dup} $=+0.082$ $[+0.025,+0.138]$ survives. The effect is
-\emph{not} monotone in confusability: \texttt{random} sits above \texttt{disjoint}, not below it,
-though not significantly ($+0.027$ $[-0.019,+0.074]$). We therefore claim that near-duplicate
-context is costly, \emph{not} that cost rises with overlap---one significant step, not a
-gradient.
+variable. Two controls hold. The low-competition arms land on \S\ref{sec:displacement}'s
+\texttt{local} accuracy of $0.464$ ($+0.049$ $[-0.037,+0.134]$ and $+0.021$ $[-0.065,+0.107]$),
+and context length does not order the arms: \texttt{disjoint} is the \emph{longest} and
+mid-accuracy while \texttt{near\_dup} is the shortest, so length biases against the result.
+Restricted to parsed responses only, \texttt{random} $-$ \texttt{near\_dup} $=+0.082$
+$[+0.025,+0.138]$ survives. The effect is \emph{not} monotone in confusability:
+\texttt{random} sits above \texttt{disjoint}, not below it, though not significantly ($+0.027$
+$[-0.019,+0.074]$). We therefore claim that near-duplicate context is costly, \emph{not} that
+cost rises with overlap---one significant step, not a gradient.
 
 \paragraph{The dissociation on mass.}
-Repeating the sweep with attention capture (same probes, same seeds) and measuring every one of
-the model's $32$ layers separates the two mechanisms on mass. Averaged over all layers,
-displacement removes $0.0455$ of the evidence's attention share and competition removes $0.0022$,
-while costing $0.188$ and $0.085$ accuracy respectively. Competition is therefore far cheaper in
-mass per point of accuracy than displacement---but it is \emph{not} mass-neutral, and the layer
-chosen decides how it looks: at layer 24 the headline contrast moves the evidence's share by
-$-0.00027$ $[-0.00088,+0.00035]$, indistinguishable from zero, while at layer 17 it moves it by
-$-0.0186$. The two drain profiles are \emph{negatively} correlated across layers ($r{=}-0.32$):
-displacement bites hardest at layers 0--3 and 16, competition at 17--18. That the same accuracy
-contrast has opposite attention signatures in different layers is evidence for two mechanisms
-which no single-layer measurement could supply. Per-head structure---including the null result
+Repeating the sweep with attention capture (same probes, same seeds) and measuring all $32$
+layers separates the two mechanisms on mass. Averaged over all layers, displacement removes
+$0.0455$ of the evidence's attention share and competition removes $0.0022$, while costing
+$0.188$ and $0.085$ accuracy respectively. Competition is therefore far cheaper in mass per
+point of accuracy---but it is \emph{not} mass-neutral, and the layer chosen decides how it
+looks: at layer 24 the headline contrast moves the evidence's share by $-0.00027$
+$[-0.00088,+0.00035]$, indistinguishable from zero, while at layer 17 it moves it by $-0.0186$.
+The two drain profiles are \emph{negatively} correlated across layers ($r{=}-0.32$):
+displacement bites hardest at layers 0--3 and 16, competition at 17--18. The same accuracy
+contrast having opposite attention signatures at different layers is evidence for two mechanisms
+that no single-layer measurement could supply. Per-head structure---including the null result
 that no head hides a large countervailing move---is in Appendix~\ref{app:heads}.
 
 \paragraph{The competitor-closure test.}
 Constant evidence mass rules out starvation; it does not rule out the other attentional route,
 in which the filler's (arm-constant) mass lands on \emph{instances of the probe's own answer
-candidates} and reading them is what misleads. We test it directly: closing every context
+candidates} and reading them is what misleads. We test this directly: closing every context
 occurrence of the probe's option names at generation time (scale $0$; $30.0$ spans, $127.9$
 tokens, union share $0.0077$ per probe) recovers \textbf{59\%} of the competition penalty
 ($+0.055$ $[+0.006,+0.104]$, paired $n{=}365$; $+0.060$ $[+0.008,+0.112]$ against a
@@ -465,11 +460,11 @@ residual gap to \texttt{random} no longer excludes zero ($+0.038$ $[-0.011,+0.08
 rescue survives restriction to parsed responses ($+0.058$ $[+0.003,+0.113]$). \textbf{So
 competition is attention-mediated after all---through the competitors, not the evidence}: less
 than $1\%$ of the attention distribution carries the effect, and removing it removes most of
-the cost. The claim that survives is sharper than the one it replaces: displacement is the
-evidence \emph{starved} of mass, competition is impostors \emph{attended}, and the evidence-mass
-measurement dissociates them because it is blind to the second by construction. What remains
-open is whether the ${\sim}40\%$ residual is prefill-borne interference or instrument slack
-(closure covers verbatim option-name mentions only).
+the cost. Both accuracy mechanisms are therefore attentional, on different spans: displacement
+starves the evidence of mass, competition directs mass onto the competitors, and the
+evidence-mass measurement dissociates them because it is blind to the second by construction.
+What remains open is whether the ${\sim}40\%$ residual is prefill-borne interference or
+instrument slack (closure covers verbatim option-name mentions only).
 
 \subsection{Precedent: instructions lose to applicable demonstrations}
 \label{sec:precedent}
@@ -481,20 +476,21 @@ depth is the only mover).
 
 \paragraph{The instruction's attention is causally necessary---and demonstration masks it.}
 Accumulation drives the system span's share down $8\times$ within eight turns
-($0.166\to0.021$). Clamping it from $0.165$ to $0.050$---a level accumulation passes on its own
-between two and four turns, at $-2.6$ nats, well clear of the near-ablation regime excluded in
-\S\ref{sec:displacement}---in a context containing no assistant turn collapses compliance from
-$0.99$ to $0.03$ (a suffix canary flips on $120$ of $120$ items) while accuracy moves
-$0.525\to0.467$ ($[-0.017,+0.133]$) at parse rate $0.967$: compliance is destroyed and
-competence is not. This confirms \citet{dongre2026attentioncloses}'s ablation finding that
-system-prompt attention is causally necessary---and sharpens it: the collapse needs no masking,
-only a graded clamp to a share accumulation reaches by itself. But one \emph{compliant} example in context pins compliance at ceiling at
-every clamp level, and one bare-letter example pins it at floor even unclamped---replies
-byte-copy the previous assistant turn's format, with zero length variance across $720$
-generations per arm (Appendix~\ref{app:precedent-detail}). The instruction governs behaviour
-only when the transcript is silent, which re-reads \S\ref{sec:accumulation}'s adherence null:
-that null accumulates \emph{compliant} history, so it shows compliance survives compliant
-precedent, not accumulation.
+($0.166\to0.021$). In a context containing no assistant turn, clamping that share from $0.165$
+to $0.050$ collapses compliance from $0.99$ to $0.03$ (a suffix canary flips on $120$ of $120$
+items) while accuracy moves $0.525\to0.467$ ($[-0.017,+0.133]$) at parse rate $0.967$:
+compliance is destroyed and competence is not. The clamp level is one accumulation passes on
+its own between two and four turns ($-2.6$ nats), well clear of the near-ablation regime
+excluded in \S\ref{sec:displacement}. This confirms \citet{dongre2026attentioncloses}'s
+ablation finding that system-prompt attention is causally necessary, and sharpens it: the
+collapse needs no masking, only a graded clamp to a share accumulation reaches by itself. But
+one \emph{compliant} example in context pins compliance at ceiling at every clamp level, and one
+bare-letter example pins it at floor even unclamped---replies byte-copy the previous assistant
+turn's format, with zero length variance across $720$ generations per arm
+(Appendix~\ref{app:precedent-detail}). The instruction governs behaviour only when the
+transcript is silent. This re-reads \S\ref{sec:accumulation}'s adherence null: that null
+accumulates \emph{compliant} history, so it shows compliance survives compliant precedent, not
+accumulation.
 
 \begin{figure}[t]
   \centering
@@ -517,30 +513,30 @@ Three filler streams differ in what their answers demonstrate: \texttt{code}
 (request$\to$Python function; no shape applicable to a $5$-option probe), \texttt{gsm8k} (worked
 prose; loosely applicable), \texttt{mmlu} (MCQ$\to$bare letter; a drop-in replacement).
 \texttt{code} never erodes (compliance $0.875$ at cold start, $1.00$ at matched fill $0.5$,
-$0.90$ at fill $0.78$); \texttt{gsm8k} erodes late and partially ($0.600$ at fill $0.48$, replies
-drifting into the filler's worked-solution register); \texttt{mmlu} collapses totally and
-immediately, $0.875\to0.000$ at three filler turns (fill $0.147$), never recovering through fill
+$0.90$ at fill $0.78$). \texttt{gsm8k} erodes late and partially ($0.600$ at fill $0.48$, replies
+drifting into the filler's worked-solution style). \texttt{mmlu} collapses completely and
+immediately: $0.875\to0.000$ at three filler turns (fill $0.147$), never recovering through fill
 $0.87$ (Fig.~\ref{fig:erosion}a). At matched fill ${\approx}0.5$ the arms order $1.00/0.60/0.00$.
 Accuracy on the same replies is unharmed everywhere ($0.425$ shallow, $0.500$--$0.684$ deep): the
 model still solves the case---it answers in the demonstrated style. The system prompt's attention
 does not carry the difference: its raw share falls on the same arithmetic curve in every arm, its
 per-token enrichment is flat-to-rising in all three (Fig.~\ref{fig:erosion}b), and \texttt{code}
-holds full compliance at half the raw share at which \texttt{mmlu} has already fully collapsed.
+holds full compliance at half the raw share at which \texttt{mmlu} has already collapsed.
 This answers the survival question of \citet{dongre2026attentioncloses} on an axis their
 fixed-filler design cannot see: the same model at the same near-zero share survives or
 collapses depending on what the filler demonstrates.
 
 \paragraph{Reversal is total, by either lever.}
 At depth $42$ (natural compliance $0.000$, accuracy $0.675$), clamping the system span back to
-its cold-start share restores compliance to $1.000$ at an accuracy cost of
-$0.675\to0.425$---mass forced onto a $48$-token span is taken from everything else,
-\S\ref{sec:displacement}'s zero-sum arithmetic---and restating the policy in the latest user
-turn also restores $1.000$, at $0.500$ and with no surgery (both at once: $1.000$ at $0.275$;
+its cold-start share restores compliance to $1.000$ at an accuracy cost of $0.675\to0.425$:
+mass forced onto a $48$-token span is taken from everything else, \S\ref{sec:displacement}'s
+zero-sum arithmetic. Restating the instruction in the latest user turn also restores $1.000$,
+at accuracy $0.500$ and with no intervention on the model (both at once: $1.000$ at $0.275$;
 Fig.~\ref{fig:erosion}c). Natural dilution therefore does not cause the erosion---it is
-identical in the arm that never erodes; an applicable competing template does---and the outcome
-is a contest in which attention mass is a causal \emph{weight}: clamp the instruction down and
-it loses unopposed, clamp it up and it wins against $42$ counter-exemplars, leave it natural
-and the demonstrated template beats it. Re-presenting beats re-weighting, though both work.
+identical in the arm that never erodes; an applicable competing template does. The outcome is a
+contest in which attention mass is a causal \emph{weight}: clamp the instruction down and it
+loses unopposed, clamp it up and it wins against $42$ counter-exemplars, leave it natural and
+the demonstrated template beats it. Re-presenting beats re-weighting, though both work.
 
 \subsection{The mode: readable, installable, not erasable}
 \label{sec:mode}
@@ -548,60 +544,60 @@ and the demonstrated template beats it. Re-presenting beats re-weighting, though
 Where is the demonstrated format, if not in attention? The demonstrated answer spans \emph{are}
 preferentially read exactly where erosion occurs (per-token enrichment of filler answers over
 filler questions: $+1.28$ in \texttt{mmlu}, $+0.34$ in \texttt{gsm8k}, negative in
-\texttt{code}---the erosion ordering), but reading them is not what sustains it: masking every
-exemplar answer's key columns at generation time restores nothing ($0.000$ compliant; a
-size-matched random-masking control is equally null), so the privileged reading is an
-epiphenomenon of the template's installation at prefill, task-vector style
+\texttt{code}---the erosion ordering). But reading them is not what sustains the erosion:
+masking every exemplar answer's key columns at generation time restores nothing ($0.000$
+compliant; a size-matched random-masking control is equally null). The privileged reading is a
+side effect of the template's installation at prefill, task-vector style
 \citep{hendel2023taskvectors}. The contrast with \S\ref{sec:competition} is the sharpest
 dissociation in the paper: the \emph{same} scale-$0$ closure that recovers $59\%$ of the
 competition penalty restores nothing here. Competition is generation-time \emph{reading};
 precedent is prefill \emph{installation}. One intervention, opposite outcomes, two mechanisms.
 
-Residual-stream probes (\S\ref{sec:probes}) complete a three-level dissociation: the
+Residual-stream probes (\S\ref{sec:probes}) complete a three-level dissociation. The
 instruction's presence remains perfectly linearly decodable at every depth (transfer AUC
-$1.000$, permutation $p{=}0.000$) while it has zero behavioral force---read, represented,
-overruled---and whether the upcoming reply will comply is decodable \emph{before the first
-token} (leave-one-out AUC $0.822$ at layer $21$) within cells matched on depth, fill and filler.
-The mode is installable by direction: adding the mean-difference vector at decode time to a
+$1.000$, permutation $p{=}0.000$) while it has zero behavioral force: read, represented,
+overruled. Whether the upcoming reply will comply is decodable \emph{before the first token}
+(leave-one-out AUC $0.822$ at layer $21$) within cells matched on depth, fill, and filler. The
+mode is installable by direction: adding the mean-difference vector at decode time to a
 demonstration-free context destroys the instructed format ($0.000$ vs.\ $0.525$ under a
-norm-matched random vector), the replies reproducing the demonstrated registers verbatim. But no
+norm-matched random vector), with replies reproducing the demonstrated styles verbatim. But no
 linear direction we tried \emph{erases} it---mean-difference at one layer and at eleven, and the
 probe's own reader direction, all with clean controls
 (Appendix~\ref{app:precedent-detail})---even though two fitted projections drive the layer's
-linear code to chance: the code is low-rank, not redundant, so the behavioral decision does not
+linear code to chance. The code is low-rank, not redundant; the behavioral decision does not
 consume the linearly decodable component.
 
 This asymmetry carries a methodological caution beyond this paper. Behavior modes are
-increasingly localized in compact linear structure---rank-1 adapters that capture reasoning
+increasingly localized in compact linear structure: rank-1 adapters that capture reasoning
 behavior with interpretable directions \citep{ward2025rank1loras}, task and function vectors
 \citep{hendel2023taskvectors,todd2024functionvectors}, and near-perfect residual decodability of
 goal information after attention has closed \citep{dongre2026attentioncloses}. Our mode is
 exactly such an object on the read and write sides---and still no readable direction is its
-carrier. Decodability and installability licence no inference to necessity: the probe reads a
-shadow of the mode, not the mode.
+carrier. Decodability and installability license no inference to necessity: the probe reads a
+correlate of the mode, not its carrier.
 
-\subsection{Why the folklore exists: the signatures}
+\subsection{Why context rot gets reported: the signatures}
 \label{sec:signatures}
 
-If the entropy collapse behind the context-rot folklore were a generic depth effect it should
+If the entropy collapse behind the context-rot reports were a generic depth effect it should
 survive on heterogeneous dialogue. It does not. On 150 organic WildChat conversations
 \citep{zhao2024wildchat} (Qwen-2.5-7B, teacher-forced over the real history),
 within-conversation entropy is flat with depth: median late/early ratio $0.99$, and 52\% of
 conversations trend down---a coin flip. Partitioning WildChat by its \emph{own} inter-turn
 homogeneity isolates the driver: homogeneous conversations collapse ($0.897$ late/early) while
-heterogeneous ones are flat ($1.001$), the entropy slope correlates with homogeneity (partial
-$r=-0.151$ controlling for length), and because homogeneous conversations are \emph{longer},
-length works against the effect (Fig.~\ref{fig:signatures}b). Across OLMo-2's
+heterogeneous ones are flat ($1.001$), and the entropy slope correlates with homogeneity
+(partial $r=-0.151$ controlling for length). Because homogeneous conversations are
+\emph{longer}, length works against the effect (Fig.~\ref{fig:signatures}b). Across OLMo-2's
 \citep{olmo2024} post-training chain the collapse is mostly a downward \emph{level shift} in
 baseline entropy installed by alignment ($1.06\to0.20$ across
 base$\to$SFT$\to$DPO$\to$Instruct), not a steeper collapse slope
 (Appendix~\ref{app:signatures-detail}).
 
-The residual hazard in the localized case is \emph{calibration}, not competence: on the DDXPlus
+The residual hazard in the localized case is \emph{calibration}, not competence. On the DDXPlus
 streams logging per-token confidence ($n{=}154$ pooled cases, two models, both question orders),
 answer confidence rises $0.85\to0.95$ with fill ($r=+0.72$ $[+0.64,+0.79]$) at flat
-accuracy---and equally on \emph{wrong} answers ($0.86\to0.95$; $r=+0.69$ $[+0.57,+0.78]$)---so
-the confidently-wrong gap widens by ${\sim}10$ points over a session
+accuracy---and equally on \emph{wrong} answers ($0.86\to0.95$; $r=+0.69$ $[+0.57,+0.78]$). The
+confidently-wrong gap therefore widens by ${\sim}10$ points over a session
 (Fig.~\ref{fig:signatures}c), most consequential exactly where a homogeneous high-stakes stream
 makes the model surest.
 
@@ -612,7 +608,7 @@ makes the model surest.
   \begin{subfigure}{0.32\textwidth}\includegraphics[width=\linewidth]{figures/wildchat_homogeneity.pdf}\end{subfigure}
   \hfill
   \begin{subfigure}{0.32\textwidth}\includegraphics[width=\linewidth]{figures/calibration_gap.pdf}\end{subfigure}
-  \caption{\textbf{The signatures are in-context comfort, and the residual hazard is calibration.}
+  \caption{\textbf{The signatures track task homogeneity, and the residual hazard is calibration.}
   (a) Attention reallocates monotonically off the system prompt and current query with fill while
   accuracy holds. (b) The entropy collapse appears only with a homogeneous repeating task, not on
   organic WildChat dialogue, and tracks homogeneity rather than length. (c) Confidence rises with
@@ -626,18 +622,18 @@ With accumulation, displacement, competition and precedent separated inside one 
 accumulation produces a real, monotone reallocation of attention and a real collapse of
 \emph{confidence}, but no loss of accuracy and no loss of instruction adherence. Displacing the
 evidence produces a large accuracy cost that is causally mediated by its attention mass, graded
-in that mass, and positional in tokens. Making the context confusable produces a further cost at constant evidence mass that is
-carried instead by attention to the competing instances themselves---under $1\%$ of the
-distribution, and closing it recovers most of the cost. Accumulating an applicable demonstrated answer
-shape erodes not accuracy but \emph{compliance}, in a precedent contest the instruction loses
-with its attention intact---and which either re-weighting or re-presenting the instruction wins
-back completely. The literature's central claim is therefore \emph{correct but misattributed,
-and under-counted}: context rot is not a decay with length, it is displacement, competition and
-precedent---starved evidence, attended impostors, an installed mode---three mechanisms with
-different signatures, of which length is merely the usual way of causing them at once, and of
-which only the first is attention dilution proper. The test we would run next is the pattern-matched, per-head clamp that
-would settle whether displacement's partial necessity is an instrument limitation or a second
-channel within displacement itself.
+in that mass, and positional in tokens. Making the context confusable produces a further cost at
+constant evidence mass, carried instead by attention to the competing instances themselves---
+under $1\%$ of the distribution, and closing it recovers most of the cost. Accumulating an
+applicable demonstrated answer shape erodes not accuracy but \emph{compliance}, in a precedent
+contest the instruction loses with its attention intact---and which either re-weighting or
+re-presenting the instruction wins back completely. The literature's central claim is therefore
+correct but misattributed, and under-counted. Context rot is not a decay with length. It is
+three mechanisms with different signatures---displacement, competition, and precedent---of
+which length is merely the usual way of causing all three at once, and of which only the first
+is attention dilution proper. The test we would run next is the pattern-matched, per-head clamp
+that would settle whether displacement's partial necessity is an instrument limitation or a
+second channel within displacement itself.
 
 \section{Limitations}
 
@@ -645,19 +641,19 @@ Per-condition $n$ is bounded by the context window, so every interval here depen
 analysis of \S\ref{sec:design}; resampling the arms independently inflates each one about
 $2.5\times$, enough to report a real effect as null. The necessity direction of the mediation is
 only partially established and is plausibly instrument-limited, since the clamp is uniform
-across heads. The competition result is one significant step rather than a gradient---mild
+across heads. The competition result is one significant step rather than a gradient: mild
 overlap is indistinguishable from none, and we do not claim cost rises with confusability. The
-competitor-closure rescue is substantial, not total: the residual is not distinguishable from
-zero but its point estimate leaves ${\sim}40\%$ of the gap unexplained, closure covers verbatim
+competitor-closure rescue is substantial, not total. Its residual is not distinguishable from
+zero, but the point estimate leaves ${\sim}40\%$ of the gap unexplained, closure covers verbatim
 option-name mentions only, and the parsed-only contrast against the random-closure control sits
-exactly at the interval boundary. The
-instruction-canary null is a floor effect, the WildChat figures are summary values from
-teacher-forced analyses, and the causal program runs on one model family. The precedent results
-are one instruction family, graded by a rule-based checker at $n{=}40$ per cell; and the carrier
-of the demonstrated-format mode is unidentified---it is decodable and installable, but no linear
-direction we tried erases it, so we localize the decision neither to a layer nor to a direction.
-The accuracy null holds for localized tasks; genuinely length-dependent single-task settings are
-where dilution is the point, and are out of scope by design.
+exactly at the interval boundary. The instruction-canary null is a floor effect, the WildChat
+figures are summary values from teacher-forced analyses, and the causal program runs on one
+model family. The precedent results use one instruction family, graded by a rule-based checker
+at $n{=}40$ per cell. The carrier of the demonstrated-format mode is unidentified: it is
+decodable and installable, but no linear direction we tried erases it, so we localize the
+decision neither to a layer nor to a direction. The accuracy null holds for localized tasks;
+genuinely length-dependent single-task settings are where dilution is the point, and are out of
+scope by design.
 
 \small
 \begin{thebibliography}{9}
@@ -712,8 +708,9 @@ and observe a sharp accuracy drop. In retrieval-augmented generation, \citet{cuc
 find that documents retrieved as relevant but not containing the answer act as distractors and
 degrade accuracy. \citet{wang2025unabletoforget} show accuracy declining log-linearly as
 interfering similar updates accumulate, independent of raw context length---the nearest neighbor
-to our competition result, with no attention instrumentation; our contribution is that this cost
-runs at held-constant attention mass, which rules out attention capture as its mechanism.
+to our competition result, with no attention instrumentation. Our contribution is to locate the
+cost: it runs at held-constant \emph{evidence} attention mass and is carried by attention to the
+competing instances themselves (\S\ref{sec:competition}).
 
 \paragraph{Instructions versus demonstrations.}
 Demonstrations can override a model's trained priors \citep{wei2023icldifferently} and, at
@@ -859,14 +856,14 @@ of token distance, as RoPE decay predicts; conversation structure is not what dr
 
 \paragraph{The current query's floor.}
 Accumulation drives the \emph{current query}'s share from ${\approx}0.35$ down to
-${\approx}0.15$, and it is natural to ask whether that stops short of a floor. It does not.
-Clamping the query span on cold-start contexts, accuracy is flat from the natural share
+${\approx}0.15$, and it is natural to ask whether that stops short of a harmful level. It does
+not. Clamping the query span on cold-start contexts, accuracy is flat from the natural share
 ($0.258$, accuracy $0.545$) down through $0.20$ ($0.509$), then costs $16.4$ points at $0.15$
-($+0.164$ $[+0.036,+0.291]$)---which is exactly the share accumulation reaches. Accumulation
-does not stop far short of the shoulder; it stops \emph{at} it. (Levels below $0.15$ require
-$-4.7$ to $-6.1$ nats, near-ablation rather than points on a dose-response, and are excluded
-from interpretation.) That accuracy nonetheless stays flat under accumulation, while the same
-share reached by clamping costs points, is itself evidence that in-context learning is actively
+($+0.164$ $[+0.036,+0.291]$)---exactly the share accumulation reaches. Accumulation stops
+\emph{at} the edge of the flat region, not short of it. (Levels below $0.15$ require $-4.7$ to
+$-6.1$ nats, near-ablation rather than points on a dose-response, and are excluded from
+interpretation.) That accuracy nonetheless stays flat under accumulation, while the same share
+reached by clamping costs points, is itself evidence that in-context learning is actively
 holding accuracy up.
 
 \section{Precedent details}
@@ -885,8 +882,8 @@ clamp level down to share $0.021$; with a single bare-letter answer, $1.00/3$ at
 including unclamped. $720$ generations per arm, zero variance in reply length ($8$ characters in
 one arm, $1$ in the other): the model reproduces the previous assistant turn's format exactly.
 Both arms are pinned---one at ceiling because the format is available from the transcript, one
-at floor because the contrary example already won---so the clamp has nothing to move, and only
-the neutral condition (no assistant turn anywhere) exposes the instruction's causal necessity
+at floor because the contrary example already won---so the clamp has nothing to move. Only the
+neutral condition (no assistant turn anywhere) exposes the instruction's causal necessity
 reported in \S\ref{sec:precedent}. A ``no demonstration'' arm whose prior turn answers with a
 bare letter is not an absence of demonstration; it is a counter-demonstration.
 
