@@ -122,9 +122,11 @@ def parse_args():
                    help="decoder layers to patch (default: all — the Stage-1 maximal patch)")
     p.add_argument("--patch-positions", default="all",
                    choices=["all", "assistant_turns", "user_turns", "last_1", "last_2",
-                            "last_4"],
+                            "last_4", "template"],
                    help="Stage-2 position subsets: the context's assistant turns, its user "
-                        "turns, or its last k turns (any role); 'all' is the Stage-1 patch")
+                        "turns, its last k turns (any role), or 'template' — the region's "
+                        "complement of every turn's content, i.e. the chat template's "
+                        "delimiter/role-header glue; 'all' is the Stage-1 patch")
     p.add_argument("--random-control", action="store_true",
                    help="replace the position subset with a size-matched uniform sample of "
                         "intervening positions (Stage-2 control; meaningless with 'all')")
@@ -237,6 +239,18 @@ def position_spans(tokenizer, text, context, mode, region):
         return [region]
     turn_spans = locate_turn_spans(tokenizer, text, [t["content"] for t in context])
     roles = [t["role"] for t in context]
+    if mode == "template":
+        spans, cursor = [], region[0]
+        for a, b in sorted(turn_spans):
+            if a > cursor:
+                spans.append((cursor, min(a, region[1])))
+            cursor = max(cursor, b)
+        if cursor < region[1]:
+            spans.append((cursor, region[1]))
+        spans = [(a, b) for a, b in spans if b > a]
+        if not spans:
+            raise ValueError(f"template complement is empty inside region {region}")
+        return spans
     if mode == "assistant_turns":
         chosen = [s for s, r in zip(turn_spans, roles) if r == "assistant"]
     elif mode == "user_turns":
