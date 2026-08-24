@@ -247,3 +247,16 @@ coordinate artifact; the sufficiency claim itself survives the re-denomination. 
 the E1d all-layer addendum, both directions of the mediation are now established in
 layer-agnostic units: removal reproduces the penalty (~0.91, CI includes 1), restoration
 recovers 0.28 [0.07, 0.61] of it.
+
+## E1f addendum (2026-08-24): the graded curve survives re-denomination — all-layer sweep
+
+Re-run with levels in all-32-layer pooled share units (`e1f_alllayer/`, 192 probes, levels
+0.065→0.024 spanning natural 0.0742 down through back_20's 0.0302). Balanced panel present at
+every level n=167. Accuracy falls monotonically 0.497 → 0.305; every adjacent step is positive,
+the largest is 0.060, and no step is a threshold. Endpoint contrasts (paired bootstrap):
+natural→0.024 = **+0.192 [+0.120, +0.264]**; natural→0.030 (the displaced share) =
+**+0.168 [+0.102, +0.234]**, against E1c all-layer's independently measured removal cost of
++0.151 [+0.099, +0.208] — cross-experiment agreement to 0.017 in the new units (the committed
+L24 pair agreed to 0.004). All three L24-denominated dose results (E1c sufficiency, E1f
+gradedness, their agreement) therefore survive re-denomination; the remaining L24-indexed
+quantities in the paper are observational reads, not causal doses.
