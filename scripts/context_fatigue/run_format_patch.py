@@ -53,6 +53,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from _cf_common import (
     MEDICAL_SUBJECTS,
     OPTION_LABELS,
+    extract_mcq_answer,
     generate_with_entropy,
     load_code_filler_pool,
     load_filler_pool,
@@ -127,6 +128,14 @@ def parse_args():
     p.add_argument("--random-control", action="store_true",
                    help="replace the position subset with a size-matched uniform sample of "
                         "intervening positions (Stage-2 control; meaningless with 'all')")
+    p.add_argument("--filler-letter-only", action="store_true",
+                   help="store each mmlu filler reply as its extracted bare letter. On OLMo "
+                        "the model does this on its own, making the accumulated context a "
+                        "counter-template; Qwen complies with the clinical format even on "
+                        "filler (replies 'B\\nSUPPORTING: ...'), which would make the "
+                        "'precedent' arm demonstrate the instructed format instead. This flag "
+                        "pins the demonstrated content to the bare letter so the cell means "
+                        "the same thing across families.")
     p.add_argument("--no-close", action="store_true",
                    help="secondary arms: score with the system span's attention open")
     p.add_argument("--generate-n", type=int, default=0,
@@ -211,8 +220,10 @@ def accumulate_filler(model, tokenizer, args, depth, is_chat):
             model, tokenizer, render_prompt(tokenizer, conv, is_chat),
             args.device, budget, args.max_ctx)
         answer = (resp or "A").strip()
-        conv = conv + [{"role": "assistant",
-                        "content": answer[:8] if args.filler == "mmlu" else answer}]
+        if args.filler == "mmlu":
+            answer = ((extract_mcq_answer(answer) or "A") if args.filler_letter_only
+                      else answer[:8])
+        conv = conv + [{"role": "assistant", "content": answer}]
     return conv[1:], probes  # context turns without the system turn
 
 
