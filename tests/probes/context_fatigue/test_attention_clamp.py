@@ -237,10 +237,10 @@ def test_rejects_degenerate_span():
         SpanAttentionClamp(model, span=(5, 5), scale=2.0)
 
 
-def test_rejects_nonpositive_scale():
+def test_rejects_negative_scale():
     model = _olmo2_model()
     with pytest.raises(ValueError):
-        SpanAttentionClamp(model, span=SPAN, scale=0.0)
+        SpanAttentionClamp(model, span=SPAN, scale=-0.5)
 
 
 def test_solver_rejects_impossible_target():
