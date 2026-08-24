@@ -246,3 +246,14 @@ contest the instruction loses with its attention intact — yet which either re-
 re-presenting the instruction fully reverses. The instruction-vs-demonstration channel
 distinction that Davidson et al. establish representationally, we establish causally and
 behaviorally, on the model's own self-generated precedent.
+
+## Entered the tex 2026-08-24 (Dongre bibliography comparison pass)
+
+From this file's tiers: hsieh2024ruler, olsson2022induction, xiao2023streamingllm,
+gu2024attentionsink, wu2025positionbias. New (methodological primitives Dongre et al. cite and
+we were missing, IDs verified): alain2016probes (arXiv:1610.01644), belinkov2022probing
+(Computational Linguistics 48(1)), su2024rope (RoFormer, Neurocomputing 568) — the RoPE-decay
+claims and the linear-probe protocol previously had no citations at all. Bibliography 24 → 32.
+Structural note: Dongre et al. use a four-theme background appendix (degradation / attention
+behavior / probing methodology / architecture); ours stays mechanism-argument-driven — the
+methodology citations were folded inline instead.
