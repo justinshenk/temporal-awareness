@@ -15,8 +15,11 @@ every run; validate every grader against real Qwen generations before trusting a
 
 ## Queue (strict order; each ~step gated on the previous)
 
-- [ ] **Q0 gate:** OLMo all-layer re-runs finish first (e1f_alllayer RUNNING, e2a_alllayer
-      queued), paper robustness edit lands.
+- [x] **Q0 gate — DISSOLVED 2026-08-24:** the Qwen program runs on its own box (A100), so it
+      no longer waits on the OLMo all-layer re-runs; those continue on the original box
+      (e1f_alllayer running, e2a_alllayer queued there). Start at Q1 directly. Coordination:
+      commit each experiment's report (`git add -f`) and pull before starting a stage; the
+      OLMo box does the same.
 - [ ] **Q1 E1 distance sweep** + `--measure-attention`: headline ladder + fill-β null.
       `run_distance_sweep.py --model Qwen/Qwen2.5-7B-Instruct --reference-layer 0..27`.
       Preflight must include answer-extraction check on real replies.
