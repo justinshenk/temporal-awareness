@@ -303,3 +303,16 @@ from `turns.csv`. The ΔΔ estimands were all exact; only the unread metadata wa
 **Rule:** every n, fill, skip count, and parse rate in a report is computed from the
 artifact in the same session that writes the report — `groupby` the turns file and paste,
 never transcribe from memory or the plan. If a number was not computed, it does not go in.
+
+## A cross-family difference is a difference-in-differences, never a CI-vs-CI eyeball
+
+**What happened (Q4, 2026-08-24):** the Qwen E3 report claimed Qwen's contrast CI
+"excludes OLMo's entire interval." The intervals overlap on [+0.030, +0.074]; the DiD is
++0.055 [−0.015, +0.125], not significant. The verification pass downgraded the claim: the
+penalty is *not detected* on Qwen, and only the attention inversion (CIs disjoint by an
+order of magnitude) is an established family difference.
+
+**Rule:** any "differs across models/runs" claim gets its own bootstrap on the difference
+of the two effects. Comparing one CI against another CI's endpoints — or against the other
+run's point estimate — is not a test. The repo's E2b rule applies: overlapping intervals
+are non-robustness, not refutation.
