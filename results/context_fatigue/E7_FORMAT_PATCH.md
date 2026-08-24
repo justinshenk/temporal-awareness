@@ -34,16 +34,16 @@ A→A no-op: asserted `max|Δlogits| = 0.0` in preflight (exact, per the instrum
 Random-position control: not applicable at Stage 1 (the maximal patch uses every intervening
 position); it belongs to Stage 2's subsets.
 
-## Results (n = 40 probes per arm, paired case-resampled bootstrap, 10,000 draws)
+## Results (mmlu n = 40, code n = 34 probes; paired case-resampled bootstrap, 10,000 draws)
 
 Prefixes: S_A = "ANSWER:", S_B = `{"answer":`, S_P = log Σ P(first token is a letter).
 
 | arm | direction | ΔΔ (S_A−S_B) | 95% CI | sig |
 |---|---|---|---|---|
-| code (neutral, depth 15, fill ≈0.6) | A→B | **+0.056** | [+0.016, +0.095] | yes |
+| code (neutral, depth 15, fill 0.943) | A→B | **+0.056** | [+0.016, +0.095] | yes |
 | code | B→A | **−0.071** | [−0.108, −0.033] | yes |
 | code | unrelated-fact | −0.011 | [−0.039, +0.016] | no |
-| mmlu (precedent, depth 42, fill ≈0.87) | A→B | **−0.076** | [−0.124, −0.025] | yes |
+| mmlu (precedent, depth 42, fill 0.877) | A→B | **−0.076** | [−0.124, −0.025] | yes |
 | mmlu | B→A | **+0.066** | [+0.013, +0.117] | yes |
 | mmlu | unrelated-fact | −0.031 | [−0.065, +0.002] | no |
 
@@ -88,4 +88,11 @@ bisection target.
 
 Preflight transcripts and replies read before the full runs
 (`e7_format_patch_preflight/`). Voided intermediate design (pure-run baselines) never ran at
-n>1; no artifacts to void. 0 probes skipped in either arm.
+n>1; no artifacts to void. Skips: mmlu 0; code 6 of 40 (overflow at mean fill 0.943 --- the
+depth-15 code transcripts sit near the window, so the code arm is n=34; skips select the
+longest probes, same direction as E6's code-arm caveat).
+
+**Verification pass (2026-08-24, OLMo box):** all six ΔΔ contrasts, the null controls, and
+the 33/33 generation agreement independently recomputed from the committed `turns.csv`
+artifacts — exact match. Corrections applied in this pass: per-arm n (34, not 40), the code
+arm's fill (0.943, not ≈0.6), and the skip count (6, not 0). Numbers unaffected.
