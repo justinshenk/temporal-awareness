@@ -46,3 +46,77 @@ sequential. Wall-clock ~2 days with preflights and grader iteration.
 - Recheck `max_new` truncation per experiment: Qwen replies are longer-winded than OLMo's.
 - Artifacts under `results/context_fatigue/qwen_*/`; one report per experiment quoting
   artifact filenames, n per cell, skip counts, verdict (brief §9 conventions).
+
+## Box bootstrap (5090 or any fresh box on the /workspace mount)
+
+```
+curl -LsSf https://astral.sh/uv/install.sh | sh
+~/.local/bin/uv python install 3.12
+ln -sf ~/.local/share/uv/python/cpython-3.12-linux-x86_64-gnu/bin/python3.12 /usr/local/bin/python
+echo 'export HF_HOME=/workspace/.cache/huggingface' >> /root/.bashrc
+ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
+HF_HUB_OFFLINE=1 .venv/bin/python -m pytest -q  # expect all green
+```
+
+Qwen2.5-7B-Instruct and the datasets are in the HF cache on the mount; everything runs
+`HF_HUB_OFFLINE=1`. If the mount is fresh instead, drop the offline flag once to download.
+
+## Exact command queue (run in order; PREFLIGHT FIRST, always)
+
+Add `--preflight` and swap the out-dir for `<name>_preflight` before each full run; read the
+preflight transcript and replies before trusting the grader (Qwen's reply style is not OLMo's).
+`QWEN=Qwen/Qwen2.5-7B-Instruct`, layers `$(seq -s' ' 0 27)`.
+
+```
+# Q1 — E1 distance sweep + attention
+HF_HUB_OFFLINE=1 .venv/bin/python scripts/context_fatigue/run_distance_sweep.py \
+  --model $QWEN --reference-layer 24 --measure-attention \
+  --out-dir results/context_fatigue/qwen_e1_distance_sweep
+#   NOTE: --measure-attention records at --reference-layer (int); record the all-layer
+#   pooled read in Q2/Q3 via the clamp drivers, which take the list.
+
+# Q2 — E1c mass removal (also yields Qwen's natural all-layer shares)
+HF_HUB_OFFLINE=1 .venv/bin/python scripts/context_fatigue/run_evidence_clamp.py \
+  --model $QWEN --clamp-arm local --donor-arm back_20 --reference-layer $(seq -s' ' 0 27) \
+  --out-dir results/context_fatigue/qwen_e1c_evidence_clamp
+
+# Q3 — E1f dose-response; SET LEVELS from Q2's measured naturals:
+#   6 levels from ~0.86x natural down through Q2's back_20 share, one below
+HF_HUB_OFFLINE=1 .venv/bin/python scripts/context_fatigue/run_evidence_clamp.py \
+  --model $QWEN --clamp-arm local --levels <FROM_Q2> --reference-layer $(seq -s' ' 0 27) \
+  --out-dir results/context_fatigue/qwen_e1f_share_sweep
+
+# Q4 — E3 competition; then attention addendum; then E3c closure
+HF_HUB_OFFLINE=1 .venv/bin/python scripts/context_fatigue/run_competition_sweep.py \
+  --model $QWEN --out-dir results/context_fatigue/qwen_e3_competition
+HF_HUB_OFFLINE=1 .venv/bin/python scripts/context_fatigue/run_competition_sweep.py \
+  --model $QWEN --attention-only --head-layers $(seq -s' ' 0 27) \
+  --out-dir results/context_fatigue/qwen_e3_attention
+HF_HUB_OFFLINE=1 .venv/bin/python scripts/context_fatigue/run_competition_sweep.py \
+  --model $QWEN --close-arms --out-dir results/context_fatigue/qwen_e3c_competitor_close
+
+# Q5 — E5 system clamp (profile, then neutral-context ladder; check driver flags on the day —
+#   the ladder MUST be derived from the Qwen-measured profile, not OLMo's shares)
+HF_HUB_OFFLINE=1 .venv/bin/python scripts/context_fatigue/run_system_clamp.py --model $QWEN ...
+
+# Q6 — E6 ladders (recovery only after seeing which arm erodes on Qwen)
+for F in mmlu gsm8k code; do
+HF_HUB_OFFLINE=1 .venv/bin/python scripts/context_fatigue/run_format_erosion.py \
+  --model $QWEN --filler $F --n-probes 40 --max-new 256 \
+  --out-dir results/context_fatigue/qwen_e6_$F ; done
+#   depths per filler as in the committed OLMo runs (mmlu 0 3 7 14 21 28 35 42; others 0 2 4 6 9 12 15)
+
+# Q7 — accumulation null, random-subject stream
+HF_HUB_OFFLINE=1 .venv/bin/python scripts/context_fatigue/run_random_context.py \
+  --model $QWEN --out-dir results/context_fatigue/qwen_random_context
+```
+
+## OLMo re-run state on the old box (restart if the swap kills them)
+
+- `e1c_alllayer/` DONE, analyzed, addendum committed (36ccbc5).
+- `e1f_alllayer/` — if turns.csv has fewer than 1345 rows, it died mid-run; relaunch:
+  `run_evidence_clamp.py --clamp-arm local --levels 0.065 0.055 0.046 0.038 0.030 0.024
+   --reference-layer $(seq -s' ' 0 31) --out-dir results/context_fatigue/e1f_alllayer`
+- `e2a_alllayer` NOT STARTED: preflight `run_mass_clamp.py --reference-layer $(seq -s' ' 0 31)`
+  first to read the all-layer natural query share, then set `--levels` at the committed run's
+  fractions of natural (incl. one level above).
