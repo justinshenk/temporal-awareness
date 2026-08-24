@@ -10,8 +10,8 @@ consistent with a masked, not absent, channel (flagged interpretive stacking bel
 Run 2026-08-24 · `Qwen/Qwen2.5-7B-Instruct` · seed 42 · paired panel n = 365 (same
 construction, drops, and seeds as the committed OLMo run: 4 overflow skips, 15 starved —
 all applied to all arms at once) · artifacts `results/context_fatigue/qwen_e3_competition/`
-and `qwen_e3_attention/` · driver `run_competition_sweep.py`. E3c closure arm pending
-(running; will be reported separately).
+, `qwen_e3_attention/`, and `qwen_e3c_competitor_close/` · driver
+`run_competition_sweep.py`.
 
 ## Main panel (free-generation, graded; parse rate 1.000, gold leaks 0)
 
@@ -74,6 +74,24 @@ and Qwen masks it behaviorally by defending the evidence's attention mass under
 confusability. This stacks two designs' coefficients and is not a within-experiment
 estimate; the E3c closure arm (pending) bears on it — closing competitor mentions should
 matter less on Qwen if the residual channel is already compensated.
+
+## E3c closure (eager attention, paired n = 365, parse rate 1.000)
+
+| arm | accuracy | closed tokens |
+|---|---|---|
+| `near_dup` | 0.685 | 0 |
+| `near_dup_comp_close` | 0.666 | 127.9 |
+| `near_dup_rand_close` | 0.685 | 127.9 |
+| `random` | 0.715 | 0 |
+
+near_dup − comp_close = +0.019 [−0.025, +0.063] ns; near_dup − rand_close = +0.000
+[−0.022, +0.022]; the rerun's random − near_dup = +0.030 [−0.016, +0.077] reproduces the
+main panel's estimate. On OLMo the same scale-0 closure of competitor mentions recovered
+59% of the competition penalty; on Qwen, with no penalty detected, closure does nothing —
+generation-time reading of competitor mentions carries no measurable cost here. This
+constrains the masked-channel interpretation above: whatever Qwen's residual ≈0.10
+mass-relative shortfall is, it is not undone by closing the competitor-mention channel that
+carried OLMo's penalty.
 
 ## Notes
 
