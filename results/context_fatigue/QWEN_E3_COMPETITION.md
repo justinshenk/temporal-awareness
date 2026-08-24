@@ -1,9 +1,11 @@
 # Q4 — E3 competition at fixed distance on Qwen2.5-7B-Instruct
 
-**Verdict: the headline competition penalty does NOT reproduce — and the attention addendum
-shows why it may be masked rather than absent. On Qwen, near-duplicate context leaves
-accuracy statistically unchanged while the evidence's attention share RISES; relative to
-that mass advantage, near_dup underperforms by ≈0.10, close to OLMo's −0.085 penalty.**
+**Verdict: the competition penalty is not detected on Qwen (its contrast includes zero; the
+cross-family difference itself is suggestive but not significant, +0.055 [−0.015, +0.125]),
+and the attention addendum shows an unambiguous family difference in mechanism signature:
+under near-duplicate context Qwen's evidence share RISES where OLMo's was flat. Relative to
+that mass advantage, near_dup underperforms by ≈0.10, close to OLMo's −0.085 penalty —
+consistent with a masked, not absent, channel (flagged interpretive stacking below).**
 
 Run 2026-08-24 · `Qwen/Qwen2.5-7B-Instruct` · seed 42 · paired panel n = 365 (same
 construction, drops, and seeds as the committed OLMo run: 4 overflow skips, 15 starved —
@@ -25,9 +27,23 @@ disjoint − near_dup −0.038 [−0.085, +0.008] ns; random − disjoint **+0.0
 β = +0.19 [−0.14, +0.51] ns.
 
 OLMo's committed headline was random − near_dup = +0.085 [+0.030, +0.140] with overlap
-carrying the joint fit. **Qwen's CI excludes that entire interval**: the face-value
-penalty is a genuine family difference, not noise. Qwen also operates far above OLMo's
-baseline here (0.66–0.73 vs 0.49–0.51).
+carrying the joint fit. **CORRECTED (verification pass 2026-08-24):** the original text here
+claimed Qwen's CI excludes OLMo's entire interval; it does not — they overlap on
+[+0.030, +0.074], and the cross-family difference-in-differences is **+0.055
+[−0.015, +0.125], not significant**. What is established: Qwen's own contrast includes zero
+(the penalty is not detected on Qwen), while the cross-family *magnitude* difference is
+suggestive, not demonstrated — the E2b rule (overlapping intervals are non-robustness, not
+refutation) applies. The unambiguous family difference in this experiment is the
+attention-direction inversion below, whose CIs are disjoint from OLMo's by an order of
+magnitude. Qwen also operates far above OLMo's baseline here (0.66–0.73 vs 0.49–0.51).
+
+**Anchor check (added in the same pass):** unlike OLMo, Qwen's low-competition arms do NOT
+land on its own E1 `local` (0.630, n=192): `random` sits at 0.732 (+0.10, unpaired z≈2.4)
+and `disjoint` at 0.663. Plausibly a real ICL effect rather than harness drift — same-task
+DDXPlus context practices the probe's task where E1's MMLU filler does not, and Qwen shows
+the larger random−disjoint gap consistent with exploiting that practice — but it means the
+Q4 arms float on a practice benefit OLMo's did not, and any cross-family comparison of arm
+levels (not just gaps) inherits it.
 
 The one significant Qwen contrast, random > disjoint, was not pre-registered; it is
 robust to clustering (pathology-clustered bootstrap +0.068 [+0.034, +0.113], spread over
