@@ -58,9 +58,7 @@ The unpaired intervals previously reported are retained in that JSON for audit.
 |---|---|---|
 | evidence share falls with distance | 0.0408 → 0.0124, r = −0.83 | `e1_with_attention/`, `E1_MECHANISM.md` |
 | within-arm share↔accuracy trap | β = −11.2 [−20.0, −2.6] | same |
-| E1c sufficiency | +0.2021 [+0.1379, +0.2672], paired n=174 | `e1c_evidence_clamp/` |
-| E1c lands on `back_20` | −0.0249 [−0.0833, +0.0345] | same |
-| **114%** of the displacement penalty | 0.2021 / 0.1772 | same |
+| (superseded in tex 2026-08-25 — §4.2 now reports the all-layer E1c only: L24-dosed sufficiency +0.2021 [+0.1379, +0.2672] paired n=174, lands −0.0249 [−0.0833, +0.0345], 114% = 0.2021/0.1772 — `e1c_evidence_clamp/`) | | |
 | E1d necessity (partial, all-layer share-matched) | +0.047 [+0.010, +0.083] | `e1d_alllayer/`, `E1_MECHANISM.md` addendum |
 | E1d penalty (same paired panel) | +0.167 [+0.099, +0.240] | same |
 | E1d recovered fraction | 0.28 [0.07, 0.61] | same |

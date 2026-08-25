@@ -54,10 +54,10 @@ confusability, and demonstrated answer shape are four independent variables, ins
 span-attention clamp that can \emph{set} any span's post-softmax attention share. Four findings.
 (1)~Accumulation alone shows no net cost: accuracy and instruction adherence are flat to $90\%$
 fill, with bounded nulls. (2)~Displacing the evidence costs $0.19$--$0.21$ accuracy, and
-attention mass is \emph{causally sufficient} for the cost: removing the evidence's share with nothing moved
-reproduces $114\%$ of the penalty, the mass$\to$accuracy curve is smooth with no threshold, and
-two separately-run clamp experiments agree to $0.004$. (3)~Near-duplicate context costs
-$0.085$--$0.093$ accuracy at \emph{unchanged evidence share}. Closing the context's occurrences
+attention mass is \emph{causally sufficient} for the cost: removing the evidence's share with
+nothing moved reproduces the full penalty ($0.91$ $[0.60,1.46]$), and the mass$\to$accuracy
+curve is smooth with no threshold. (3)~Near-duplicate context costs
+$0.085$--$0.093$ accuracy at evidence mass predicting $2\%$ of the effect. Closing the context's occurrences
 of the probe's own answer candidates at generation time recovers $59\%$ of that penalty against
 a size-matched random-closure control at zero, so competition is attention-mediated
 too---through the \emph{competitors}, not the evidence. (4)~Accumulated filler that demonstrates an
@@ -130,7 +130,7 @@ Our contributions are as follows:
         any span's post-softmax share with a bit-identical no-op at scale $1$
         (\S\ref{sec:method}).
   \item A causal sufficiency result for displacement: removing the evidence's attention mass with
-        nothing moved reproduces $114\%$ of the displacement penalty, and the mass$\to$accuracy
+        nothing moved reproduces the displacement penalty in full, and the mass$\to$accuracy
         relationship is smooth and graded with no threshold in it (\S\ref{sec:displacement}).
   \item A dissociation establishing a \emph{second} mechanism: competition costs accuracy at
         constant \emph{evidence} mass, yet closing the competitor mentions recovers $59\%$ of
@@ -218,8 +218,9 @@ inseparable in a long-document setup---vary independently here.
 \label{sec:share}
 
 For a token span $A$ (the evidence, the system prompt, a filler answer), its \emph{share} is the
-final position's post-softmax attention mass on $A$, averaged over heads at a reference layer
-(layer 24 unless stated) or over all 32 layers where noted. A fixed-size span's raw share falls
+final position's post-softmax attention mass on $A$, averaged over heads and pooled over all
+$32$ layers; the ladder and sweep diagnostics (Table~\ref{tab:distance}, Fig.~\ref{fig:dilution})
+additionally read layer 24 as a reference. A fixed-size span's raw share falls
 mechanically as context grows---a $48$-token system prompt is a shrinking fraction of the key
 space---so a raw share decline says nothing by itself. We therefore also report
 \emph{enrichment}: share divided by the span's token fraction, which is $1$ for a span attended
@@ -383,30 +384,24 @@ intervening yields the wrong sign.
 
 \paragraph{Mass removal.}
 Keeping the evidence at \texttt{local} and clamping its share down to the \emph{same item's own}
-\texttt{back\_20} share costs $+0.202$ $[+0.138,+0.267]$ (paired $n{=}174$) and lands on
-\texttt{back\_20} (arm means $0.333$ vs $0.365$; paired difference over the shared items
-$-0.025$ $[-0.083,+0.035]$, indistinguishable). \textbf{Mass removal alone reproduces 114\% of the displacement penalty, with
-nothing moved.} The result is not an artifact of the layer-24 dose indexing: re-run with the
-dose share-matched on the all-32-layer mean, removal reproduces $0.91$ $[0.60,1.46]$ of the
-penalty---the interval includes full reproduction---and the clamped arm again lands on
-\texttt{back\_20} ($+0.016$ $[-0.052,+0.083]$).
+\texttt{back\_20} share costs $+0.151$ $[+0.099,+0.208]$ (paired $n{=}192$) and lands on
+\texttt{back\_20} ($+0.016$ $[-0.052,+0.083]$): removal reproduces $0.91$ $[0.60,1.46]$ of the
+displacement penalty, the interval including full reproduction. \textbf{Mass removal alone
+reproduces the displacement penalty, with nothing moved.}
 
 \paragraph{Dose-response.}
 Sweeping the evidence's share at fixed position over seven levels (common subset $n{=}131$ present
 at every level) gives a graded decline from $0.473$ at the natural share ($0.0441$) to $0.275$ at
 $0.012$ (Fig.~\ref{fig:dilution}b). Six of the seven levels differ significantly from the natural
 share---including a cut of less than a fifth of the mass---and no step is a threshold: the largest
-adjacent step is $0.053$ and the decline is smooth throughout. The endpoint contrast,
-$+0.198$ $[+0.115,+0.282]$, matches the independently-run clamp experiment's
-$+0.202$ $[+0.138,+0.267]$ for the same share change: agreement to $0.004$ across two separate
-runs. The relationship is \emph{graded}: a slope, not a cliff. Both properties survive re-denomination onto the
-all-32-layer mean share: the all-layer sweep declines with largest adjacent step $0.060$
-and no threshold, and its endpoint at the displaced share matches the all-layer removal
-experiment to $0.017$ ($+0.168$ $[+0.102,+0.234]$ vs $+0.151$ $[+0.099,+0.208]$).
+adjacent step is $0.053$ and the decline is smooth throughout. Its endpoint at the displaced
+share matches the independently-run removal experiment to $0.017$
+($+0.168$ $[+0.102,+0.234]$ vs $+0.151$ $[+0.099,+0.208]$). The relationship is \emph{graded}:
+a slope, not a cliff.
 
 \paragraph{Mass restoration.}
 The converse is only partial: clamping the displaced evidence's share back \emph{up} to its
-\texttt{local} level---share-matched across all $32$ layers, not indexed to one---recovers a
+\texttt{local} level recovers a
 nonzero but small $0.28$ $[0.07,0.61]$ of the penalty ($+0.047$ $[+0.010,+0.083]$ of
 $+0.167$ $[+0.099,+0.240]$), leaving most of it in place. The natural suspect is the
 instrument: a uniform clamp strips mass faithfully but cannot reconstruct \emph{which} heads
@@ -460,21 +455,19 @@ $[-0.019,+0.074]$). We therefore claim that near-duplicate context is costly, \e
 cost rises with overlap---one significant step, not a gradient.
 
 \paragraph{The dissociation on mass.}
-Repeating the sweep with attention capture (same probes, same seeds) and measuring all $32$
-layers separates the two mechanisms on mass. Averaged over all layers, displacement removes
-$0.0455$ of the evidence's attention share and competition removes $0.0022$, while costing
-$0.188$ and $0.085$ accuracy respectively. Competition is therefore far cheaper in mass per
-point of accuracy---but it is \emph{not} mass-neutral, and the layer chosen decides how it
-looks: at layer 24 the headline contrast moves the evidence's share by $-0.00027$
-$[-0.00088,+0.00035]$, indistinguishable from zero, while at layer 17 it moves it by $-0.0186$.
-The two drain profiles are \emph{negatively} correlated across layers ($r{=}-0.32$):
-displacement bites hardest at layers 0--3 and 16, competition at 17--18. The same accuracy
-contrast having opposite attention signatures at different layers is evidence for two mechanisms
-that no single-layer measurement could supply. Per-head structure---including the null result
-that no head hides a large countervailing move---is in Appendix~\ref{app:heads}.
+Repeating the sweep with attention capture (same probes, same seeds) separates the two
+mechanisms on mass: displacement removes $0.0455$ of the evidence's attention share and
+competition removes $0.0022$, while costing $0.188$ and $0.085$ accuracy respectively---by the
+dose-response slope, competition's mass change predicts $2.0\%$ of its effect ($6.5\%$ at the
+CI bound). The two drain profiles are \emph{negatively} correlated across layers
+($r{=}-0.32$): displacement bites hardest at layers 0--3 and 16, competition at 17--18---the
+same accuracy contrast with opposite attention signatures, evidence for two mechanisms that no
+single-layer measurement could supply. Per-head structure---including the null result that no
+head hides a large countervailing move---is in Appendix~\ref{app:heads}.
 
 \paragraph{The competitor-closure test.}
-Constant evidence mass argues against starvation; it does not touch the other attentional route,
+Evidence mass predicting $2\%$ of the effect rules out starvation as the carrier; it does not
+touch the other attentional route,
 in which the filler's (arm-constant) mass lands on \emph{instances of the probe's own answer
 candidates} and reading them is what misleads. We test this directly: closing every context
 occurrence of the probe's option names at generation time (scale $0$; $30.0$ spans, $127.9$
@@ -616,9 +609,8 @@ probe's own reader direction, all with clean controls
 linear code to chance. The code is low-rank, not redundant; the behavioral decision does not
 consume the linearly decodable component.
 
-This asymmetry carries a methodological caution beyond this paper. Behavior modes are
-increasingly localized in compact linear structure---rank-1 adapters with interpretable
-directions \citep{ward2025rank1loras}, task and function vectors
+This asymmetry carries beyond this paper. Behavior modes are
+increasingly localized in compact linear structure---task and function vectors
 \citep{hendel2023taskvectors,todd2024functionvectors}, near-perfect residual decodability after
 attention has closed \citep{dongre2026attentioncloses}---and our mode is exactly such an object
 on the read and write sides, yet no readable direction is its carrier. Decodability and
@@ -647,8 +639,7 @@ where the OLMo attention row concentrates ($0.42$ of context-body mass;
 the demonstrated shape. Unlike attention
 sinks \citep{xiao2023streamingllm,gu2024attentionsink}, which absorb mass content-independently
 as normalization slack, the glue state is content-bearing and transportable: moving it moves
-the behavior. The localization is established on Qwen; the OLMo confirmation and a
-periodicity-matched content control are open.
+the behavior.
 
 \subsection{Why context rot gets reported: the signatures}
 \label{sec:signatures}
@@ -751,9 +742,8 @@ head's restored mass uniformly over the span's tokens, so a within-span token-pa
 and a non-attention positional channel are not separated. The competition result is one significant step rather than a gradient: mild
 overlap is indistinguishable from none, and we do not claim cost rises with confusability. The
 near-duplicate arm also changes the selection regime, so overlap is implicated by the
-within-experiment fit and the closure rescue rather than the arm contrast alone, and the
-constant-evidence-mass statement is indexed to layer 24 (\S\ref{sec:competition} reports the
-other layers). The competitor-closure rescue is substantial, not total: the point estimate
+within-experiment fit and the closure rescue rather than the arm contrast alone. The
+competitor-closure rescue is substantial, not total: the point estimate
 leaves ${\sim}40\%$ of the gap unexplained (residual not distinguishable from zero). The
 measured-hot-set closure eliminates only the high-attention form of instrument slack; a
 low-mass non-verbatim channel (paraphrase without literal mention) is not excluded, and the
@@ -810,7 +800,6 @@ scope by design.
 \bibitem[Team OLMo(2024)]{olmo2024} Team OLMo et al. 2 OLMo 2 Furious. \emph{arXiv:2501.00656}, 2024.
 \bibitem[Todd et al.(2024)]{todd2024functionvectors} E.~Todd et al. Function vectors in large language models. \emph{ICLR}, 2024.
 \bibitem[Wang and Sun(2025)]{wang2025unabletoforget} C.~Wang and Y.~Sun. Unable to forget: proactive interference reveals working memory limits in LLMs beyond context length. \emph{ICML Workshop on Long-Context Foundation Models}, 2025.
-\bibitem[Ward et al.(2025)]{ward2025rank1loras} J.~Ward, P.~Riechers, and A.~Shai. Rank-1 LoRAs encode interpretable reasoning signals. \emph{NeurIPS Workshop on Mechanistic Interpretability}, 2025.
 \bibitem[Wei et al.(2023)]{wei2023icldifferently} J.~Wei et al. Larger language models do in-context learning differently. \emph{arXiv:2303.03846}, 2023.
 \bibitem[Wu et al.(2025)]{wu2025positionbias} X.~Wu, Y.~Wang, S.~Jegelka, and A.~Jadbabaie. On the emergence of position bias in transformers. \emph{ICML}, 2025.
 \bibitem[Xiao et al.(2024)]{xiao2023streamingllm} G.~Xiao et al. Efficient streaming language models with attention sinks. \emph{ICLR}, 2024.
@@ -887,9 +876,8 @@ our clamps and token-normalized shares target content spans against that backdro
 
 \paragraph{Compact task representations.}
 In-context demonstrations compress into residual task vectors \citep{hendel2023taskvectors}
-transported by identifiable heads \citep{todd2024functionvectors}, and reasoning capability
-elicited by finetuning can be captured in a rank-1 adapter whose directions are interpretable
-\citep{ward2025rank1loras}. These are the no-attention-signature channel our precedent mechanism
+transported by identifiable heads \citep{todd2024functionvectors}. These are the
+no-attention-signature channel our precedent mechanism
 appears to use (\S\ref{sec:mode}), and our erase-null results bound what such compact readable
 structure can be assumed to do causally. The byte-exact format copying our pinned arms show
 (Appendix~\ref{app:precedent-detail}) is the behavior induction heads implement at circuit
