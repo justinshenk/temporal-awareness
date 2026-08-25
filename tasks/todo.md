@@ -54,16 +54,15 @@ Grader watch-item: extract_mcq_answer \b([ABCDE])\b fallback vs Qwen verbosity
       qwen_e7_bisect_pos_last_{1,2,4}. NOTE: E3c' preflight independently found 43% of
       context-body final-position mass on template glue/turn boundaries (OLMo) —
       convergent with the glue suspicion; see per-token program below.
-- [ ] Wave 3-4: layer blocks 0-6/7-13/14-20/21-27 (all positions) — QUEUED 2026-08-25
-      (chain fires when the per-token-program GPU queue drains; artifacts
-      qwen_e7_bisect_layers_*)
-- [ ] Template cell QUEUED in the same chain (qwen_e7_bisect_pos_template). The
-      'template' mode already existed in run_format_patch.py; verified on the Qwen
-      tokenizer: selects exactly the <|im_end|>/<|im_start|> glue, and
-      template+user+assistant partition the region 43/43 on the check transcript.
-      Trigger condition met twice: Waves 1-2 null AND E3c' glue finding (OLMo).
-- [ ] Winner: crossed cell + --random-control size-matched
-- [ ] OLMo follow-up: 1-2 targeted cells only, n≈100 (~2 GPU-h each) once Qwen localizes
+- [x] Wave 3-4 + template + controls COMPLETE (report QWEN_E7_BISECTION.md). LOCALIZED:
+      template glue positions carry −1.540 of dd_full −2.488 (62%; size-matched random
+      control +0.016); layers 0-6/7-13/14-20/21-27 = −1.16/−1.59/−0.45/−0.11; crossed
+      template x 7-13 = −1.051 (42%). Content subsets ~null (waves 1-2). The carrier is
+      the transcript skeleton, lower half of the stack — converges with E3c' glue mass
+      and E6' closure nulls.
+- [ ] OLMo follow-up RUNNING (e7_bisect_pos_template_olmo, template positions, n=100):
+      does OLMo's small ΔΔ ride the same channel? Caveat for reading: OLMo Stage-1
+      effects are ±0.06-0.08, so this is a channel question, not a magnitude one.
 
 ## Review
 Q1-Q7 queue complete 2026-08-24, all reports + artifacts pushed. E7 Stage 1 both
