@@ -23,9 +23,11 @@ from pathlib import Path
 import matplotlib
 
 matplotlib.use("Agg")
+import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from transformers import AutoTokenizer
 
 from src.common.bootstrap_stats import bootstrap_interval
 from src.probes.context_fatigue.instruction_checks import check_clinical_format
@@ -676,17 +678,55 @@ def fig_qwen_system_clamp(outdir: Path) -> Path:
 
 
 HEATMAP_ROWS_DIR = RESULTS / "context_fatigue" / "e1_rows" / "rows"
+HEATMAP_MODEL = "allenai/OLMo-2-1124-7B-Instruct"
+# White -> orange sequential ramp: one hue for magnitude, on the paper's white ground.
+HEATMAP_CMAP = mcolors.LinearSegmentedColormap.from_list(
+    "attention_orange", ["#ffffff", "#e5610f"])
+_HEATMAP_LOGMIN = -5.0
+
+
+def _heatmap_windows(meta, n, pad=48, tail=80):
+    """Token windows worth typesetting: around the evidence, and the question tail."""
+    ev, q = meta["evidence_span"], meta["question_span"]
+    raw = sorted([(max(0, ev[0] - pad), min(n, ev[1] + pad // 2)),
+                  (max(0, q[0] - tail), n)])
+    merged = [list(raw[0])]
+    for a, b in raw[1:]:
+        if a <= merged[-1][1]:
+            merged[-1][1] = max(merged[-1][1], b)
+        else:
+            merged.append([a, b])
+    return [tuple(w) for w in merged]
+
+
+def _layout_tokens(pieces, line_chars):
+    """Wrap (text, weight, kinds) pieces onto a character grid: (line, col, piece)."""
+    placed, line, col = [], 0, 0
+    for text, w, kinds in pieces:
+        for part in text.split("\n")[:1] + [f"\n{p}" for p in text.split("\n")[1:]]:
+            if part.startswith("\n"):
+                line, col = line + 1, 0
+                part = part[1:]
+            if not part:
+                continue
+            if col + len(part) > line_chars and col > 0:
+                line, col = line + 1, 0
+            placed.append((line, col, part, w, kinds))
+            col += len(part)
+    return placed, line + 1
 
 
 def fig_token_heatmap(outdir: Path, rows_dir: Path | None = None,
-                      arms=("local", "back_10")) -> Path:
-    """Per-token attention heatmap of one displacement pair, from stored capture rows.
+                      arms=("local", "back_10"), decode=None) -> Path:
+    """Windowed transcript excerpts with each token shaded by its attention weight.
 
-    The honest version of the attention-explainer's span-tinted mock: each strip is the
-    final position's measured all-layer/head-mean attention over the whole transcript, for
-    the same probe with its evidence local vs displaced. The evidence span is bracketed and
-    its share quoted, so the figure shows the drain the paper measures — not an illustration
-    of it. Rows come from ``run_distance_sweep.py --attention-only --store-rows``.
+    The honest version of the attention-explainer's span-tinted mock: the transcript's own
+    text, each token's background tinted orange by the final pre-generation position's
+    measured attention to it (all-layer/head mean, log-scaled), for the same probe with its
+    evidence local vs displaced. Evidence carries a solid underline and the current question
+    a dashed one, so span identity never rides on color. Rows come from
+    ``run_distance_sweep.py --attention-only --store-rows``; ``decode`` maps one token id to
+    its text (default: the capture model's tokenizer, cached).
     """
     rows_dir = HEATMAP_ROWS_DIR if rows_dir is None else Path(rows_dir)
     files = {}
@@ -699,35 +739,63 @@ def fig_token_heatmap(outdir: Path, rows_dir: Path | None = None,
         raise FileNotFoundError(
             f"no probe in {rows_dir} has a stored row for every arm in {arms} — "
             "no displacement pair to draw")
+    if decode is None:
+        tokenizer = AutoTokenizer.from_pretrained(HEATMAP_MODEL)
+        decode = lambda tid: tokenizer.decode([tid])  # noqa: E731
 
-    fig, axes = plt.subplots(len(arms), 1, figsize=(7.4, 1.25 * len(arms) + 0.7),
-                             sharex=True)
-    vmin = 1e-5
-    for ax, arm in zip(np.atleast_1d(axes), arms):
+    line_chars, fontsize, line_h = 108, 6.0, 1.0
+    logmax = max(float(np.log10(np.load(p)["row"].astype(np.float32).max()))
+                 for v in [pair] for p in v.values())
+    panels = []
+    for arm in arms:
         z = np.load(pair[arm])
         row = z["row"].astype(np.float32)
+        ids = z["input_ids"]
         meta = json.loads(str(z["meta"]))
-        ax.imshow(np.log10(np.maximum(row, vmin))[None, :], aspect="auto",
-                  cmap="magma", vmin=np.log10(vmin), vmax=np.log10(row.max()),
-                  interpolation="nearest", extent=(0, len(row), 0, 1))
-        for span, color, label in ((meta["evidence_span"], "#55a868", "evidence"),
-                                   (meta["question_span"], "#8fb8de", "question")):
-            a, b = span
-            ax.plot([a, b], [-0.18, -0.18], color=color, linewidth=3,
-                    clip_on=False, solid_capstyle="butt")
-            ax.text((a + b) / 2, -0.32, label, ha="center", va="top", fontsize=7,
-                    color=color, clip_on=False)
-        share = float(row[meta["evidence_span"][0]:meta["evidence_span"][1]].sum())
-        ax.set_yticks([])
-        ax.set_ylabel(arm, rotation=0, ha="right", va="center", fontsize=9)
-        ax.text(0.995, 0.78, f"evidence share {share:.4f}", ha="right", va="center",
-                fontsize=7.5, color="white", transform=ax.transAxes)
-    np.atleast_1d(axes)[-1].set_xlabel("token position in transcript")
-    np.atleast_1d(axes)[0].set_title(
-        "Final-position attention over the transcript (all-layer mean, log color)",
-        fontsize=10)
+        ev, q = meta["evidence_span"], meta["question_span"]
+        weights = np.clip((np.log10(np.maximum(row, 10 ** _HEATMAP_LOGMIN))
+                           - _HEATMAP_LOGMIN) / (logmax - _HEATMAP_LOGMIN), 0, 1)
+        pieces, prev_end = [], None
+        for a, b in _heatmap_windows(meta, len(row)):
+            if prev_end is not None:
+                pieces.append((f"\n⋯ {a - prev_end} tokens omitted ⋯\n", 0.0, ()))
+            prev_end = b
+            for i in range(a, b):
+                kinds = (("ev",) if ev[0] <= i < ev[1] else ()) + \
+                        (("qu",) if q[0] <= i < q[1] else ())
+                pieces.append((decode(int(ids[i])).replace("\t", " "),
+                               float(weights[i]), kinds))
+        placed, n_lines = _layout_tokens(pieces, line_chars)
+        share = float(row[ev[0]:ev[1]].sum())
+        panels.append((arm, share, placed, n_lines))
 
-    fig.tight_layout()
+    total_lines = sum(n for *_, n in panels)
+    fig_h = 0.55 + 0.093 * total_lines + 0.42 * len(panels)
+    fig, axes = plt.subplots(len(panels), 1, figsize=(7.6, fig_h),
+                             height_ratios=[n for *_, n in panels])
+    for ax, (arm, share, placed, n_lines) in zip(np.atleast_1d(axes), panels):
+        ax.set_xlim(0, line_chars)
+        ax.set_ylim(n_lines * line_h, 0)
+        ax.axis("off")
+        ax.set_title(f"{arm} — evidence share {share:.4f}", fontsize=8, loc="left",
+                     fontfamily="monospace")
+        for line, col, part, w, kinds in placed:
+            y = line * line_h
+            ax.add_patch(plt.Rectangle((col, y), len(part), line_h * 0.92,
+                                       facecolor=HEATMAP_CMAP(w), linewidth=0))
+            if "ev" in kinds:
+                ax.plot([col, col + len(part)], [y + line_h * 0.97] * 2,
+                        color="#1c1917", linewidth=1.1, solid_capstyle="butt")
+            if "qu" in kinds:
+                ax.plot([col, col + len(part)], [y + line_h * 0.97] * 2,
+                        color="#78716c", linewidth=1.1, linestyle=(0, (1.5, 1.2)))
+            ax.text(col, y + line_h * 0.5, part, fontsize=fontsize,
+                    fontfamily="monospace", va="center", ha="left",
+                    color="#ffffff" if w > 0.85 else "#1c1917")
+    fig.suptitle("Final-position attention, token by token (all-layer mean, log-scaled "
+                 "white→orange; solid underline = evidence, dashed = current question)",
+                 fontsize=8.5, y=0.995)
+    fig.tight_layout(rect=(0, 0, 1, 0.985))
     path = Path(outdir) / "token_heatmap.pdf"
     fig.savefig(path, bbox_inches="tight")
     plt.close(fig)

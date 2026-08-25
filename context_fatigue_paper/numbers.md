@@ -26,6 +26,7 @@ seed 42, bootstrap 10,000 draws resampling **cases**.
 | AH (closure dissociation) | same closure, opposite outcomes | `fig_closure_dissociation` | documented constants: `E3C_COMPETITOR_CLOSE.md` (rescue/control/in-run gap), Appendix H exemplar-closure values (`E5`/precedent reports) |
 | AJ (replication 2×2) | ladders, dose-responses, competition divergence, OLMo vs Qwen | `fig_qwen_replication` | documented constants: `E1_DISTANCE_SWEEP.md`, `E1_MECHANISM.md` (E1f table), `E3_COMPETITION.md` + `QWEN_E1_DISTANCE_SWEEP.md`, `QWEN_E1F_SHARE_SWEEP.md`, `QWEN_E3_COMPETITION.md`; whiskers Wilson from (acc, n) |
 | AJ (clamp ladder) | Qwen Q5 canary-ordered compliance collapse | `fig_qwen_system_clamp` | documented constants: `QWEN_E5_SYSTEM_CLAMP.md` (n=120/level) |
+| AG (token heatmap) | transcript excerpts, each token shaded by measured final-position attention (white→orange, log), local vs back_10 | `fig_token_heatmap` | `e1_rows/rows/s0_d21_p1_{local,back_10}.npz` (shares 0.0883/0.0522 read from the rows); token text via the capture model's tokenizer |
 
 Appendix figures regenerate with `uv run python scripts/context_fatigue/make_paper_figures.py
 --only appendix` (no raw OLMo run dirs needed; OLMo values are documented constants in

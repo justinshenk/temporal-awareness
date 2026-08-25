@@ -196,9 +196,14 @@ def _write_row_npz(rows_dir, name, seq_len, ev_span, arm, distance):
                          "pathology": "Bronchitis"}))
 
 
+def _fake_decode(tid):
+    """Offline stand-in for the tokenizer: short words with spaces and a few newlines."""
+    return "\nturn:" if tid % 60 == 0 else f" tok{tid}"
+
+
 def test_token_heatmap_builds_from_stored_rows(tmp_path):
-    """Stage 4 of the per-token capture program: the honest, measured version of the
-    span-tinted mock — built from stored rows, no model or tokenizer needed."""
+    """Stage 4 of the per-token capture program: the transcript's own text, each token
+    shaded by its measured attention — built from stored rows, offline via a fake decode."""
     rows_dir = tmp_path / "rows"
     rows_dir.mkdir()
     _write_row_npz(rows_dir, "s0_d21_p5_local.npz", 300, (200, 260), "local", 0)
@@ -206,7 +211,7 @@ def test_token_heatmap_builds_from_stored_rows(tmp_path):
 
     out = tmp_path / "figs"
     out.mkdir()
-    path = pf.fig_token_heatmap(out, rows_dir=rows_dir)
+    path = pf.fig_token_heatmap(out, rows_dir=rows_dir, decode=_fake_decode)
     assert path.exists() and path.suffix == ".pdf" and path.stat().st_size > 0
 
 

@@ -1109,12 +1109,13 @@ evidence that in-context learning is actively holding accuracy up.
 \begin{figure}[t]
   \centering
   \includegraphics[width=0.98\textwidth]{figures/token_heatmap.pdf}
-  \caption{\textbf{Measured final-position attention over one full transcript} (OLMo-2,
-  all-layer/head mean, log color): the same probe with its evidence local vs.\ displaced ten
-  turns back. The evidence bracket carries visibly less mass when displaced ($0.088$ vs
-  $0.052$); the bright periodic stripes are the chat template's turn delimiters---the
-  concentration whose causal role \S\ref{sec:mode} establishes. Built from stored capture rows,
-  not an illustration.}
+  \caption{\textbf{Measured final-position attention, token by token} (OLMo-2, all-layer/head
+  mean, log-scaled white$\to$orange): windowed excerpts of the same probe's transcript with
+  its evidence local vs.\ displaced ten turns back; solid underline marks the evidence span,
+  dashed the current question, and elided stretches are labeled with their token counts. The
+  evidence's tint visibly fades when displaced (share $0.088$ vs $0.052$), and the hottest
+  tokens in both arms are the chat template's turn delimiters---the concentration whose causal
+  role \S\ref{sec:mode} establishes. Built from stored capture rows, not an illustration.}
   \label{fig:token-heatmap}
 \end{figure}
 
