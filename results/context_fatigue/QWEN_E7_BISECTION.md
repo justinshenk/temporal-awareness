@@ -96,11 +96,14 @@ inside the turns while the signal rides between them.
 - **No per-cell CI.** n = 24 and the prefix-logprob estimand carries no bootstrap in this
   driver; comparisons lean on the unrelated-fact control (≤ |0.11| everywhere except
   last_2's +0.264) and the winning cell's dedicated random control.
-- **Cross-family confirmation is pending.** The OLMo template cell (n = 100) is running;
-  OLMo's Stage-1 ΔΔ is an order of magnitude smaller (±0.06–0.08), so the readable
-  question there is whether the same channel carries its small effect — not whether the
-  magnitudes match (the E2b rule: cross-family differences need the
-  difference-in-differences, not CI-vs-CI).
+- ~~Cross-family confirmation is pending.~~ **CONFIRMED (2026-08-25 evening,
+  `e7_bisect_pos_template_olmo/`, n = 100, 15 overflow skips).** On OLMo the glue-only
+  patch carries dd_ab = +0.092 / dd_ba = −0.090 against Stage-1's full-transcript
+  +0.056 / −0.071 (n = 40), with the unrelated-instruction control at −0.011 in both —
+  the whole of OLMo's (order-of-magnitude smaller, non-inverted) effect rides the same
+  template positions. The channel is cross-family; the *magnitudes* are not compared
+  (the E2b rule: that would need a difference-in-differences, and the driver carries no
+  per-cell CI).
 - **Who writes the glue state is not yet separated:** the system instruction at prefill,
   the accumulated demonstrations, or both. E6′'s closure nulls point at the
   demonstration side, but a write-time bisection (patch glue states captured at different

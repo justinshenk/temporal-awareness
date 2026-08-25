@@ -290,4 +290,4 @@ are the durable record.
 | layer blocks 0–6/7–13/14–20/21–27 | −1.160 / −1.591 / −0.454 / −0.113 | `qwen_e7_bisect_layers_*/summary.json` |
 | crossed template × layers 7–13 | −1.051 (42%) | `qwen_e7_bisect_template_x_7_13/summary.json` |
 | unrelated-instruction control bound | ≤ \|0.11\| in every quoted cell | each cell's `dd_unrelated` |
-| OLMo counterpart | PENDING (e7_bisect_pos_template_olmo running, n=100) | — |
+| OLMo channel confirmation | glue-only dd_ab +0.092 / dd_ba −0.090 vs full-patch +0.056 / −0.071; controls −0.011 both | `e7_bisect_pos_template_olmo/summary.json` (n=100, 15 skips) vs `e7_format_patch_code/summary.json` |

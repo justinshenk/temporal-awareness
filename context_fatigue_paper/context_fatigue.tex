@@ -687,7 +687,10 @@ where the OLMo attention row concentrates ($0.42$ of context-body mass;
 the demonstrated shape. Unlike attention
 sinks \citep{xiao2023streamingllm,gu2024attentionsink}, which absorb mass content-independently
 as normalization slack, the glue state is content-bearing and transportable: moving it moves
-the behavior.
+the behavior. The channel is cross-family: on OLMo---whose full-transcript effect is an order
+of magnitude smaller and not inverted---the glue-only patch carries all of it
+($+0.092$ vs.\ the full patch's $+0.056$, $n{=}100$, unrelated-instruction control $-0.011$
+in both). A periodicity-matched content control remains open.
 
 \subsection{Why context rot gets reported: the signatures}
 \label{sec:signatures}
@@ -809,10 +812,12 @@ streams co-vary in genre, structure, and reply length, so the applicability orde
 the stream contrast together with the one-example and reversal experiments. Window-split
 closure rules out attention to the exemplar answers as what sustains \emph{or} installs the
 mode, but only for that span family: installation through attention to other context spans is
-untested. The mode's carrier is localized in tokens on one family only---the template-glue
-patching result is Qwen's, its OLMo counterpart is pending, and the glue subset is confounded
-with positional periodicity (the random control is size-matched, not periodicity-matched)---and
-it remains unlocalized as a \emph{direction}: no linear direction we tried erases it. The accuracy null holds for localized tasks;
+untested. The mode's carrier localization has two open edges: the glue subset is confounded
+with positional periodicity (the random control is size-matched, not periodicity-matched), and
+the cross-family statement is about the \emph{channel} only---OLMo's glue-only patch carries
+its full effect, but that effect is an order of magnitude smaller than Qwen's and the driver
+carries no per-cell interval, so no magnitude comparison is made. The mode also remains
+unlocalized as a \emph{direction}: no linear direction we tried erases it. The accuracy null holds for localized tasks;
 genuinely length-dependent single-task settings are where dilution is the point, and are out of
 scope by design.
 

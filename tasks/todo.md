@@ -60,9 +60,13 @@ Grader watch-item: extract_mcq_answer \b([ABCDE])\b fallback vs Qwen verbosity
       template x 7-13 = −1.051 (42%). Content subsets ~null (waves 1-2). The carrier is
       the transcript skeleton, lower half of the stack — converges with E3c' glue mass
       and E6' closure nulls.
-- [ ] OLMo follow-up RUNNING (e7_bisect_pos_template_olmo, template positions, n=100):
-      does OLMo's small ΔΔ ride the same channel? Caveat for reading: OLMo Stage-1
-      effects are ±0.06-0.08, so this is a channel question, not a magnitude one.
+- [x] OLMo follow-up CONFIRMS the channel (e7_bisect_pos_template_olmo, n=100): glue-only
+      dd_ab +0.092 / dd_ba −0.090 vs full-patch +0.056 / −0.071, controls −0.011 both —
+      OLMo's whole (small, non-inverted) effect rides the template positions. Folded into
+      QWEN_E7_BISECTION.md, the paper (mode + Limitations), numbers.md. BISECTION THREAD
+      CLOSED; open refinement: periodicity-matched content control.
+      NOTE: "no push" instruction superseded 2026-08-25 — user asked to push; branch is
+      being pushed after each fold-in commit.
 
 ## Review
 Q1-Q7 queue complete 2026-08-24, all reports + artifacts pushed. E7 Stage 1 both
