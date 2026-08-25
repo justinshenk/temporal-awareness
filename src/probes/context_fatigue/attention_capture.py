@@ -102,7 +102,8 @@ class SelectiveAttentionCapture:
             # The additive mask's last query row. On a plain causal forward this row is all zeros
             # and changes nothing; it matters when something has biased the mask — which is how
             # the span clamp intervenes, so without this the capture would report the *unclamped*
-            # attention during an intervention. Shape [b, 1, 1, k] broadcasts over heads.
+            # attention during an intervention. A [b, 1, 1, k] slice broadcasts over heads; a
+            # per-head clamp's [b, H, 1, k] slice lands each head's own bias.
             scores = scores + attention_mask[:, :, -1:, :].to(scores.dtype)
         weights = torch.softmax(scores.float(), dim=-1)
         return weights[0, :, 0, :].cpu()
@@ -114,6 +115,30 @@ class SelectiveAttentionCapture:
         for h in self.hooks:
             h.remove()
         self.hooks = []
+
+
+def stacked_rows(captured, layers=None) -> torch.Tensor:
+    """Captured rows stacked to ``(layers, heads, ctx)`` float16 — the stored full-tensor form.
+
+    ``captured`` is :class:`SelectiveAttentionCapture`'s ``{layer: [n_heads, seq]}`` dict;
+    ``layers`` fixes the layer order (default: ascending). float16 keeps a 4k-context,
+    32-layer, 32-head row near 8 MB, and the quantization error (~1e-3 on values in [0, 1])
+    sits well below any share the harness interprets.
+    """
+    order = sorted(captured) if layers is None else list(layers)
+    return torch.stack([torch.as_tensor(captured[li]) for li in order]).to(torch.float16)
+
+
+def mean_attention_row(captured, layers=None) -> torch.Tensor:
+    """All-layer/head-mean final-position attention row, float32 ``(ctx,)`` — the default storage.
+
+    Each head's row is a distribution over key positions, so the mean is one too, and a span's
+    sum under it equals the layer-mean of :func:`~.attention_clamp.span_share` — stored rows and
+    stored aggregates stay interchangeable.
+    """
+    order = sorted(captured) if layers is None else list(layers)
+    return torch.stack(
+        [torch.as_tensor(captured[li], dtype=torch.float32).mean(0) for li in order]).mean(0)
 
 
 def attention_distribution_entropy(attn_vec) -> float:

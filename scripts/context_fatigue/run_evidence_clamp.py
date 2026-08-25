@@ -36,9 +36,12 @@ from run_distance_sweep import (
 )
 
 from src.probes.context_fatigue.attention_clamp import (
+    PerHeadSpanAttentionClamp,
     SpanAttentionClamp,
     locate_token_span,
     measure_span_share,
+    measure_span_share_by_head,
+    solve_per_head_pattern,
     solve_span_scale,
 )
 from src.probes.context_fatigue.context_assembly import assemble_transcript
@@ -82,6 +85,15 @@ def parse_args():
                         "absolute levels instead of to a donor arm's per-item share. Locates the "
                         "knee in the share->accuracy curve that reconciles E1c with E1e's C2.")
     p.add_argument("--n-probes", type=int, default=192, help="sweep mode only")
+    p.add_argument("--per-head-pattern", action="store_true",
+                   help="E1d': alongside the uniform clamp, restore the clamp arm's evidence "
+                        "span to the donor arm's *per-layer, per-head* share pattern "
+                        "(PerHeadSpanAttentionClamp). The uniform clamp recovered only 0.28 of "
+                        "the displacement penalty; recovery >> 0.28 here means that was "
+                        "instrument limitation, ~= 0.28 means a second positional channel "
+                        "(brief: tasks/per_token_capture_brief.md).")
+    p.add_argument("--pattern-iters", type=int, default=3,
+                   help="refinement passes for the per-head pattern solver")
     p.add_argument("--preflight", action="store_true")
     return _normalise_layers(p.parse_args())
 
@@ -285,6 +297,35 @@ def main():
                     pred_clamped = score_forced_choice(
                         model(ids, attention_mask=attn).logits, letter_ids)
 
+                pattern_cols = None
+                if args.per_head_pattern:
+                    # E1d': the donor arm's per-layer, per-head evidence pattern becomes the
+                    # target; the per-head clamp rebuilds *which heads* carry the mass, not
+                    # just how much of it there is.
+                    layers = list(range(len(model.model.layers)))
+                    donor_ids, donor_attn = inputs[args.donor_arm]
+                    targets = measure_span_share_by_head(
+                        model, donor_ids, spans[args.donor_arm], layers, donor_attn)
+                    biases, achieved_ph = solve_per_head_pattern(
+                        model, ids, spans[args.clamp_arm], targets,
+                        attention_mask=attn, iters=args.pattern_iters)
+                    with torch.no_grad(), PerHeadSpanAttentionClamp(
+                            model, span=spans[args.clamp_arm], head_biases=biases,
+                            layers=layers):
+                        pred_pattern = score_forced_choice(
+                            model(ids, attention_mask=attn).logits, letter_ids)
+                    tgt = torch.tensor([targets[li] for li in layers])
+                    ach = torch.tensor([achieved_ph[li] for li in layers])
+                    pattern_cols = {
+                        "condition": f"{args.clamp_arm}_headpattern",
+                        "evidence_share": float(ach.mean()),
+                        "target_share": float(tgt.mean()), "scale": None,
+                        "pattern_err": float((ach - tgt).abs().mean()),
+                        "bias_sd": float(torch.stack(
+                            [biases[li] for li in layers]).std()),
+                        "pred": pred_pattern,
+                        "correct": pred_pattern == probe["gold"]}
+
                 for arm in built:
                     records.append({**row, "condition": arm, "evidence_share": shares[arm],
                                     "target_share": None, "scale": 1.0,
@@ -293,6 +334,8 @@ def main():
                                 "target_share": target, "scale": scale,
                                 "pred": pred_clamped,
                                 "correct": pred_clamped == probe["gold"]})
+                if pattern_cols is not None:
+                    records.append({**row, **pattern_cols})
                 pd.DataFrame(records).to_csv(turns_path, index=False)
                 torch.cuda.empty_cache()
         print(f"  [s{session}] {len(records)} rows", flush=True)

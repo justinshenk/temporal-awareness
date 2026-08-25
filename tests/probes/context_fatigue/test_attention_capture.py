@@ -20,6 +20,8 @@ from transformers.models.qwen2.modeling_qwen2 import Qwen2ForCausalLM
 from src.probes.context_fatigue.attention_capture import (
     SelectiveAttentionCapture,
     attention_distribution_entropy,
+    mean_attention_row,
+    stacked_rows,
 )
 
 SEQ_LEN = 12
@@ -157,6 +159,82 @@ def test_entropy_of_point_mass_is_zero():
 def test_entropy_normalizes_unnormalized_input():
     p = torch.full((8,), 3.0)  # sums to 24, not 1
     assert attention_distribution_entropy(p) == pytest.approx(torch.tensor(8.0).log().item(), abs=1e-5)
+
+
+# ── per-token row storage (per-token capture program, Stage 0) ──────────
+#
+# The capture already computes the full per-head final-position row; these helpers turn the
+# captured dict into what a driver stores — the full (layers, heads, ctx) float16 tensor behind
+# a flag, and the all-layer/head-mean row as the default. The acceptance condition is that span
+# shares recomputed from the *stored* (fp16) row equal the aggregates the harness would have
+# stored, so a stored row is a faithful substitute for a capture pass.
+
+def _captured_rows(family, layers):
+    model = MODEL_BUILDERS[family]()
+    ids = torch.randint(0, 64, (1, SEQ_LEN))
+    capture = SelectiveAttentionCapture(model, layers)
+    capture.enabled = True
+    with torch.no_grad():
+        model(ids)
+    capture.remove()
+    return capture.captured
+
+
+def test_stacked_rows_shape_dtype_and_values(family):
+    layers = [0, 1]
+    captured = _captured_rows(family, layers)
+    stacked = stacked_rows(captured, layers)
+    n_heads = captured[0].shape[0]
+    assert stacked.shape == (len(layers), n_heads, SEQ_LEN)
+    assert stacked.dtype == torch.float16
+    for i, li in enumerate(layers):
+        assert torch.allclose(stacked[i].float(), captured[li].float(), atol=1e-3)
+
+
+def test_stacked_rows_layer_order_follows_the_argument(family):
+    captured = _captured_rows(family, [0, 1])
+    forward = stacked_rows(captured, [0, 1])
+    reversed_ = stacked_rows(captured, [1, 0])
+    assert torch.equal(forward[0], reversed_[1])
+    assert torch.equal(forward[1], reversed_[0])
+
+
+def test_mean_attention_row_is_a_distribution(family):
+    captured = _captured_rows(family, [0, 1])
+    row = mean_attention_row(captured)
+    assert row.shape == (SEQ_LEN,)
+    assert row.dtype == torch.float32
+    assert float(row.sum()) == pytest.approx(1.0, abs=1e-5)
+    assert (row >= 0).all()
+
+
+def test_mean_attention_row_equals_layer_head_mean(family):
+    captured = _captured_rows(family, [0, 1])
+    row = mean_attention_row(captured)
+    manual = torch.stack([captured[li].float().mean(0) for li in [0, 1]]).mean(0)
+    assert torch.allclose(row, manual, atol=1e-7)
+
+
+def test_shares_recomputed_from_stored_row_equal_stored_aggregates(family):
+    """The brief's Stage-0 acceptance: stored fp16 row → span shares == stored aggregates."""
+    from src.probes.context_fatigue.attention_clamp import span_share
+
+    layers = [0, 1]
+    captured = _captured_rows(family, layers)
+    spans = [(0, 3), (3, 7), (SEQ_LEN - 3, SEQ_LEN)]
+
+    # what the harness stores today: the head-mean share, averaged over layers
+    aggregates = [sum(span_share(captured[li], s) for li in layers) / len(layers)
+                  for s in spans]
+
+    stored = stacked_rows(captured, layers)  # what Stage 0 writes to disk (fp16)
+    for s, agg in zip(spans, aggregates):
+        recomputed = float(stored.float()[:, :, s[0]:s[1]].sum(-1).mean())
+        assert recomputed == pytest.approx(agg, abs=1e-3)
+    # and the default (mean-row) storage supports the same readout
+    mean_stored = mean_attention_row(captured).to(torch.float16)
+    for s, agg in zip(spans, aggregates):
+        assert float(mean_stored.float()[s[0]:s[1]].sum()) == pytest.approx(agg, abs=1e-3)
 
 
 def test_capture_respects_attention_mask_bias(family):

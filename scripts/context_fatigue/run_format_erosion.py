@@ -92,6 +92,12 @@ def parse_args():
                    help="at the deepest depth, close or dose-match the attention channel to the "
                         "filler answer spans (fa_close / fa_matched), with filler-question "
                         "closure (fq_close) as the control. Requires eager attention.")
+    p.add_argument("--close-windows", action="store_true",
+                   help="E6': split the fa closure by window — active during prefill only "
+                        "(released at decode) and during decode only — with a size-matched "
+                        "random control per window. Localizes where the precedent mode is "
+                        "installed (brief: tasks/per_token_capture_brief.md). Implies "
+                        "--close-arms; the all-window arms stay in as the anchor.")
     p.add_argument("--record-spans", action="store_true",
                    help="also write spans.csv: the final position's attention share on every "
                         "turn (system, each filler question/answer, the probe), from the same "
@@ -102,6 +108,8 @@ def parse_args():
 
 def main():
     args = parse_args()
+    if args.close_windows:
+        args.close_arms = True
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -308,10 +316,20 @@ def main():
             # geometry rather than content, this arm works too.
             r1 = random.Random(args.seed * 1000 + pi)
             rand1 = sorted((j, j + 1) for j in (r1.randrange(a, b) for a, b in fq))
-            for arm, target_spans, scale in (("fa_close", fa, 0.0),
-                                             ("fa_matched", fa, None),
-                                             ("fq_close", fq, 0.0),
-                                             ("rand1_close", rand1, 0.0)):
+            close_specs = [("fa_close", fa, 0.0, "all"),
+                           ("fa_matched", fa, None, "all"),
+                           ("fq_close", fq, 0.0, "all"),
+                           ("rand1_close", rand1, 0.0, "all")]
+            if args.close_windows:
+                # E6': the same fa closure split by window. Prefill-only releases the channel
+                # at decode (the exemplars stay readable while the reply is produced); decode-
+                # only leaves prefill untouched (the mode installs, then reading is blocked).
+                # Each window gets the size-matched random control at its own window.
+                close_specs += [("fa_close_prefill", fa, 0.0, "prefill"),
+                                ("fa_close_decode", fa, 0.0, "decode"),
+                                ("rand1_close_prefill", rand1, 0.0, "prefill"),
+                                ("rand1_close_decode", rand1, 0.0, "decode")]
+            for arm, target_spans, scale, window in close_specs:
                 if scale is None:
                     # Dose control: bring the answer spans' union share to the per-token level
                     # code-arm answers get (enrichment 0.3) rather than to zero — closure and
@@ -322,13 +340,14 @@ def main():
                         reference_layer=reference_layers, tol=5e-4)
                 else:
                     achieved = 0.0
-                with SpanAttentionClamp(model, span=target_spans, scale=scale):
+                with SpanAttentionClamp(model, span=target_spans, scale=scale, window=window):
                     resp, ctx_len, entropy, _ = generate_with_entropy(
                         model, tokenizer, text, args.device, args.max_new, args.max_ctx)
                 graded = check_clinical_format(resp or "", probe["vignette"],
                                                options=probe["options"][:args.n_options])
                 records.append({
                     "depth": deepest, "probe": pi, "recovery_arm": arm,
+                    "close_window": window,
                     "closed_share": achieved,
                     "ctx_tokens": ctx_len, "fill": round(ctx_len / args.max_ctx, 4),
                     "gold": probe["gold"], "pred": graded["answer"],

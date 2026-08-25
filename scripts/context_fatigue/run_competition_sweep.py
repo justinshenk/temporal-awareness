@@ -34,6 +34,7 @@ import json
 import random
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -46,12 +47,17 @@ from _cf_common import (
     render_prompt,
 )
 
-from src.probes.context_fatigue.attention_capture import SelectiveAttentionCapture
+from src.probes.context_fatigue.attention_capture import (
+    SelectiveAttentionCapture,
+    mean_attention_row,
+)
 from src.probes.context_fatigue.attention_clamp import (
     SpanAttentionClamp,
     locate_phrase_spans,
     locate_token_span,
+    locate_turn_spans,
     measure_span_share,
+    select_hot_token_spans,
     span_share,
 )
 from src.probes.context_fatigue.context_assembly import (
@@ -104,9 +110,41 @@ def parse_args():
                         "and the natural near_dup and random arms. Requires eager attention. "
                         "Tests whether competition's cost is carried by *reading* the competitor "
                         "instances at generation time (brief: tasks/e3c_competitor_close_brief.md).")
+    p.add_argument("--measured-close", type=float, default=None, metavar="K",
+                   help="E3c': add a closure arm built from the *measured* hot tokens — the "
+                        "context-body tokens the final position actually reads most, ranked by "
+                        "the all-layer-mean attention row — with token budget K x the verbatim "
+                        "closure's per-probe token count, plus its own size-matched random "
+                        "control. Implies --close-arms; the verbatim arms stay in as the "
+                        "within-session anchor. Attacks the closure residual: rescue beyond the "
+                        "verbatim arm's means the residual was instrument slack, not prefill "
+                        "interference (brief: tasks/per_token_capture_brief.md).")
+    p.add_argument("--store-rows", action="store_true",
+                   help="store each probe's final-position attention row (all-layer/head mean, "
+                        "float16) plus span metadata under rows/ in the out dir — the "
+                        "per-token capture program's Stage-0 artifact.")
     p.add_argument("--preflight", action="store_true",
                    help="run two probes end-to-end, write them, and exit")
     return p.parse_args()
+
+
+def size_matched_control_spans(spans, lo, hi, rng, avoid):
+    """Random spans with the same count and widths as ``spans``, inside ``[lo, hi)``.
+
+    Each drawn span must overlap neither ``avoid`` nor previously drawn controls — the
+    size-matched random-closure control both E3c and E3c' compare their closure arms against.
+    """
+    taken = list(avoid)
+    controls = []
+    for a, b in spans:
+        width = b - a
+        for _ in range(200):
+            s = rng.randrange(lo, hi - width)
+            if all(s + width <= x or s >= y for x, y in taken):
+                controls.append((s, s + width))
+                taken.append((s, s + width))
+                break
+    return sorted(controls)
 
 
 def build_context_turns(cases, n_options):
@@ -123,8 +161,13 @@ def main():
     args = parse_args()
     if args.per_head:
         args.attention_only = True
+    if args.measured_close is not None:
+        args.close_arms = True
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    rows_dir = out_dir / "rows"
+    if args.store_rows:
+        rows_dir.mkdir(exist_ok=True)
 
     print(f"Loading {args.model} ...", flush=True)
     tokenizer = AutoTokenizer.from_pretrained(args.model)
@@ -197,30 +240,92 @@ def main():
                 starved += 1
                 continue
             ids = tokenizer(rendered_nd, return_tensors="pt").input_ids.to(args.device)
-            # E3b rider: the competitor spans' union share before closure, all-layer mean, from
-            # one capture forward on the same transcript the closure arms will generate from.
-            comp_share = measure_span_share(model, ids, comp_spans,
-                                            list(range(len(model.model.layers))))
             evid_start = locate_token_span(tokenizer, rendered_nd, probe["vignette"])[0]
             intro_end = locate_token_span(tokenizer, rendered_nd, "Understood.")[1]
             comp_tokens = sum(b - a for a, b in comp_spans)
+            hot_cols = {}
+            if args.measured_close is not None or args.store_rows:
+                # One capture forward serves the E3b rider (competitor union share), the
+                # measured hot-token ranking, and the stored row.
+                capture = SelectiveAttentionCapture(model,
+                                                    list(range(len(model.model.layers))))
+                capture.enabled = True
+                with torch.no_grad():
+                    model(ids)
+                capture.remove()
+                comp_share = float(sum(
+                    sum(span_share(capture.captured[li], s) for s in comp_spans)
+                    for li in capture.captured) / len(capture.captured))
+                row = mean_attention_row(capture.captured)
+                del capture
+            else:
+                # E3b rider: the competitor spans' union share before closure, all-layer mean,
+                # from one capture forward on the transcript the closure arms generate from.
+                comp_share = measure_span_share(model, ids, comp_spans,
+                                                list(range(len(model.model.layers))))
+                row = None
+            if args.store_rows:
+                np.savez_compressed(
+                    rows_dir / f"probe_{idx}.npz",
+                    row=row.numpy().astype(np.float16),
+                    input_ids=ids[0].cpu().numpy().astype(np.int32),
+                    meta=json.dumps({"probe": idx, "arm": "near_dup",
+                                     "comp_spans": comp_spans, "evid_start": evid_start,
+                                     "intro_end": intro_end,
+                                     "pathology": probe["pathology"]}))
             # Size-matched random-closure control: same span count and sizes, sampled in the same
             # context region, overlapping neither the competitor spans nor each other.
             rng_probe = random.Random(args.seed * 1000 + idx)
-            taken = list(comp_spans)
-            rand_spans = []
-            for a, b in comp_spans:
-                width = b - a
-                for _ in range(200):
-                    s = rng_probe.randrange(intro_end, evid_start - width)
-                    if all(s + width <= x or s >= y for x, y in taken):
-                        rand_spans.append((s, s + width))
-                        taken.append((s, s + width))
-                        break
+            rand_spans = size_matched_control_spans(comp_spans, intro_end, evid_start,
+                                                    rng_probe, avoid=comp_spans)
             close_arms = [("near_dup", rendered_nd, None),
                           ("near_dup_comp_close", rendered_nd, comp_spans),
-                          ("near_dup_rand_close", rendered_nd, sorted(rand_spans)),
+                          ("near_dup_rand_close", rendered_nd, rand_spans),
                           ("random", rendered_rand, None)]
+            if args.measured_close is not None:
+                # E3c': close what the final position measurably reads in the context body,
+                # at K x the verbatim closure's token budget, ranked by received mass. Two
+                # variants: `hot` takes the row as measured (preflight showed it is dominated
+                # by chat-template glue and turn boundaries — the E6/E7 precedent channel),
+                # `hotc` restricts candidates to the context cases' own content (vignettes,
+                # questions, demonstrated answer letters), so it can only close
+                # competitor-side reading.
+                budget = max(1, int(round(args.measured_close * comp_tokens)))
+                hot_spans = select_hot_token_spans(row, budget,
+                                                   region=(intro_end, evid_start))
+                _, cases_nd = built_arms["near_dup"]
+                prior_turns = build_context_turns(cases_nd, args.n_options)
+                content_spans = locate_turn_spans(
+                    tokenizer, rendered_nd, [t["content"] for t in prior_turns])
+                glue, cursor = [], intro_end
+                for a, b in content_spans[2:]:  # the case turns; INTRO/ack stay excluded
+                    if a > cursor:
+                        glue.append((cursor, a))
+                    cursor = max(cursor, b)
+                if cursor < evid_start:
+                    glue.append((cursor, evid_start))
+                hotc_spans = select_hot_token_spans(row, budget,
+                                                    region=(intro_end, evid_start),
+                                                    exclude=glue)
+                hot_rand_spans = size_matched_control_spans(
+                    hot_spans, intro_end, evid_start, rng_probe, avoid=hot_spans)
+                hotc_rand_spans = size_matched_control_spans(
+                    hotc_spans, intro_end, evid_start, rng_probe, avoid=hotc_spans)
+
+                def span_mass(spans):
+                    return float(sum(float(row[a:b].sum()) for a, b in spans))
+                overlap = sum(max(0, min(b, y) - max(a, x))
+                              for a, b in hot_spans for x, y in comp_spans)
+                hot_cols = {"hot_tokens": sum(b - a for a, b in hot_spans),
+                            "hotc_tokens": sum(b - a for a, b in hotc_spans),
+                            "hot_comp_overlap_tokens": overlap,
+                            "hot_mass": span_mass(hot_spans),
+                            "hotc_mass": span_mass(hotc_spans),
+                            "comp_mass": span_mass(comp_spans)}
+                close_arms += [("near_dup_hot_close", rendered_nd, hot_spans),
+                               ("near_dup_hot_rand_close", rendered_nd, hot_rand_spans),
+                               ("near_dup_hotc_close", rendered_nd, hotc_spans),
+                               ("near_dup_hotc_rand_close", rendered_nd, hotc_rand_spans)]
             for arm, rendered, spans in close_arms:
                 if spans:
                     with SpanAttentionClamp(model, span=spans, scale=0.0):
@@ -231,7 +336,7 @@ def main():
                         model, tokenizer, rendered, args.device, args.max_new, args.max_ctx)
                 pred = extract_mcq_answer(resp) if resp else None
                 records.append({
-                    "probe": idx, "arm": arm,
+                    "probe": idx, "arm": arm, **hot_cols,
                     "comp_spans": len(comp_spans), "comp_tokens": comp_tokens,
                     "comp_share_alllayer": comp_share,
                     "closed_tokens": sum(b - a for a, b in spans) if spans else 0,
@@ -305,6 +410,8 @@ def main():
         "arms": (sorted(df["arm"].unique()) if args.close_arms and len(df)
                  else ArmSpec.overlap_arms()),
         "close_arms": args.close_arms,
+        "measured_close": args.measured_close,
+        "store_rows": args.store_rows,
         "n_context": args.n_context,
         "min_overlap": args.min_overlap,
         "n_probes_requested": n_probes,
@@ -318,6 +425,13 @@ def main():
                               "comp_share_alllayer": ("comp_share_alllayer", "mean")}
                              if args.close_arms
                              else {"mean_shared_options": ("mean_shared_options", "mean")}),
+                          **({"hot_tokens": ("hot_tokens", "mean"),
+                              "hotc_tokens": ("hotc_tokens", "mean"),
+                              "hot_comp_overlap_tokens": ("hot_comp_overlap_tokens", "mean"),
+                              "hot_mass": ("hot_mass", "mean"),
+                              "hotc_mass": ("hotc_mass", "mean"),
+                              "comp_mass": ("comp_mass", "mean")}
+                             if args.measured_close is not None else {}),
                           mean_fill=("context_fill", "mean"),
                           parse_rate=("parsed", "mean"),
                           **({"evidence_share": ("evidence_share", "mean"),

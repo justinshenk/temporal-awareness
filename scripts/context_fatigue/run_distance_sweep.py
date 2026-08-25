@@ -36,6 +36,7 @@ import json
 import random
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -49,7 +50,10 @@ from _cf_common import (
     render_prompt,
 )
 
-from src.probes.context_fatigue.attention_capture import SelectiveAttentionCapture
+from src.probes.context_fatigue.attention_capture import (
+    SelectiveAttentionCapture,
+    mean_attention_row,
+)
 from src.probes.context_fatigue.attention_clamp import locate_token_span, span_share
 from src.probes.context_fatigue.context_assembly import OverflowGuard, assemble_transcript
 from src.probes.context_fatigue.ddxplus_cases import (
@@ -91,6 +95,11 @@ def parse_args():
                         "are free -- they are read off the same forward as the reference layer.")
     p.add_argument("--attention-only", action="store_true",
                    help="skip generation; measure attention only (fast)")
+    p.add_argument("--store-rows", action="store_true",
+                   help="with --measure-attention/--attention-only: store each captured "
+                        "final-position attention row (all-layer/head mean, float16) plus span "
+                        "metadata under rows/ — the per-token capture program's Stage-4 "
+                        "heatmap data.")
     p.add_argument("--preflight", action="store_true",
                    help="run one cell end-to-end, write it, and exit")
     return p.parse_args()
@@ -102,6 +111,9 @@ def main():
         args.attention_only = True
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    rows_dir = out_dir / "rows"
+    if args.store_rows:
+        rows_dir.mkdir(exist_ok=True)
 
     print(f"Loading {args.model} ...", flush=True)
     tokenizer = AutoTokenizer.from_pretrained(args.model)
@@ -203,6 +215,18 @@ def main():
                                     probe=n_probe_attempts, arm=arm, distance=distance,
                                     session=session, filler_turns=depth, layer=li,
                                     pathology=probe["pathology"]))
+                        if args.store_rows:
+                            np.savez_compressed(
+                                rows_dir / f"s{session}_d{depth}_p{n_probe_attempts}_{arm}.npz",
+                                row=mean_attention_row(capture.captured)
+                                    .numpy().astype(np.float16),
+                                input_ids=ids[0].cpu().numpy().astype(np.int32),
+                                meta=json.dumps({
+                                    "session": session, "depth": depth,
+                                    "probe": n_probe_attempts, "arm": arm,
+                                    "distance": distance, "evidence_span": ev_span,
+                                    "question_span": q_span,
+                                    "pathology": probe["pathology"]}))
 
                     if args.attention_only:
                         resp, ctx_len, entropy, pred = None, int(ids.shape[1]), None, None

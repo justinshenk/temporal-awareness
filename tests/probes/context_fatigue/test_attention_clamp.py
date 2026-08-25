@@ -10,11 +10,18 @@ Everything here runs offline on tiny models built from config, against ``output_
 ground truth — same harness as ``test_attention_capture.py``.
 """
 
+import math
+
 import pytest
 import torch
 
 from src.probes.context_fatigue.attention_clamp import (
+    PerHeadSpanAttentionClamp,
     SpanAttentionClamp,
+    measure_span_share_by_head,
+    select_hot_token_spans,
+    solve_per_head_biases,
+    solve_per_head_pattern,
     solve_span_scale,
     span_share,
     span_share_by_head,
@@ -457,6 +464,279 @@ def test_overlapping_spans_are_rejected():
     model = _olmo2_model()
     with pytest.raises(ValueError, match="overlap"):
         SpanAttentionClamp(model, span=[(1, 4), (3, 6)], scale=0.5)
+
+
+# ── measured hot-set span construction (per-token capture, Stage 1) ─────
+#
+# E3c' closes the tokens the final position *actually* reads, ranked by received mass from a
+# stored capture row, instead of verbatim option-name mentions. The construction must respect a
+# token budget (for size-matched controls), never touch protected spans (the probe's own turn),
+# and emit disjoint sorted spans the clamp accepts.
+
+def test_hot_spans_pick_the_highest_mass_tokens():
+    row = torch.zeros(20)
+    row[[2, 9, 15]] = torch.tensor([0.5, 0.3, 0.2])
+    assert select_hot_token_spans(row, token_budget=3) == [(2, 3), (9, 10), (15, 16)]
+
+
+def test_hot_spans_merge_adjacent_tokens_into_one_span():
+    row = torch.zeros(20)
+    row[[5, 6, 7, 12]] = torch.tensor([0.4, 0.3, 0.2, 0.1])
+    assert select_hot_token_spans(row, token_budget=4) == [(5, 8), (12, 13)]
+
+
+def test_hot_spans_respect_the_token_budget_exactly():
+    torch.manual_seed(0)
+    row = torch.rand(50)
+    for budget in [1, 7, 23]:
+        spans = select_hot_token_spans(row, token_budget=budget)
+        assert sum(b - a for a, b in spans) == budget
+
+
+def test_hot_spans_budget_larger_than_candidates_takes_them_all():
+    row = torch.rand(10)
+    spans = select_hot_token_spans(row, token_budget=99, region=(2, 6))
+    assert spans == [(2, 6)]
+
+
+def test_hot_spans_never_enter_excluded_spans():
+    row = torch.zeros(20)
+    row[[3, 4, 10]] = torch.tensor([0.6, 0.3, 0.1])  # hottest tokens sit in the protected span
+    spans = select_hot_token_spans(row, token_budget=2, exclude=[(3, 5)])
+    for a, b in spans:
+        assert b <= 3 or a >= 5
+    assert (10, 11) in spans
+
+
+def test_hot_spans_stay_inside_the_region():
+    row = torch.zeros(20)
+    row[1] = 0.9   # hottest, but outside the region
+    row[8] = 0.1
+    assert select_hot_token_spans(row, token_budget=1, region=(5, 15)) == [(8, 9)]
+
+
+def test_hot_spans_tie_break_is_deterministic_by_position():
+    row = torch.zeros(10)
+    row[[7, 2]] = 0.5  # exact tie
+    assert select_hot_token_spans(row, token_budget=1) == [(2, 3)]
+
+
+def test_hot_spans_are_accepted_by_the_clamp():
+    torch.manual_seed(1)
+    row = torch.rand(SEQ_LEN)
+    spans = select_hot_token_spans(row, token_budget=5)
+    model = _olmo2_model()
+    with SpanAttentionClamp(model, span=spans, scale=0.0):
+        pass  # constructing it runs the disjoint/sorted validation
+
+
+# ── prefill/decode clamp window (per-token capture, Stage 3) ────────────
+#
+# E6' needs the closure active during prefill only (release at decode) and decode only. The
+# window rides on the forward's query length: a prefill processes >1 positions, a cached decode
+# step exactly 1 — the same discriminator the capture uses.
+
+def _decode_step_logits(model, ids, past):
+    with torch.no_grad():
+        return model(ids[:, -1:], past_key_values=past,
+                     cache_position=torch.tensor([ids.shape[1] - 1])).logits
+
+
+def _prefill(model, ids):
+    with torch.no_grad():
+        return model(ids[:, :-1], use_cache=True)
+
+
+def test_prefill_window_biases_prefill_and_leaves_decode_untouched(family):
+    model = MODEL_BUILDERS[family]()
+    ids = _ids()
+
+    base_prefill = _prefill(model, ids)
+    clamp = SpanAttentionClamp(model, span=(1, 4), scale=0.0, window="prefill")
+    try:
+        clamped_prefill = _prefill(model, ids)
+        # prefill is intervened on…
+        assert float((clamped_prefill.logits - base_prefill.logits).abs().max()) > 0
+        # …and the decode step is exactly the unhooked forward, on the same clamped cache
+        with_hook = _decode_step_logits(model, ids, clamped_prefill.past_key_values)
+    finally:
+        clamp.remove()
+    rebuilt = _prefill(model, ids)  # cache from a fresh clamped prefill is gone; rebuild unclamped
+    del rebuilt
+    clamp2 = SpanAttentionClamp(model, span=(1, 4), scale=0.0, window="prefill")
+    try:
+        cache = _prefill(model, ids).past_key_values
+    finally:
+        clamp2.remove()
+    without_hook = _decode_step_logits(model, ids, cache)
+    assert torch.equal(with_hook, without_hook)
+
+
+def test_decode_window_leaves_prefill_untouched_and_biases_decode(family):
+    model = MODEL_BUILDERS[family]()
+    ids = _ids()
+
+    base = _prefill(model, ids)
+    clamp = SpanAttentionClamp(model, span=(1, 4), scale=0.0, window="decode")
+    try:
+        clamped = _prefill(model, ids)
+        assert torch.equal(clamped.logits, base.logits)  # prefill untouched, bit-identical
+        with_hook = _decode_step_logits(model, ids, clamped.past_key_values)
+    finally:
+        clamp.remove()
+    without_hook = _decode_step_logits(model, ids, base.past_key_values)
+    assert float((with_hook - without_hook).abs().max()) > 0
+
+
+def test_window_scale_one_is_bit_identical_everywhere(family):
+    model = MODEL_BUILDERS[family]()
+    ids = _ids()
+    base = _prefill(model, ids)
+    base_step = _decode_step_logits(model, ids, base.past_key_values)
+    for window in ["prefill", "decode", "all"]:
+        with SpanAttentionClamp(model, span=(1, 4), scale=1.0, window=window):
+            out = _prefill(model, ids)
+            step = _decode_step_logits(model, ids, out.past_key_values)
+        assert torch.equal(out.logits, base.logits), window
+        assert torch.equal(step, base_step), window
+
+
+def test_unknown_window_is_rejected():
+    model = _olmo2_model()
+    with pytest.raises(ValueError, match="window"):
+        SpanAttentionClamp(model, span=SPAN, scale=0.5, window="sometimes")
+
+
+# ── per-head span clamp (per-token capture, Stage 2) ────────────────────
+#
+# E1d' restores back_20's evidence mass to the local arm's *per-head* pattern. The additive mask
+# is [b, 1, q, k] and therefore shared across heads; the per-head clamp expands it to
+# [b, H, q, k] so each query head h gets its own bias b_h on the span's key columns — its odds
+# scale by exactly e^{b_h}, which makes the single-layer solver closed-form.
+
+def test_per_head_biases_shift_each_head_odds_exactly(family):
+    model = MODEL_BUILDERS[family]()
+    ids = _ids()
+    base = _truth_last_token(model, ids)
+    n_heads = base.shape[0]
+    biases = torch.linspace(-1.5, 1.5, n_heads)
+
+    with PerHeadSpanAttentionClamp(model, span=SPAN, head_biases={0: biases}, layers=[0]):
+        got = _truth_last_token(model, ids)
+
+    s0 = base[:, SPAN[0]:SPAN[1]].sum(-1)
+    expected_odds = (s0 / (1 - s0)) * biases.exp()
+    expected = expected_odds / (1 + expected_odds)
+    assert torch.allclose(got[:, SPAN[0]:SPAN[1]].sum(-1), expected, atol=1e-5)
+
+
+def test_per_head_uniform_biases_equal_the_scalar_clamp(family):
+    model = MODEL_BUILDERS[family]()
+    ids = _ids()
+    b = 0.7
+    n_heads = _truth_last_token(model, ids).shape[0]
+    with SpanAttentionClamp(model, span=SPAN, scale=math.exp(b)):
+        scalar = _logits(model, ids)
+    with PerHeadSpanAttentionClamp(model, span=SPAN,
+                                   head_biases=torch.full((n_heads,), b)):
+        per_head = _logits(model, ids)
+    assert torch.allclose(per_head, scalar, atol=1e-6)
+
+
+def test_per_head_clamp_removal_restores_the_forward(family):
+    model = MODEL_BUILDERS[family]()
+    ids = _ids()
+    baseline = _logits(model, ids)
+    n_heads = _truth_last_token(model, ids).shape[0]
+    clamp = PerHeadSpanAttentionClamp(model, span=SPAN,
+                                      head_biases=torch.ones(n_heads))
+    assert float((_logits(model, ids) - baseline).abs().max()) > 0
+    clamp.remove()
+    assert float((_logits(model, ids) - baseline).abs().max()) == 0.0
+
+
+def test_per_head_layer_specific_biases_only_touch_their_layer(family):
+    model = MODEL_BUILDERS[family]()
+    ids = _ids()
+    base0 = _truth_last_token(model, ids, layer=0)
+    base1 = _truth_last_token(model, ids, layer=1)
+    n_heads = base0.shape[0]
+    with PerHeadSpanAttentionClamp(model, span=SPAN,
+                                   head_biases={1: torch.ones(n_heads)}, layers=[1]):
+        got0 = _truth_last_token(model, ids, layer=0)
+        got1 = _truth_last_token(model, ids, layer=1)
+    assert torch.equal(got0, base0)
+    assert float((got1 - base1).abs().max()) > 0
+
+
+def test_per_head_solver_is_the_logit_identity():
+    shares = torch.tensor([0.10, 0.25, 0.40, 0.60])
+    targets = torch.tensor([0.30, 0.25, 0.20, 0.15])
+    biases = solve_per_head_biases(shares, targets)
+    got = torch.sigmoid(torch.logit(shares) + biases)
+    assert torch.allclose(got, targets, atol=1e-6)
+    assert float(biases[1]) == pytest.approx(0.0, abs=1e-9)  # already at target → no bias
+
+
+def test_per_head_solver_hits_targets_on_the_model():
+    """Brief §7: solver hits per-head targets within tolerance on a tiny model stub."""
+    model = _olmo2_model()
+    ids = _ids()
+    s0 = torch.tensor(span_share_by_head(_truth_last_token(model, ids), SPAN))
+    targets = torch.tensor([0.50, 0.35, 0.20, 0.10])
+
+    biases = solve_per_head_biases(s0, targets)
+    with PerHeadSpanAttentionClamp(model, span=SPAN, head_biases={0: biases}, layers=[0]):
+        achieved = torch.tensor(span_share_by_head(_truth_last_token(model, ids), SPAN))
+    assert torch.allclose(achieved, targets, atol=1e-4)
+
+
+def test_per_head_solver_clips_degenerate_shares():
+    biases = solve_per_head_biases(torch.tensor([0.0, 1.0]), torch.tensor([0.5, 0.5]))
+    assert torch.isfinite(biases).all()
+
+
+def test_measure_span_share_by_head_matches_ground_truth():
+    model = _olmo2_model()
+    ids = _ids()
+    got = measure_span_share_by_head(model, ids, SPAN, [0, 1])
+    for li in [0, 1]:
+        truth = span_share_by_head(_truth_last_token(model, ids, layer=li), SPAN)
+        assert got[li] == pytest.approx(truth, abs=1e-5)
+
+
+def test_pattern_solver_hits_per_layer_targets_under_the_full_clamp(family):
+    """E1d′'s instrument: with clamps at every layer, downstream inputs shift, so the
+    closed-form biases need refinement passes to land the whole pattern at once."""
+    model = MODEL_BUILDERS[family]()
+    ids = _ids()
+    base = measure_span_share_by_head(model, ids, SPAN, [0, 1])
+    targets = {li: [min(0.9, s * 1.8) for s in base[li]] for li in [0, 1]}
+
+    biases, achieved = solve_per_head_pattern(model, ids, SPAN, targets, iters=4)
+    for li in [0, 1]:
+        assert achieved[li] == pytest.approx(targets[li], abs=5e-3)
+    # and the returned biases reproduce that state when installed independently
+    with PerHeadSpanAttentionClamp(model, span=SPAN, head_biases=biases):
+        remeasured = measure_span_share_by_head(model, ids, SPAN, [0, 1])
+    for li in [0, 1]:
+        assert remeasured[li] == pytest.approx(achieved[li], abs=1e-6)
+
+
+def test_pattern_solver_leaves_no_hooks_behind():
+    model = _olmo2_model()
+    ids = _ids()
+    baseline = _logits(model, ids)
+    base = measure_span_share_by_head(model, ids, SPAN, [0])
+    solve_per_head_pattern(model, ids, SPAN, {0: [min(0.9, s * 1.5) for s in base[0]]})
+    assert torch.equal(_logits(model, ids), baseline)
+
+
+def test_per_head_head_count_mismatch_is_rejected():
+    model = _olmo2_model()  # 4 query heads
+    with pytest.raises(ValueError, match="head"):
+        with PerHeadSpanAttentionClamp(model, span=SPAN, head_biases=torch.ones(3)):
+            _logits(model, _ids())
 
 
 # ── direction-projection steering hook (E6 mode-vector erase arm) ───────
