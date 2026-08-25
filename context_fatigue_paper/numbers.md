@@ -23,6 +23,13 @@ seed 42, bootstrap 10,000 draws resampling **cases**.
 | 4c | calibration gap | pre-existing `calibration_gap.pdf` | pooled DDXPlus MCQ streams, n=154 |
 | A5a | post-training dose-response | `fig_dose_response` | `olmo_gradient/gradient.json` |
 | A5b | accuracy by fill, random vs coherent | `fig_random_context` | `random_context/accuracy_by_fill.csv` |
+| AH (closure dissociation) | same closure, opposite outcomes | `fig_closure_dissociation` | documented constants: `E3C_COMPETITOR_CLOSE.md` (rescue/control/in-run gap), Appendix H exemplar-closure values (`E5`/precedent reports) |
+| AJ (replication 2×2) | ladders, dose-responses, competition divergence, OLMo vs Qwen | `fig_qwen_replication` | documented constants: `E1_DISTANCE_SWEEP.md`, `E1_MECHANISM.md` (E1f table), `E3_COMPETITION.md` + `QWEN_E1_DISTANCE_SWEEP.md`, `QWEN_E1F_SHARE_SWEEP.md`, `QWEN_E3_COMPETITION.md`; whiskers Wilson from (acc, n) |
+| AJ (clamp ladder) | Qwen Q5 canary-ordered compliance collapse | `fig_qwen_system_clamp` | documented constants: `QWEN_E5_SYSTEM_CLAMP.md` (n=120/level) |
+
+Appendix figures regenerate with `uv run python scripts/context_fatigue/make_paper_figures.py
+--only appendix` (no raw OLMo run dirs needed; OLMo values are documented constants in
+`paper_figures.py`, asserted against the reports above).
 
 Regenerate: `uv run python scripts/context_fatigue/make_paper_figures.py`. Section numbers
 refer to the 2026-08-21 reconstruction (methodology/experimental-design/results-by-finding, with

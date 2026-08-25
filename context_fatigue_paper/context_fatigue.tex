@@ -572,9 +572,10 @@ compliant; a size-matched random-masking control is equally null). The privilege
 consistent with a template already in place by prefill, task-vector style
 \citep{hendel2023taskvectors}. The contrast with \S\ref{sec:competition} is the sharpest
 dissociation in the paper: the \emph{same} scale-$0$ closure that recovers $59\%$ of the
-competition penalty restores nothing here. Competition is generation-time \emph{reading}; the
-precedent mode is in place \emph{by prefill}. One intervention, opposite outcomes, two mechanisms.
+competition penalty restores nothing here (Fig.~\ref{fig:closure-dissociation}). Competition is
+generation-time \emph{reading}; the precedent mode is in place \emph{by prefill}.
 
+\looseness=-1
 Residual-stream probes (\S\ref{sec:probes}) complete a three-level dissociation. The
 instruction's presence remains linearly decodable at every depth (transfer AUC
 $1.000$, permutation $p{<}0.005$) while it has zero behavioral force: read, represented,
@@ -686,9 +687,9 @@ partition is observational, with summary values from teacher-forced analyses and
 on the tertile contrast. The causal program ran in full on one model family; the
 Qwen2.5-7B replication (Appendix~\ref{app:qwen}) reproduces displacement, its mass
 sufficiency, the accumulation null, the clamp's compliance collapse, and the precedent
-ordering, but not the competition penalty, so that mechanism rests on one family---and one of
-the precedent dissociations (compliance surviving at low share) is OLMo-specific because
-Qwen's arm shares straddle its own causal threshold. The precedent results
+ordering, but not the competition penalty, so that mechanism rests on one family---and the
+low-share compliance dissociation is OLMo-specific (Qwen's arm shares straddle its own causal
+threshold). The precedent results
 use one instruction family, graded by a rule-based checker at $n{=}40$ per cell; the filler
 streams co-vary in genre, structure, and reply length, so the applicability ordering rests on
 the stream contrast together with the one-example and reversal experiments; and generation-time
@@ -1051,6 +1052,21 @@ At depth 42, closing the demonstrated answer spans' key columns at generation ti
 closure $0.000$, filler-question closure $0.132$ (consistent with pure renormalization of the
 surviving spans, the system's included), size-matched random-token closure $0.000$. Accuracy
 moves within noise. Reading the exemplars at generation time is not what sustains the erosion.
+Figure~\ref{fig:closure-dissociation} sets this against the competition rescue: the same
+intervention, opposite outcomes.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.9\textwidth]{figures/closure_dissociation.pdf}
+  \caption{\textbf{One intervention, opposite outcomes.} The same scale-$0$ generation-time
+  closure (a) recovers $59\%$ of the competition penalty (paired $n{=}365$; bars are paired
+  accuracy deltas with 95\% CIs; dashed line marks the full in-run penalty), but (b) restores
+  no compliance at depth 42 when applied to the demonstrated answer spans ($n{=}40$/arm; every
+  closure arm sits at or near the eroded floor while restating the instruction restores
+  $1.000$). Competition is generation-time reading; the precedent mode is already in place by
+  prefill.}
+  \label{fig:closure-dissociation}
+\end{figure}
 
 \paragraph{Probes.}
 Probe 1 (instruction presence): trained at depth 0 to separate the format system prompt from a
@@ -1138,7 +1154,21 @@ The causal program was re-run on Qwen2.5-7B-Instruct (seed 42, same drivers, pan
 constructions, and drop rules as the committed OLMo runs; all-layer pooled share readout).
 Displacement, its mass sufficiency, the dose-response, the accumulation null, the system-span
 clamp, and the precedent ordering reproduce; the competition penalty does not, and its attention
-signature inverts. Details per experiment:
+signature inverts (Fig.~\ref{fig:qwen-replication}). Details per experiment:
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.92\textwidth]{figures/qwen_replication.pdf}
+  \caption{\textbf{The causal program replicates on Qwen2.5-7B, except competition.}
+  (a) The distance ladder at matched fill ($n{=}192$/arm in both families).
+  (b) The share$\to$accuracy dose-response, $x$ as a fraction of each family's natural share
+  (OLMo layer-24-indexed, common subset $n{=}131$; Qwen all-layer, $n{=}181$--$192$): graded
+  with no knee in both. (c) The competition contrast is significant on OLMo, not detected on
+  Qwen. (d) The evidence's attention under near-duplicate context: flat on OLMo, \emph{rising}
+  on Qwen, with disjoint intervals---the family divergence. Whiskers in (a,\,b) are per-point
+  Wilson 95\% intervals; (c,\,d) show the paired bootstrap CIs quoted in the text.}
+  \label{fig:qwen-replication}
+\end{figure}
 
 \paragraph{Displacement.}
 The ladder reproduces fully monotone: $0.630 \to 0.531 \to 0.516 \to 0.505 \to 0.469$
@@ -1163,9 +1193,20 @@ $+10.4$ $[+7.6,+13.6]$ accuracy per unit share, matches the observational
 The random-subject stream is flat to a full window (fill slope $-0.057$ $[-0.238,+0.135]$;
 coherent $-0.090$, also n.s.), and the adherence canaries do not decay. Clamping the system
 span's share collapses compliance at graded dose with a duty ordering---reply-prefix canary
-first (at share $0.12$), suffix next ($0.09$), the forbidden-phrase rule never---while accuracy
-\emph{rises} under the clamp ($-0.09$ $[-0.16,-0.03]$ at the deepest level), the zero-sum
-reallocation that was directionally present but n.s.\ on OLMo.
+first (at share $0.12$), suffix next ($0.09$), the forbidden-phrase rule never
+(Fig.~\ref{fig:qwen-clamp})---while accuracy \emph{rises} under the clamp ($-0.09$
+$[-0.16,-0.03]$ at the deepest level), the zero-sum reallocation that was directionally present
+but n.s.\ on OLMo.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.55\textwidth]{figures/qwen_system_clamp.pdf}
+  \caption{\textbf{Qwen's system clamp collapses compliance duty by duty.} Neutral-context
+  clamp ($n{=}120$/level): the reply-prefix canary dies between shares $0.15$ and $0.12$, the
+  suffix between $0.12$ and $0.07$, the forbidden-phrase rule never; accuracy is flat-to-rising
+  throughout. Whiskers are Wilson 95\% intervals.}
+  \label{fig:qwen-clamp}
+\end{figure}
 
 \paragraph{Precedent.}
 The applicability ordering confirms: \texttt{mmlu} compliance $1.000 \to 0.000$ within three

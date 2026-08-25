@@ -483,3 +483,204 @@ def make_figures(outdir: str | Path) -> dict[str, Path]:
         plt.close(fig)
         paths[name] = path
     return paths
+
+
+# Documented constants for the appendix figures. The OLMo raw run directories are
+# not retained under results/, so the OLMo side plots the values recorded in
+# E1_DISTANCE_SWEEP.md / E1_MECHANISM.md / E3_COMPETITION.md / E3C_COMPETITOR_CLOSE.md
+# and papers' numbers.md; the Qwen side matches QWEN_*.md (raw turns.csv retained).
+# Per-point whiskers are Wilson 95% intervals from (accuracy, n); the paired
+# bootstrap CIs quoted in the text are the inferential intervals.
+FAMILY_COLORS = {"olmo": "#3b6ea5", "qwen": "#dd8452"}
+FAMILY_LABELS = {"olmo": "OLMo-2-7B", "qwen": "Qwen2.5-7B"}
+
+DISTANCE_LADDERS = {
+    "olmo": dict(distances=[0, 2, 5, 10, 20], accuracy=[0.464, 0.359, 0.292, 0.250, 0.276], n=192),
+    "qwen": dict(distances=[0, 2, 5, 10, 20], accuracy=[0.630, 0.531, 0.516, 0.505, 0.469], n=192),
+}
+
+# Share->accuracy sweeps; OLMo is L24-indexed (common subset n=131), Qwen is
+# all-layer pooled (n=192; the 0.0335 level has n=181). x is share / natural share.
+SHARE_SWEEPS = {
+    "olmo": dict(
+        shares=[0.0441, 0.0360, 0.0320, 0.0290, 0.0250, 0.0200, 0.0160, 0.0120],
+        accuracy=[0.473, 0.420, 0.427, 0.389, 0.351, 0.313, 0.313, 0.275],
+        n=[131] * 8,
+    ),
+    "qwen": dict(
+        shares=[0.0388, 0.0335, 0.0240, 0.0172, 0.0123, 0.0088, 0.0070],
+        accuracy=[0.667, 0.646, 0.641, 0.573, 0.474, 0.432, 0.380],
+        n=[192, 181, 192, 192, 192, 192, 192],
+    ),
+}
+
+# Competition divergence: paired bootstrap point estimates and 95% CIs.
+COMPETITION_GAPS = {  # accuracy, random - near_dup
+    "olmo": (0.085, 0.030, 0.140),
+    "qwen": (0.030, -0.016, 0.074),
+}
+COMPETITION_SHARE_DELTAS = {  # evidence share, near_dup - random
+    "olmo": (-0.00027, -0.00088, 0.00035),
+    "qwen": (0.0071, 0.0062, 0.0080),
+}
+
+# E3c competitor closure (OLMo, paired n=365) and Appendix H exemplar closure
+# (OLMo mmlu depth 42, n=40 per arm).
+CLOSURE_COMPETITION = {
+    "competitor closure": (0.0548, 0.0055, 0.1041),
+    "random-token closure": (-0.0055, -0.0356, 0.0247),
+}
+CLOSURE_COMPETITION_FULL_GAP = 0.0932  # random - near_dup, same run
+CLOSURE_PRECEDENT = {  # compliance after generation-time closure at depth 42 (natural 0.000)
+    "all answers": 0.000,
+    "partial (dose-matched)": 0.000,
+    "filler questions": 0.132,
+    "random tokens": 0.000,
+}
+
+# Qwen Q5 neutral-context system clamp (n=120/level), QWEN_E5_SYSTEM_CLAMP.md.
+QWEN_SYSTEM_CLAMP = dict(
+    shares=[0.191, 0.150, 0.120, 0.090, 0.070, 0.0486, 0.038],
+    prefix=[1.000, 0.983, 0.100, 0.000, 0.000, 0.000, 0.000],
+    suffix=[1.000, 1.000, 0.917, 0.233, 0.017, 0.000, 0.000],
+    forbid=[1.000, 1.000, 1.000, 0.975, 0.983, 1.000, 1.000],
+    accuracy=[0.567, 0.583, 0.583, 0.617, 0.625, 0.633, 0.658],
+    n=120,
+)
+
+
+def _wilson_yerr(acc, n) -> np.ndarray:
+    acc = pd.Series(acc, dtype=float)
+    n = pd.Series(n, dtype=float) if np.ndim(n) else pd.Series([float(n)] * len(acc))
+    lo, hi = _wilson_interval(acc, n)
+    return np.vstack([acc - lo, hi - acc])
+
+
+def fig_qwen_replication(outdir: Path) -> Path:
+    """2x2 cross-family panel: ladders, dose-responses, and the competition divergence."""
+    fig, axes = plt.subplots(2, 2, figsize=(7.6, 5.6))
+    ax_ladder, ax_dose, ax_gap, ax_share = axes.flat
+
+    for fam, d in DISTANCE_LADDERS.items():
+        ax_ladder.errorbar(d["distances"], d["accuracy"], yerr=_wilson_yerr(d["accuracy"], d["n"]),
+                           color=FAMILY_COLORS[fam], marker="o", capsize=2.5,
+                           label=FAMILY_LABELS[fam])
+    ax_ladder.set_xlabel("evidence distance (user turns back)")
+    ax_ladder.set_ylabel("per-case accuracy")
+    ax_ladder.set_title("(a) Displacement replicates", fontsize=10)
+    ax_ladder.legend(fontsize=8, frameon=False)
+
+    for fam, d in SHARE_SWEEPS.items():
+        frac = np.array(d["shares"]) / d["shares"][0]
+        ax_dose.errorbar(frac, d["accuracy"], yerr=_wilson_yerr(d["accuracy"], d["n"]),
+                         color=FAMILY_COLORS[fam], marker="o", capsize=2.5,
+                         label=FAMILY_LABELS[fam])
+    ax_dose.set_xlabel("clamped share / natural share")
+    ax_dose.set_ylabel("per-case accuracy")
+    ax_dose.set_title("(b) Dose-response replicates: graded, no knee", fontsize=10)
+    ax_dose.invert_xaxis()
+    ax_dose.legend(fontsize=8, frameon=False, loc="lower left")
+
+    for ax, data, title, xlabel in [
+        (ax_gap, COMPETITION_GAPS, "(c) Competition penalty",
+         "accuracy gap (random $-$ near_dup)"),
+        (ax_share, COMPETITION_SHARE_DELTAS, "(d) The attention inversion",
+         "evidence-share $\\Delta$ (near_dup $-$ random)"),
+    ]:
+        ys = np.arange(len(data))[::-1]
+        for y, (fam, (mid, lo, hi)) in zip(ys, data.items()):
+            ax.errorbar([mid], [y], xerr=[[mid - lo], [hi - mid]],
+                        color=FAMILY_COLORS[fam], marker="o", capsize=3, markersize=6)
+        ax.axvline(0.0, color="#555555", linestyle=":", linewidth=1)
+        ax.set_yticks(ys)
+        ax.set_yticklabels([FAMILY_LABELS[f] for f in data])
+        ax.set_ylim(-0.6, len(data) - 0.4)
+        ax.set_xlabel(xlabel)
+        ax.set_title(title, fontsize=10)
+
+    fig.tight_layout()
+    path = outdir / "qwen_replication.pdf"
+    fig.savefig(path, bbox_inches="tight")
+    plt.close(fig)
+    return path
+
+
+def fig_closure_dissociation(outdir: Path) -> Path:
+    """Same scale-0 closure, opposite outcomes: competition rescued, precedent untouched."""
+    fig, (ax_comp, ax_prec) = plt.subplots(1, 2, figsize=(7.2, 2.9))
+
+    labels = list(CLOSURE_COMPETITION)
+    mids = [CLOSURE_COMPETITION[k][0] for k in labels]
+    los = [CLOSURE_COMPETITION[k][1] for k in labels]
+    his = [CLOSURE_COMPETITION[k][2] for k in labels]
+    x = np.arange(len(labels))
+    ax_comp.bar(x, mids, width=0.55, color=["#55a868", "#8fb8de"])
+    ax_comp.errorbar(x, mids, yerr=[np.subtract(mids, los), np.subtract(his, mids)],
+                     fmt="none", ecolor="#333333", capsize=3, linewidth=1)
+    ax_comp.axhline(0.0, color="#555555", linewidth=0.8)
+    ax_comp.axhline(CLOSURE_COMPETITION_FULL_GAP, color="#c44e52", linestyle="--", linewidth=1)
+    ax_comp.text(0.98, CLOSURE_COMPETITION_FULL_GAP, "full penalty", ha="right", va="bottom",
+                 fontsize=7.5, color="#c44e52", transform=ax_comp.get_yaxis_transform())
+    ax_comp.set_xticks(x)
+    ax_comp.set_xticklabels(labels, fontsize=8)
+    ax_comp.set_ylabel("accuracy recovered")
+    ax_comp.set_title("(a) Competition: closure rescues 59%", fontsize=10)
+
+    labels = list(CLOSURE_PRECEDENT)
+    vals = [CLOSURE_PRECEDENT[k] for k in labels]
+    x = np.arange(len(labels))
+    ax_prec.bar(x, vals, width=0.6, color="#8fb8de")
+    for xi, v in zip(x, vals):
+        ax_prec.text(xi, v + 0.02, f"{v:.3f}", ha="center", va="bottom", fontsize=7.5,
+                     color="#555555")
+    ax_prec.axhline(1.0, color="#55a868", linestyle="--", linewidth=1)
+    ax_prec.text(0.02, 1.0, "restatement restores", ha="left", va="bottom", fontsize=7.5,
+                 color="#55a868", transform=ax_prec.get_yaxis_transform())
+    ax_prec.set_xticks(x)
+    ax_prec.set_xticklabels(labels, fontsize=7.5, rotation=12)
+    ax_prec.set_ylim(0, 1.12)
+    ax_prec.set_ylabel("compliance after closure")
+    ax_prec.set_title("(b) Precedent: the same closure restores nothing", fontsize=10)
+
+    fig.tight_layout()
+    path = outdir / "closure_dissociation.pdf"
+    fig.savefig(path, bbox_inches="tight")
+    plt.close(fig)
+    return path
+
+
+def fig_qwen_system_clamp(outdir: Path) -> Path:
+    """Qwen Q5: canary-ordered compliance collapse under the system clamp, accuracy intact."""
+    fig, ax = plt.subplots(figsize=(4.6, 3.2))
+    d = QWEN_SYSTEM_CLAMP
+    styles = {
+        "prefix": dict(color="#c44e52", marker="o", label="prefix canary"),
+        "suffix": dict(color="#dd8452", marker="s", label="suffix canary"),
+        "forbid": dict(color="#3b6ea5", marker="^", label="forbidden-phrase canary"),
+    }
+    for key, st in styles.items():
+        ax.errorbar(d["shares"], d[key], yerr=_wilson_yerr(d[key], d["n"]), capsize=2.5, **st)
+    ax.errorbar(d["shares"], d["accuracy"], yerr=_wilson_yerr(d["accuracy"], d["n"]),
+                color="#555555", marker="D", markersize=4, linestyle="--", capsize=2.5,
+                label="accuracy")
+    ax.set_xlabel("clamped system-span share")
+    ax.set_ylabel("rate")
+    ax.set_title("Compliance collapses duty by duty; accuracy does not", fontsize=10)
+    ax.invert_xaxis()
+    ax.legend(fontsize=7.5, frameon=False, loc="center left")
+    fig.tight_layout()
+    path = outdir / "qwen_system_clamp.pdf"
+    fig.savefig(path, bbox_inches="tight")
+    plt.close(fig)
+    return path
+
+
+def make_appendix_figures(outdir: str | Path) -> dict[str, Path]:
+    """Render the appendix figures (documented constants; no raw OLMo runs needed)."""
+    outdir = Path(outdir)
+    outdir.mkdir(parents=True, exist_ok=True)
+    return {
+        "qwen_replication": fig_qwen_replication(outdir),
+        "closure_dissociation": fig_closure_dissociation(outdir),
+        "qwen_system_clamp": fig_qwen_system_clamp(outdir),
+    }
