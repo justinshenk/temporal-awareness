@@ -35,35 +35,73 @@ redundantly represented across adjacent blocks, as block-patching of a distribut
 predicts. The position story is the opposite — content subsets contribute nearly nothing
 and one non-content subset dominates.
 
-## Reading
+## Conclusions
 
-1. **The carrier is structural, not semantic.** The glue tokens contain no instruction
-   text and no demonstrated answers; they are the turn delimiters. Yet transplanting their
-   hidden states moves 62% of the counterfactual format contrast, while transplanting every
-   assistant turn's actual content moves 12%. The format-instruction state is written onto
-   the transcript's *skeleton* during prefill and read from there.
-2. **Cross-instrument convergence.** Three independent measurements now point at the same
-   tokens: (a) OLMo E3c′ — 0.42 of context-body final-position attention mass lands on the
-   glue, and closing it disrupts the demonstrated reply format (−0.175); (b) OLMo E6′ —
-   closing exemplar-answer content in any window leaves the precedent mode fully installed;
-   (c) this cell — patching glue states carries the Qwen format contrast. The E6 "installed
-   at prefill, task-vector style" account gains a concrete address: the delimiter tokens'
-   residual streams, layers ≤ 13.
-3. **Why waves 1–2 were null.** Role-content and recency subsets all exclude the glue
-   (turn-content spans only); the bisection was looking inside the turns while the signal
-   rides between them.
-4. **Cross-family status.** This localization is established on Qwen. The OLMo
-   confirmation cell (template positions, n = 100, code cell) is the remaining follow-up;
-   OLMo's Stage-1 ΔΔ effects are an order of magnitude smaller (±0.06–0.08), so the
-   question there is whether the *same channel* carries its small effect, not whether the
-   magnitudes match (the E2b rule applies to any cross-family comparison).
+Each claim states its evidence from this run's cells, then its position against prior work
+(citation keys resolve in `context_fatigue_paper/related_work_citations.md`; all arXiv IDs
+verified against their abstract pages).
 
-## Caveats
+**C1 — The carrier of the format-instruction state is the transcript's skeleton, not any
+turn's content.** *Evidence:* patching only the `<|im_end|>/<|im_start|>` delimiter
+positions moves −1.540 of the −2.488 contrast (62%); every content subset moves ≤ |0.287|
+(≤ 12%); the size-matched random-position control moves +0.016. *Prior work:* this is the
+instruction-state analogue of `wang2023labelwords` — where label words anchor the
+*semantics* of demonstrations, the delimiters anchor the conversation's *format regime* —
+and of `darcet2023registers`, where models spontaneously repurpose low-information tokens
+as computation slots. `sun2024massiveactivations` reports that delimiter and special
+tokens host massive activations functioning as fixed biases; C1 sharpens that from
+correlate to carrier: transplanting these tokens' states transports the behavioral
+contrast.
 
-- n = 24 per cell and the prefix-logprob estimand has no bootstrap CI in this driver;
-  cell-to-cell comparisons lean on the unrelated-fact control (≤ |0.11| everywhere except
-  last_2's +0.264, which bounds that cell's noise) and on the size-matched random-position
-  control run for the winning cell specifically.
-- The template subset is also the *positionally periodic* subset; a periodicity-matched
-  content control (e.g. one token per turn boundary neighborhood inside content) was not
-  run. The random control is size-matched but not periodicity-matched.
+**C2 — The state is formed and consumed in the lower half of the stack.** *Evidence:*
+layer blocks 0–6 / 7–13 / 14–20 / 21–27 carry −1.160 / −1.591 / −0.454 / −0.113; the
+crossed cell (glue positions × layers 7–13 only) still carries −1.051 (42%) while touching
+no content token and no layer above 13. *Prior work:* the depth profile matches where
+compact task representations are reported to form (`hendel2023taskvectors`,
+`todd2024functionvectors`), and the position×depth address makes concrete the
+"instruction vs demonstration as distinct channels" separation that
+`davidson2025taskrepresentation` establishes representationally.
+
+**C3 — Within that band the state is redundantly distributed, not point-localized.**
+*Evidence:* the four layer blocks sum to −3.32 against a full effect of −2.488 —
+overlapping carriers, not additive components. *Consistency:* E6's four failed erasure
+strategies (no single estimated linear direction removes the mode) said the same thing
+from the representation side.
+
+**C4 — Three instruments, two families, one address.** *Evidence:* (a) OLMo E3c′ —
+0.42 of context-body final-position attention mass lands on the glue, and closing it
+disrupts the demonstrated reply format (−0.175 net); (b) OLMo E6′ — closing
+exemplar-answer content in every attention window leaves the precedent mode fully
+expressed; (c) this run — patching glue states carries 62% of the Qwen format contrast.
+*Prior work:* `mu2023gist` shows instruction state can be *trained* into dedicated
+compression tokens; C4 says chat-tuned models do this natively, electing the template's
+delimiters. Against the sink literature (`xiao2023streamingllm`, `gu2024attentionsink`):
+sinks absorb mass content-independently as normalization slack, whereas the glue tokens
+here carry content-bearing, transplantable causal state — attention concentration on
+special positions and functional storage at special positions are different claims, and
+this run supplies the interventional evidence for the second. It also refines
+`dongre2026attentioncloses`: the system prompt's *span* is not where the live format
+state resides once context accumulates — the contest is settled on the skeleton.
+
+**Why Waves 1–2 had to be null:** role-content and recency subsets are built from
+turn-content spans, which exclude the glue by construction. The bisection was searching
+inside the turns while the signal rides between them.
+
+## What this does not yet establish
+
+- **Periodicity is a confound candidate.** The glue subset is also the positionally
+  periodic subset; the random control is size-matched but not periodicity-matched. A
+  one-token-per-turn-boundary *content* control would separate "delimiter tokens" from
+  "periodic positions".
+- **No per-cell CI.** n = 24 and the prefix-logprob estimand carries no bootstrap in this
+  driver; comparisons lean on the unrelated-fact control (≤ |0.11| everywhere except
+  last_2's +0.264) and the winning cell's dedicated random control.
+- **Cross-family confirmation is pending.** The OLMo template cell (n = 100) is running;
+  OLMo's Stage-1 ΔΔ is an order of magnitude smaller (±0.06–0.08), so the readable
+  question there is whether the same channel carries its small effect — not whether the
+  magnitudes match (the E2b rule: cross-family differences need the
+  difference-in-differences, not CI-vs-CI).
+- **Who writes the glue state is not yet separated:** the system instruction at prefill,
+  the accumulated demonstrations, or both. E6′'s closure nulls point at the
+  demonstration side, but a write-time bisection (patch glue states captured at different
+  accumulation depths) would settle it.

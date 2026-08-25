@@ -231,6 +231,31 @@ Context Encoding.* Zhang, Wang, Huang, et al., ACL 2025, arXiv:2412.16545. Entro
 from parallel encoding degrades performance. DIFF: encoding-scheme mismatch vs our sequential
 accumulation; both treat attention dispersion as diagnostic, ours with per-span causal clamps.
 
+## Tier 4b — added 2026-08-25 for the template-glue localization (E3c′/E6′/E7 Stage-2)
+
+**darcet2023registers** — *Vision Transformers Need Registers.* Darcet, Oquab, Mairal,
+Bojanowski, ICLR 2024, arXiv:2309.16588. ViTs spontaneously repurpose low-information
+patches as global-computation slots; adding dedicated register tokens absorbs the role.
+DIFF: the precedent for "models elect low-information tokens as storage"; our E7 Stage-2
+shows the LLM analogue with a causal transplant — the chat template's delimiter tokens
+carry 62% of the counterfactual format contrast — and identifies the layer band (≤13).
+
+**sun2024massiveactivations** — *Massive Activations in Large Language Models.* Sun, Chen,
+Kolter, Liu, arXiv:2402.17762 (2024). A handful of activations, concentrated on special
+and delimiter tokens, are orders of magnitude larger and act as fixed biases; attention
+concentrates there.
+DIFF: they establish the *existence and bias role* of delimiter-token state observationally;
+our patching shows that state is content-bearing and transportable — moving it moves the
+format behavior — and our E3c′ closure shows removing access to it disrupts the
+demonstrated format at −0.175 net.
+
+**mu2023gist** — *Learning to Compress Prompts with Gist Tokens.* Mu, Li, Goodman,
+NeurIPS 2023, arXiv:2304.08467. Instruction content can be trained into dedicated "gist"
+tokens that stand in for the full prompt.
+DIFF: gisting is engineered at training time into inserted tokens; we find chat-tuned
+models do the equivalent natively, electing the template's own delimiters as the
+instruction-state carrier — no token was added and no objective asked for it.
+
 ## Positioning digest (what we did differently, in one paragraph)
 
 Prior work either (a) documents long-context degradation behaviorally at benchmark level
