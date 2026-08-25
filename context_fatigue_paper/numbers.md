@@ -243,3 +243,52 @@ Reports: `QWEN_E1_DISTANCE_SWEEP.md`, `QWEN_E1C_EVIDENCE_CLAMP.md`, `QWEN_E1F_SH
 | Q4 attention inversion | near_dup − random evidence share +0.0071 [+0.0062,+0.0080] (OLMo −0.0003) | `qwen_e3_attention/` |
 | Q4 closure null | near_dup − comp_close +0.019 [−0.025,+0.063]; rand_close 0.000 | `qwen_e3c_competitor_close/` |
 | Q4 anchor caveat | low-competition arms ≈0.10 above Qwen E1 local (practice benefit) | `QWEN_E3_COMPETITION.md` |
+
+## Per-token capture program fold-in (2026-08-25)
+
+All four runs: reports committed same day; artifacts on the A100 box (gitignored), reports
+are the durable record.
+
+### §4.2 — per-head pattern restoration (E1d′)
+
+| claim in tex | value | artifact |
+|---|---|---|
+| per-head restoration recovered fraction | 0.235 [−0.158, 0.588] | `e1d_head_pattern/turns.csv` via `E1D_HEAD_PATTERN.md` |
+| uniform restoration, same session | 0.375 [0.167, 0.654] | same |
+| per-head − uniform (paired, n=192) | −0.021 [−0.083, +0.042] | same |
+| pattern install fidelity | mean per-head share error 0.004 vs targets ≈0.077; bias SD 1.22 | same |
+| displacement penalty in-session | +0.172 [+0.104, +0.245] | same |
+
+### §4.3 — measured hot-set closure (E3c′)
+
+| claim in tex | value | artifact |
+|---|---|---|
+| content-hot closure net of its control | +0.003 [−0.049, +0.055] | `e3c_hot_close/turns.csv` via `E3C_HOT_CLOSE.md` |
+| verbatim closure net, same session | +0.069 [+0.016, +0.121] | same |
+| hot-content mass vs verbatim mass | 0.087 vs 0.0077 (11×), same 127.9-token budget | same |
+| glue mass in context body | 0.42 of final-position mass | same (rows/probe_*.npz, all-layer mean) |
+| glue closure net | −0.175 [−0.230, −0.121] | same |
+| panel anchors | penalty +0.088 [+0.033, +0.143]; near_dup 0.425 / random 0.512, n=365 | same |
+
+### §4.5 — window-split exemplar closure (E6′)
+
+| claim in tex | value | artifact |
+|---|---|---|
+| compliance under fa closure, all three windows | 0.000 (prefill-only, decode-only, all) | `e6_close_windows/turns.csv` via `E6_CLOSE_WINDOWS.md` |
+| per-window controls | rand1 0.000 compliant at both windows, n=40, depth 42 | same |
+| fa accuracy value is prefill-borne | fa_prefill − rand1_prefill −0.175 [−0.300, −0.075] | same |
+| decode-only closure accuracy | +0.000 [+0.000, +0.000] item-for-item; fa_all ≡ fa_prefill | same |
+| anchors | depth-0 compliance 0.875; fq_close 0.100 (committed 0.132) | same |
+
+### §4.5 (mode) + Appendix J — E7 counterfactual patch bisection (Qwen)
+
+| claim in tex | value | artifact |
+|---|---|---|
+| full-context patch | ΔΔ_A→B = −2.488 (code cell, depth 15, closed, n=24) | `qwen_e7_format_patch_code/` via `QWEN_E7_FORMAT_PATCH.md` |
+| template-glue positions | −1.540 (62%) | `qwen_e7_bisect_pos_template/summary.json` via `QWEN_E7_BISECTION.md` |
+| size-matched random-position control | +0.016 | `qwen_e7_bisect_pos_template_rand/summary.json` |
+| content subsets | assistant −0.287 / user +0.165 / last_1,2,4 ≤ \|0.075\| | `qwen_e7_bisect_pos_{assistant_turns,user_turns,last_*}/` |
+| layer blocks 0–6/7–13/14–20/21–27 | −1.160 / −1.591 / −0.454 / −0.113 | `qwen_e7_bisect_layers_*/summary.json` |
+| crossed template × layers 7–13 | −1.051 (42%) | `qwen_e7_bisect_template_x_7_13/summary.json` |
+| unrelated-instruction control bound | ≤ \|0.11\| in every quoted cell | each cell's `dd_unrelated` |
+| OLMo counterpart | PENDING (e7_bisect_pos_template_olmo running, n=100) | — |

@@ -67,7 +67,9 @@ and its content stays linearly decodable throughout. Attention mass is still a c
 \emph{weight} in that contest: clamping the instruction's share down collapses compliance where
 nothing competes, clamping it up restores compliance against $42$ counter-exemplars, and
 restating the instruction restores it without surgery. The same closure that rescues competition
-restores nothing here: the mode is already in place at prefill. In these localized streams,
+restores nothing here: the mode is already in place at prefill---and counterfactual patching
+localizes its carrier to the chat template's delimiter tokens, in the lower half of the stack.
+In these localized streams,
 context rot is not a decay of competence with length. It is displacement, competition, and
 precedent, and attention dilution proper is only the first.
 \end{abstract}
@@ -406,11 +408,18 @@ experiment to $0.017$ ($+0.168$ $[+0.102,+0.234]$ vs $+0.151$ $[+0.099,+0.208]$)
 The converse is only partial: clamping the displaced evidence's share back \emph{up} to its
 \texttt{local} level---share-matched across all $32$ layers, not indexed to one---recovers a
 nonzero but small $0.28$ $[0.07,0.61]$ of the penalty ($+0.047$ $[+0.010,+0.083]$ of
-$+0.167$ $[+0.099,+0.240]$), leaving most of it in place. Our uniform clamp can strip mass
-faithfully but cannot reconstruct \emph{which} heads should carry the restored mass. Full
-sufficiency with partial necessity is consistent with an instrument faithful in one direction
-and crude in the other, and we report it as that rather than as a second mechanism. A
-pattern-matched, per-head clamp would settle it. The drain itself is positional in
+$+0.167$ $[+0.099,+0.240]$), leaving most of it in place. The natural suspect is the
+instrument: a uniform clamp strips mass faithfully but cannot reconstruct \emph{which} heads
+should carry the restored mass. A pattern-matched test rules that out. Expanding the additive
+mask per head ($[b,H,q,k]$, one closed-form bias per query head per layer) and restoring each
+item to its own donor's per-layer, per-head pattern---installed to a mean per-head share error
+of $0.004$ against targets of ${\approx}0.077$, bias SD $1.22$ across heads---recovers
+$0.235$ $[-0.158,0.588]$ of the penalty, against the uniform clamp's in-session $0.375$
+$[0.167,0.654]$ (per-head $-$ uniform: $-0.021$ $[-0.083,+0.042]$, $n{=}192$ paired). Head
+identity is not what restoration is missing. What no per-head clamp restores is the
+distribution \emph{within} the span---one bias per head is still uniform over the evidence's
+${\sim}90$ tokens---so the unrecovered remainder is either that token-level pattern or a
+positional channel outside attention altogether. The drain itself is positional in
 \emph{tokens}, not turns---a $64\%$ mass cut from token distance alone costs at most $9.4$
 points---consistent with RoPE distance decay \citep{su2024rope,wu2025positionbias} rather than
 conversation structure (Appendix~\ref{app:displacement-detail}). The ladder, the sufficiency
@@ -479,8 +488,17 @@ than $1\%$ of the attention distribution carries the effect, and removing it rem
 the cost. Both accuracy mechanisms are therefore attentional, on different spans: displacement
 removes mass from the evidence, competition directs mass onto the competitors, and the
 evidence-mass measurement dissociates them because it is blind to the second by construction.
-What remains open is whether the ${\sim}40\%$ residual is prefill-borne interference or
-instrument slack (closure covers verbatim option-name mentions only). This mechanism is also
+The ${\sim}40\%$ residual is not instrument slack of the high-attention kind: storing the
+final position's attention row and closing the most-read \emph{content} tokens of the context
+body at the same $127.9$-token budget---$11\times$ the mentions' mass ($0.087$ vs
+$0.0077$)---recovers nothing ($+0.003$ $[-0.049,+0.055]$ net of its own size-matched control),
+while the verbatim closure replicates in the same session ($+0.069$ $[+0.016,+0.121]$ net;
+panel anchors reproduce). The closure works because of what the closed tokens \emph{say}, not
+the mass they receive, and the residual accordingly points at prefill-borne interference. The
+same measurement finds $0.42$ of the context body's final-position mass on the chat template's
+turn delimiters---closing \emph{that} is broadly destructive ($-0.175$ net, replies abandoning
+the demonstrated reply shape), which is not competition but the precedent carrier of
+\S\ref{sec:mode}. This mechanism is also
 the one that does not carry across families: on Qwen2.5-7B the same panel shows no detected
 penalty ($+0.030$ $[-0.016,+0.074]$), the evidence's share \emph{rises} under near-duplicate
 context where OLMo's was flat, and the same closure does nothing
@@ -568,12 +586,20 @@ preferentially read exactly where erosion occurs (per-token enrichment of filler
 filler questions: $+1.28$ in \texttt{mmlu}, $+0.34$ in \texttt{gsm8k}, negative in
 \texttt{code}---the erosion ordering). But reading them is not what sustains the erosion:
 masking every exemplar answer's key columns at generation time restores nothing ($0.000$
-compliant; a size-matched random-masking control is equally null). The privileged reading is
-consistent with a template already in place by prefill, task-vector style
-\citep{hendel2023taskvectors}. The contrast with \S\ref{sec:competition} is the sharpest
-dissociation in the paper: the \emph{same} scale-$0$ closure that recovers $59\%$ of the
-competition penalty restores nothing here (Fig.~\ref{fig:closure-dissociation}). Competition is
-generation-time \emph{reading}; the precedent mode is in place \emph{by prefill}.
+compliant; a size-matched random-masking control is equally null). Nor is it what
+\emph{installs} it: splitting the closure by window---active during prefill only, released at
+decode, or the converse---leaves compliance at $0.000$ in both windows, each against a
+size-matched random control at its own window ($n{=}40$, depth $42$). The split instead
+localizes what exemplar-answer reading is worth to \emph{accuracy}: its entire contribution is
+prefill-borne ($-0.175$ $[-0.300,-0.075]$ under prefill-only closure; exactly $0.000$
+item-for-item under decode-only, with all-window closure item-for-item identical to
+prefill-only). The privileged reading is consistent with a template already in place by
+prefill, task-vector style \citep{hendel2023taskvectors}---installed through some channel
+other than attention to the answer spans. The contrast with \S\ref{sec:competition} is the
+sharpest dissociation in the paper: the \emph{same} scale-$0$ closure that recovers $59\%$ of
+the competition penalty restores nothing here, in any window
+(Fig.~\ref{fig:closure-dissociation}). Competition is generation-time \emph{reading}; the
+precedent mode is in place \emph{by prefill}.
 
 \looseness=-1
 Residual-stream probes (\S\ref{sec:probes}) complete a three-level dissociation. The
@@ -598,6 +624,31 @@ attention has closed \citep{dongre2026attentioncloses}---and our mode is exactly
 on the read and write sides, yet no readable direction is its carrier. Decodability and
 installability license no inference to necessity: the probe reads a correlate of the mode, not
 its carrier.
+
+\looseness=-1
+\paragraph{The carrier, localized in tokens.}
+What direction-level search could not find, position-level search does---on the second family,
+where a counterfactual patching instrument exists (Appendix~\ref{app:qwen}): transplanting
+per-position hidden states between two transcripts identical except for their format
+instruction, and reading out the instructed formats' log-probability contrast. The full-context
+patch moves that contrast by $\Delta\Delta = -2.488$; patching only the chat template's turn
+delimiters---the \texttt{im\_end}/\texttt{im\_start} glue, no instruction text and no
+demonstrated answer among them---carries $-1.540$ of it ($62\%$; size-matched random-position
+control $+0.016$), while every \emph{content} subset (assistant turns, user turns, the last $k$
+turns) carries at most $12\%$. Layer-block patches place the state in the lower half of the
+stack, and the crossed cell---glue positions, layers $7$--$13$ only---still carries $42\%$. The
+format state rides the transcript's \emph{skeleton}: consistent with delimiter tokens hosting
+outsized, bias-like activations \citep{sun2024massiveactivations}, with models spontaneously
+electing low-information tokens as computation slots \citep{darcet2023registers}, and with
+instruction content compressing into dedicated tokens when trained to
+\citep{mu2023gist}---here natively, into tokens the chat template already supplies. It is also
+where the OLMo attention row concentrates ($0.42$ of context-body mass;
+\S\ref{sec:competition}, visible raw in Fig.~\ref{fig:token-heatmap}), whose closure disrupts
+the demonstrated shape. Unlike attention
+sinks \citep{xiao2023streamingllm,gu2024attentionsink}, which absorb mass content-independently
+as normalization slack, the glue state is content-bearing and transportable: moving it moves
+the behavior. The localization is established on Qwen; the OLMo confirmation and a
+periodicity-matched content control are open.
 
 \subsection{Why context rot gets reported: the signatures}
 \label{sec:signatures}
@@ -675,7 +726,11 @@ signatures, of which length is merely the usual way of causing all three at once
 buried far away among plausible alternatives moves the displacement and competition levers
 simultaneously---which is why length-indexed benchmarks cannot separate them
 \citep{hsieh2024ruler}---and attention-share accounts of multi-turn decline
-\citep{dongre2026attentioncloses} describe only the mechanism that is dilution proper.
+\citep{dongre2026attentioncloses} describe only the mechanism that is dilution proper. The
+precedent state itself, unreachable as a direction, is reachable as a place: counterfactual
+patching localizes it to the chat template's delimiter tokens in the lower half of the
+stack---the transcript's skeleton electing itself as native instruction storage
+\citep{darcet2023registers,sun2024massiveactivations,mu2023gist}.
 Displacement, its mass sufficiency, the accumulation null, and the precedent contest replicate
 on a second model family; competition is the mechanism that does not, its attention signature
 inverting on Qwen (Appendix~\ref{app:qwen}).
@@ -690,16 +745,20 @@ with asymmetric precision (4.1 points coherent, 9.4 random), and the random-subj
 removes subject-level predictability, not format or protocol learning---so we claim no decline
 surfaces, not that accumulation carries no latent cost, and the in-context-learning reading of
 that flatness is the consistent interpretation, not an isolated one. The necessity direction of
-the mediation is
-only partially established and is plausibly instrument-limited, since the clamp is uniform
-across heads. The competition result is one significant step rather than a gradient: mild
+the mediation remains only partially established, and the per-head pattern test narrows the
+explanation without closing it: head-uniformity is excluded, but the clamp still spreads each
+head's restored mass uniformly over the span's tokens, so a within-span token-pattern account
+and a non-attention positional channel are not separated. The competition result is one significant step rather than a gradient: mild
 overlap is indistinguishable from none, and we do not claim cost rises with confusability. The
 near-duplicate arm also changes the selection regime, so overlap is implicated by the
 within-experiment fit and the closure rescue rather than the arm contrast alone, and the
 constant-evidence-mass statement is indexed to layer 24 (\S\ref{sec:competition} reports the
 other layers). The competitor-closure rescue is substantial, not total: the point estimate
-leaves ${\sim}40\%$ of the gap unexplained (residual not distinguishable from zero), and closure
-covers verbatim option-name mentions only. The instruction-canary null is a floor effect; the WildChat
+leaves ${\sim}40\%$ of the gap unexplained (residual not distinguishable from zero). The
+measured-hot-set closure eliminates only the high-attention form of instrument slack; a
+low-mass non-verbatim channel (paraphrase without literal mention) is not excluded, and the
+hot-set ranking uses the all-layer mean row, so a ranking indexed to specific layers or heads
+could target differently. The instruction-canary null is a floor effect; the WildChat
 partition is observational, with summary values from teacher-forced analyses and no uncertainty
 on the tertile contrast. The causal program ran in full on one model family; the
 Qwen2.5-7B replication (Appendix~\ref{app:qwen}) reproduces displacement, its mass
@@ -709,11 +768,13 @@ low-share compliance dissociation is OLMo-specific (Qwen's arm shares straddle i
 threshold). The precedent results
 use one instruction family, graded by a rule-based checker at $n{=}40$ per cell; the filler
 streams co-vary in genre, structure, and reply length, so the applicability ordering rests on
-the stream contrast together with the one-example and reversal experiments; and generation-time
-closure rules out reading the exemplars as what \emph{sustains} the mode, not prefill attention
-to them as what installs it. The carrier of the demonstrated-format mode is unidentified: it is
-decodable and installable, but no linear direction we tried erases it, so we localize the
-decision neither to a layer nor to a direction. The accuracy null holds for localized tasks;
+the stream contrast together with the one-example and reversal experiments. Window-split
+closure rules out attention to the exemplar answers as what sustains \emph{or} installs the
+mode, but only for that span family: installation through attention to other context spans is
+untested. The mode's carrier is localized in tokens on one family only---the template-glue
+patching result is Qwen's, its OLMo counterpart is pending, and the glue subset is confounded
+with positional periodicity (the random control is size-matched, not periodicity-matched)---and
+it remains unlocalized as a \emph{direction}: no linear direction we tried erases it. The accuracy null holds for localized tasks;
 genuinely length-dependent single-task settings are where dilution is the point, and are out of
 scope by design.
 
@@ -725,6 +786,7 @@ scope by design.
 \bibitem[Belinkov(2022)]{belinkov2022probing} Y.~Belinkov. Probing classifiers: promises, shortcomings, and advances. \emph{Computational Linguistics}, 48(1), 2022.
 \bibitem[Camassa and Shiller(2026)]{camassa2026instructioninduction} A.~Camassa and B.~Shiller. Do as I say, not as I do: instruction-induction conflict in LLMs. \emph{arXiv:2605.20382}, 2026.
 \bibitem[Cuconasu et al.(2024)]{cuconasu2024noise} F.~Cuconasu et al. The power of noise: redefining retrieval for RAG systems. \emph{SIGIR}, 2024.
+\bibitem[Darcet et al.(2024)]{darcet2023registers} T.~Darcet, M.~Oquab, J.~Mairal, and P.~Bojanowski. Vision transformers need registers. \emph{ICLR}, 2024.
 \bibitem[Davidson et al.(2025)]{davidson2025taskrepresentation} G.~Davidson, T.~Gureckis, B.~Lake, and A.~Williams. Do different prompting methods yield a common task representation in language models? \emph{NeurIPS}, 2025.
 \bibitem[Dongre et al.(2026)]{dongre2026attentioncloses} V.~Dongre et al. When attention closes: how LLMs lose the thread in multi-turn interaction. \emph{arXiv:2605.12922}, 2026.
 \bibitem[Grattafiori et al.(2024)]{llama3herd} A.~Grattafiori et al. The Llama 3 herd of models. \emph{arXiv:2407.21783}, 2024.
@@ -738,10 +800,12 @@ scope by design.
 \bibitem[Levy et al.(2024)]{levy2024same} M.~Levy, A.~Jacoby, and Y.~Goldberg. Same task, more tokens: the impact of input length on the reasoning performance of large language models. \emph{ACL}, 2024.
 \bibitem[Liu et al.(2023)]{liu2023lost} N.~F. Liu et al. Lost in the middle: how language models use long contexts. \emph{TACL}, 2023.
 \bibitem[Lieberum et al.(2024)]{lieberum2024gemmascope} T.~Lieberum et al. Gemma Scope: open sparse autoencoders everywhere all at once on Gemma 2. 2024.
+\bibitem[Mu et al.(2023)]{mu2023gist} J.~Mu, X.~L. Li, and N.~Goodman. Learning to compress prompts with gist tokens. \emph{NeurIPS}, 2023.
 \bibitem[Mu et al.(2025)]{mu2025systemprompt} N.~Mu et al. A closer look at system prompt robustness. \emph{arXiv:2502.12197}, 2025.
 \bibitem[Olsson et al.(2022)]{olsson2022induction} C.~Olsson et al. In-context learning and induction heads. \emph{arXiv:2209.11895}, 2022.
 \bibitem[Shi et al.(2023)]{shi2023distracted} F.~Shi et al. Large language models can be easily distracted by irrelevant context. \emph{ICML}, 2023.
 \bibitem[Su et al.(2024)]{su2024rope} J.~Su et al. RoFormer: enhanced transformer with rotary position embedding. \emph{Neurocomputing}, 568, 2024.
+\bibitem[Sun et al.(2024)]{sun2024massiveactivations} M.~Sun, X.~Chen, J.~Z. Kolter, and Z.~Liu. Massive activations in large language models. \emph{arXiv:2402.17762}, 2024.
 \bibitem[Tchango et al.(2022)]{tchango2022ddxplus} A.~Fansi Tchango et al. DDXPlus: a new dataset for automatic medical diagnosis. \emph{NeurIPS Datasets and Benchmarks}, 2022.
 \bibitem[Team OLMo(2024)]{olmo2024} Team OLMo et al. 2 OLMo 2 Furious. \emph{arXiv:2501.00656}, 2024.
 \bibitem[Todd et al.(2024)]{todd2024functionvectors} E.~Todd et al. Function vectors in large language models. \emph{ICLR}, 2024.
@@ -1042,6 +1106,18 @@ cases---\emph{past} the first costly level, not at its edge. That accuracy nonet
 flat under accumulation, while the same share reached by clamping costs points, is itself
 evidence that in-context learning is actively holding accuracy up.
 
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.98\textwidth]{figures/token_heatmap.pdf}
+  \caption{\textbf{Measured final-position attention over one full transcript} (OLMo-2,
+  all-layer/head mean, log color): the same probe with its evidence local vs.\ displaced ten
+  turns back. The evidence bracket carries visibly less mass when displaced ($0.088$ vs
+  $0.052$); the bright periodic stripes are the chat template's turn delimiters---the
+  concentration whose causal role \S\ref{sec:mode} establishes. Built from stored capture rows,
+  not an illustration.}
+  \label{fig:token-heatmap}
+\end{figure}
+
 \section{Precedent details}
 \label{app:precedent-detail}
 
@@ -1256,5 +1332,27 @@ low-competition arms also sit ${\approx}0.10$ above its own \texttt{local}
 (same-task context practices the probe's task where MMLU filler does not), so cross-family
 comparisons of arm \emph{levels} inherit that practice benefit; only within-family gaps are
 interpreted.
+
+\paragraph{Counterfactual instruction patching and the carrier bisection.}
+The instrument behind \S\ref{sec:mode}'s token-level localization: build two transcripts
+identical in filler and probe but differing in the system instruction (an \texttt{ANSWER:}
+prefix format vs.\ a one-line JSON format), capture per-position hidden states from each, and
+patch the recipient's prefill with the donor's states while reading out the two instructed
+formats' teacher-forced log-probability contrast; the estimand is the
+difference-in-differences $\Delta\Delta$ against the unpatched transcripts, with an
+unrelated-instruction patch as the specificity control. In the deep \texttt{code} cell
+(depth 15, closed system span, $n{=}24$, A$\to$B direction) the full-transcript patch moves
+the contrast by $\Delta\Delta = -2.488$. Bisecting that effect: the context's assistant turns
+carry $-0.287$, its user turns $+0.165$, and its last $1/2/4$ turns at most $|0.075|$---every
+content subset is near null---while the chat template's turn delimiters alone
+(\texttt{im\_end}/\texttt{im\_start} glue, no instruction text and no demonstrated answer
+among them) carry $\mathbf{-1.540}$, $62\%$ of the full effect, against a size-matched
+random-position control of $+0.016$. Layer-block patches at all positions give
+$-1.160$/$-1.591$/$-0.454$/$-0.113$ for layers $0$--$6$/$7$--$13$/$14$--$20$/$21$--$27$ (the
+blocks overlap in what they carry: their sum exceeds the full effect), and the crossed
+cell---glue positions, layers $7$--$13$ only---carries $-1.051$ ($42\%$) while touching no
+content token and no layer above $13$. The unrelated-instruction control is $\le|0.11|$ in
+every quoted cell. Waves of this bisection that searched \emph{inside} the turns (roles,
+recency) had to come back null: the state rides between them.
 
 \end{document}
