@@ -675,12 +675,78 @@ def fig_qwen_system_clamp(outdir: Path) -> Path:
     return path
 
 
+HEATMAP_ROWS_DIR = RESULTS / "context_fatigue" / "e1_rows" / "rows"
+
+
+def fig_token_heatmap(outdir: Path, rows_dir: Path | None = None,
+                      arms=("local", "back_10")) -> Path:
+    """Per-token attention heatmap of one displacement pair, from stored capture rows.
+
+    The honest version of the attention-explainer's span-tinted mock: each strip is the
+    final position's measured all-layer/head-mean attention over the whole transcript, for
+    the same probe with its evidence local vs displaced. The evidence span is bracketed and
+    its share quoted, so the figure shows the drain the paper measures — not an illustration
+    of it. Rows come from ``run_distance_sweep.py --attention-only --store-rows``.
+    """
+    rows_dir = HEATMAP_ROWS_DIR if rows_dir is None else Path(rows_dir)
+    files = {}
+    for f in sorted(rows_dir.glob("*.npz")):
+        for arm in arms:
+            if f.stem.endswith(f"_{arm}"):
+                files.setdefault(f.stem[: -len(arm) - 1], {})[arm] = f
+    pair = next((v for v in files.values() if len(v) == len(arms)), None)
+    if pair is None:
+        raise FileNotFoundError(
+            f"no probe in {rows_dir} has a stored row for every arm in {arms} — "
+            "no displacement pair to draw")
+
+    fig, axes = plt.subplots(len(arms), 1, figsize=(7.4, 1.25 * len(arms) + 0.7),
+                             sharex=True)
+    vmin = 1e-5
+    for ax, arm in zip(np.atleast_1d(axes), arms):
+        z = np.load(pair[arm])
+        row = z["row"].astype(np.float32)
+        meta = json.loads(str(z["meta"]))
+        ax.imshow(np.log10(np.maximum(row, vmin))[None, :], aspect="auto",
+                  cmap="magma", vmin=np.log10(vmin), vmax=np.log10(row.max()),
+                  interpolation="nearest", extent=(0, len(row), 0, 1))
+        for span, color, label in ((meta["evidence_span"], "#55a868", "evidence"),
+                                   (meta["question_span"], "#8fb8de", "question")):
+            a, b = span
+            ax.plot([a, b], [-0.18, -0.18], color=color, linewidth=3,
+                    clip_on=False, solid_capstyle="butt")
+            ax.text((a + b) / 2, -0.32, label, ha="center", va="top", fontsize=7,
+                    color=color, clip_on=False)
+        share = float(row[meta["evidence_span"][0]:meta["evidence_span"][1]].sum())
+        ax.set_yticks([])
+        ax.set_ylabel(arm, rotation=0, ha="right", va="center", fontsize=9)
+        ax.text(0.995, 0.78, f"evidence share {share:.4f}", ha="right", va="center",
+                fontsize=7.5, color="white", transform=ax.transAxes)
+    np.atleast_1d(axes)[-1].set_xlabel("token position in transcript")
+    np.atleast_1d(axes)[0].set_title(
+        "Final-position attention over the transcript (all-layer mean, log color)",
+        fontsize=10)
+
+    fig.tight_layout()
+    path = Path(outdir) / "token_heatmap.pdf"
+    fig.savefig(path, bbox_inches="tight")
+    plt.close(fig)
+    return path
+
+
 def make_appendix_figures(outdir: str | Path) -> dict[str, Path]:
-    """Render the appendix figures (documented constants; no raw OLMo runs needed)."""
+    """Render the appendix figures (documented constants; no raw OLMo runs needed).
+
+    The token heatmap is included only when its stored-row artifacts exist — they live in
+    gitignored results/, so a fresh clone still renders the constant-based figures.
+    """
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
-    return {
+    figs = {
         "qwen_replication": fig_qwen_replication(outdir),
         "closure_dissociation": fig_closure_dissociation(outdir),
         "qwen_system_clamp": fig_qwen_system_clamp(outdir),
     }
+    if HEATMAP_ROWS_DIR.exists():
+        figs["token_heatmap"] = fig_token_heatmap(outdir)
+    return figs

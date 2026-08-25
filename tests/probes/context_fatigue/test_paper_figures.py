@@ -178,3 +178,42 @@ def test_format_recovery_matches_report():
     assert df.loc["upclamp", "accuracy"] == pytest.approx(0.425)
     assert df.loc["refresh", "accuracy"] == pytest.approx(0.500)
     assert df.loc["both", "accuracy"] == pytest.approx(0.275)
+
+
+def _write_row_npz(rows_dir, name, seq_len, ev_span, arm, distance):
+    import json
+
+    import numpy as np
+
+    rng = np.random.default_rng(0)
+    row = rng.dirichlet(np.ones(seq_len)).astype(np.float16)
+    np.savez_compressed(
+        rows_dir / name, row=row,
+        input_ids=np.arange(seq_len, dtype=np.int32),
+        meta=json.dumps({"session": 0, "depth": 21, "probe": 5, "arm": arm,
+                         "distance": distance, "evidence_span": list(ev_span),
+                         "question_span": [seq_len - 40, seq_len - 5],
+                         "pathology": "Bronchitis"}))
+
+
+def test_token_heatmap_builds_from_stored_rows(tmp_path):
+    """Stage 4 of the per-token capture program: the honest, measured version of the
+    span-tinted mock — built from stored rows, no model or tokenizer needed."""
+    rows_dir = tmp_path / "rows"
+    rows_dir.mkdir()
+    _write_row_npz(rows_dir, "s0_d21_p5_local.npz", 300, (200, 260), "local", 0)
+    _write_row_npz(rows_dir, "s0_d21_p5_back_10.npz", 300, (40, 100), "back_10", 10)
+
+    out = tmp_path / "figs"
+    out.mkdir()
+    path = pf.fig_token_heatmap(out, rows_dir=rows_dir)
+    assert path.exists() and path.suffix == ".pdf" and path.stat().st_size > 0
+
+
+def test_token_heatmap_requires_a_matched_pair(tmp_path):
+    rows_dir = tmp_path / "rows"
+    rows_dir.mkdir()
+    _write_row_npz(rows_dir, "s0_d21_p5_local.npz", 300, (200, 260), "local", 0)
+    _write_row_npz(rows_dir, "s0_d21_p6_back_10.npz", 300, (40, 100), "back_10", 10)
+    with pytest.raises(FileNotFoundError, match="pair"):
+        pf.fig_token_heatmap(tmp_path, rows_dir=rows_dir)
