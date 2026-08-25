@@ -210,3 +210,29 @@ all-32-layer mean (`--reference-layer 0..31`). Reports: `E1_MECHANISM.md` (E1c/E
 | E1f↔E1c all-layer agreement | +0.168 [+0.102, +0.234] vs +0.151 [+0.099, +0.208] (0.017) | both |
 | E2a all-layer ladder | natural 0.463/0.536; 0.775× +0.045 n.s.; 0.581× +0.118 [+0.027, +0.209]; ≤0.18 degenerate (−3.63 nats, modal-A 99/110) | `e2a_alllayer/` |
 | all-layer accumulated query trajectory | 0.464 → 0.202 over 8 cases (20 items/point) | `E2A_MASS_CLAMP.md` addendum |
+
+## Appendix J — Qwen2.5-7B cross-family replication (2026-08-24)
+
+All runs seed 42, same drivers and panel constructions as the committed OLMo runs.
+Reports: `QWEN_E1_DISTANCE_SWEEP.md`, `QWEN_E1C_EVIDENCE_CLAMP.md`, `QWEN_E1F_SHARE_SWEEP.md`,
+`QWEN_RANDOM_CONTEXT.md`, `QWEN_E5_SYSTEM_CLAMP.md`, `QWEN_E6_FORMAT_EROSION.md`,
+`QWEN_E3_COMPETITION.md`.
+
+| claim | value | artifact / report |
+|---|---|---|
+| Q1 ladder | 0.630 / 0.531 / 0.516 / 0.505 / 0.469, n=192/arm, 0% unparsed | `qwen_e1_distance_sweep/` |
+| Q1 paired gaps | back_2 +0.099 [+0.052,+0.146] … back_20 +0.161 [+0.094,+0.229] | same |
+| Q1 joint fit | distance β −0.0061 [−0.0102,−0.0016]; fill β +0.330 (opposite sign) | same |
+| Q2 sufficiency | mass alone +0.167 [+0.104,+0.229] vs gap +0.156 [+0.089,+0.224] (107%) | `qwen_e1c_evidence_clamp/` |
+| Q2 residual | clamped − back_20 = −0.010 [−0.057,+0.037] | same |
+| Q3 sweep | 0.667 (natural) → 0.380 (share 0.0070), no knee | `qwen_e1f_share_sweep/` |
+| Q3 slope vs observational | +10.44 [+7.59,+13.57] vs +10.7 [+3.5,+17.6] | same |
+| Q7 accumulation null | random slope −0.057 [−0.238,+0.135] n.s.; coherent −0.090 n.s. | `qwen_random_context/` |
+| Q5 clamp ordering | prefix dies at 0.12, suffix at 0.09, forbid never; accuracy −0.09 [−0.16,−0.03] (rises) | `qwen_e5_system_clamp/` |
+| Q6 ordering | mmlu 1.000→0.000 by 3 turns; gsm8k/code 1.000 through fill 0.84–0.92 | `qwen_e6_{mmlu,gsm8k,code}/` |
+| Q6 reading signature | answer-over-question enrichment +0.87..+1.49 mmlu, negative code | `qwen_e6_{mmlu,code}_spans/` |
+| Q6 recovery at depth 42 | natural 0.067 / upclamp 0.733 / refresh 1.000 / both 1.000 | `qwen_e6_mmlu_recovery/` |
+| Q4 competition not detected | random − near_dup +0.030 [−0.016,+0.074]; DiD +0.055 [−0.015,+0.125] n.s. | `qwen_e3_competition/` |
+| Q4 attention inversion | near_dup − random evidence share +0.0071 [+0.0062,+0.0080] (OLMo −0.0003) | `qwen_e3_attention/` |
+| Q4 closure null | near_dup − comp_close +0.019 [−0.025,+0.063]; rand_close 0.000 | `qwen_e3c_competitor_close/` |
+| Q4 anchor caveat | low-competition arms ≈0.10 above Qwen E1 local (practice benefit) | `QWEN_E3_COMPETITION.md` |
