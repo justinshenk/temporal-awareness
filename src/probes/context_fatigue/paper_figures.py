@@ -313,6 +313,13 @@ def fig_dose_response(ax: plt.Axes) -> None:
     ax.margins(y=0.18)
 
 
+def _wilson_interval(acc: pd.Series, n: pd.Series, z: float = 1.96) -> tuple[pd.Series, pd.Series]:
+    """Wilson 95% score interval for a binomial proportion, per bin."""
+    center = (acc + z**2 / (2 * n)) / (1 + z**2 / n)
+    half = (z / (1 + z**2 / n)) * np.sqrt(acc * (1 - acc) / n + z**2 / (4 * n**2))
+    return center - half, center + half
+
+
 def fig_random_context(ax: plt.Axes) -> None:
     df = load_random_context()
     centers = [10, 30, 50, 70, 90]
@@ -322,17 +329,23 @@ def fig_random_context(ax: plt.Axes) -> None:
     }
     for mode, st in styles.items():
         g = df[df["mode"] == mode]
-        ax.plot(centers, g["accuracy"], **st)
+        lo, hi = _wilson_interval(g["accuracy"], g["n"])
+        yerr = np.vstack([g["accuracy"] - lo, hi - g["accuracy"]])
+        ax.errorbar(centers, g["accuracy"], yerr=yerr, capsize=2.5,
+                    linewidth=1.4, elinewidth=0.9, **st)
+        for x, acc, n in zip(centers, g["accuracy"], g["n"]):
+            ax.annotate(f"{n}", (x, acc), textcoords="offset points",
+                        xytext=(0, -11), ha="center", fontsize=6, color="#888888")
     ax.set_xlabel("context fill (%)")
     ax.set_ylabel("per-case accuracy")
-    ax.set_ylim(0.35, 0.95)
+    ax.set_ylim(0.25, 1.0)
     ax.set_title("(b) Accuracy is flat as context fills", fontsize=10)
     ax.legend(fontsize=8, frameon=False, loc="lower left")
     overall = random_context_overall()
     ax.text(
-        0.97, 0.05,
+        0.03, 0.97,
         f"overall: coherent {overall['coherent']:.2f}, random {overall['random']:.2f}",
-        transform=ax.transAxes, ha="right", va="bottom", fontsize=7.5, color="#555555",
+        transform=ax.transAxes, ha="left", va="top", fontsize=7.5, color="#555555",
     )
 
 
