@@ -60,3 +60,11 @@ Grader watch-item: extract_mcq_answer \b([ABCDE])\b fallback vs Qwen verbosity
 Q1-Q7 queue complete 2026-08-24, all reports + artifacts pushed. E7 Stage 1 both
 families pushed. Verification loop with OLMo box caught two report errors (lessons
 captured). Bisection is the open thread.
+
+## Queued — per-token capture program (brief: tasks/per_token_capture_brief.md, 2026-08-25)
+- [ ] Stage 0: capture extension — store final-position attention row (all-layer mean
+      default, full tensor behind flag); tests first (row→span-share consistency)
+- [ ] Stage 1: E3c′ targeted closure from measured hot tokens (attack the ~40% residual)
+- [ ] Stage 2: E1d′ pattern-matched per-head restoration (settle 0.28 = instrument vs channel)
+- [ ] Stage 3: E6′ prefill-only vs decode-only exemplar closure (localize installation)
+- [ ] Stage 4: real token-heatmap panel for talk/camera-ready
