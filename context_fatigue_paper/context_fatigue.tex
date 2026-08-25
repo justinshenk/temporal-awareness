@@ -645,23 +645,40 @@ makes the model surest.
 \section{Conclusion}
 
 \looseness=-1
-With accumulation, displacement, competition and precedent separated inside one harness:
-accumulation produces a monotone reallocation of attention and a collapse of predictive
-\emph{entropy}, but no detected loss of accuracy and no loss of instruction adherence. Displacing
-the evidence produces a large accuracy cost that is reproduced in full by removing its attention
-mass, graded in that mass, and positional in tokens. Making the context confusable produces a further cost at
-constant evidence mass, carried instead by attention to the competing instances themselves---
-under $1\%$ of the distribution, and closing it recovers most of the cost. Accumulating an
-applicable demonstrated answer shape erodes not accuracy but \emph{compliance}, in a precedent
-contest the instruction loses with its attention intact---and which either re-weighting or
-re-presenting the instruction wins back completely. The literature's central claim is therefore
-correct but misattributed, and under-counted. In these streams, context rot is not a decay with
-length. It is
-three mechanisms with different signatures---displacement, competition, and precedent---of
-which length is merely the usual way of causing all three at once, and of which only the first
-is attention dilution proper. Displacement, its mass sufficiency, the accumulation null, and
-the precedent contest replicate on a second model family; competition is the mechanism that
-does not, its attention signature inverting on Qwen (Appendix~\ref{app:qwen}).
+With accumulation, displacement, competition and precedent separated inside one harness, each
+mechanism leaves a distinct signature:
+\begin{itemize}[leftmargin=1.35em,itemsep=1pt,topsep=2pt]
+\item \textbf{Accumulation} produces a monotone reallocation of attention and a collapse of
+  predictive \emph{entropy}, but no detected loss of accuracy and no loss of instruction
+  adherence---the with-length decline that motivates the rot framing
+  \citep{liu2023lost,hong2025contextrot,laban2025lost} does not surface in these streams.
+\item \textbf{Displacement} produces a large accuracy cost that is reproduced in full by
+  removing the evidence's attention mass, graded in that mass, and positional in tokens. This
+  is the one mechanism here that is attention dilution proper---the one for which attention-side
+  steering and positional recalibration \citep{zhang2023pasta,hsieh2024foundinmiddle} act on
+  the variable that actually mediates.
+\item \textbf{Competition} produces a further cost at constant evidence mass---interference
+  that raw context length does not index \citep[cf.][]{wang2025unabletoforget}---carried
+  instead by attention to the competing instances themselves, under $1\%$ of the distribution;
+  closing that channel recovers most of the cost.
+\item \textbf{Precedent}: an applicable demonstrated answer shape erodes not accuracy but
+  \emph{compliance}, in a contest the instruction loses with its attention intact. This is the
+  benign, self-generated counterpart of demonstrations overriding priors and instructions
+  \citep{wei2023icldifferently,anil2024manyshot,camassa2026instructioninduction}, consistent
+  with instructions and demonstrations occupying distinct representational channels
+  \citep{davidson2025taskrepresentation,hendel2023taskvectors,todd2024functionvectors}---and
+  either re-weighting or re-presenting the instruction wins the contest back completely.
+\end{itemize}
+The literature's central claim is therefore correct but misattributed, and under-counted. In
+these streams, context rot is not a decay with length: it is three mechanisms with different
+signatures, of which length is merely the usual way of causing all three at once. A needle
+buried far away among plausible alternatives moves the displacement and competition levers
+simultaneously---which is why length-indexed benchmarks cannot separate them
+\citep{hsieh2024ruler}---and attention-share accounts of multi-turn decline
+\citep{dongre2026attentioncloses} describe only the mechanism that is dilution proper.
+Displacement, its mass sufficiency, the accumulation null, and the precedent contest replicate
+on a second model family; competition is the mechanism that does not, its attention signature
+inverting on Qwen (Appendix~\ref{app:qwen}).
 
 \section{Limitations}
 
