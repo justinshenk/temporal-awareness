@@ -48,11 +48,20 @@ Grader watch-item: extract_mcq_answer \b([ABCDE])\b fallback vs Qwen verbosity
 - [x] Wave 1 position marginals: assistant_turns -0.287, user_turns +0.165 — neither
       role carries it; suspect distributed or chat-template glue tokens (excluded from
       both role subsets)
-- [ ] Wave 2 last_1/last_2/last_4 RUNNING overnight (artifacts land in
-      results/context_fatigue/qwen_e7_bisect_pos_last_*; commit tomorrow)
-- [ ] Wave 3-4: layer blocks 0-6/7-13/14-20/21-27 (all positions)
-- [ ] If role/recency marginals stay small: add 'template' complement mode to
-      --patch-positions and test the glue tokens directly
+- [x] Wave 2 last_1/last_2/last_4 complete (2026-08-25 read): recency positions carry
+      ~nothing of dd_full=-2.488 — dd_ab −0.075 / +0.0006 / −0.036. With Wave 1's role
+      null, suspicion narrows to distributed/template-glue. Artifacts
+      qwen_e7_bisect_pos_last_{1,2,4}. NOTE: E3c' preflight independently found 43% of
+      context-body final-position mass on template glue/turn boundaries (OLMo) —
+      convergent with the glue suspicion; see per-token program below.
+- [ ] Wave 3-4: layer blocks 0-6/7-13/14-20/21-27 (all positions) — QUEUED 2026-08-25
+      (chain fires when the per-token-program GPU queue drains; artifacts
+      qwen_e7_bisect_layers_*)
+- [ ] Template cell QUEUED in the same chain (qwen_e7_bisect_pos_template). The
+      'template' mode already existed in run_format_patch.py; verified on the Qwen
+      tokenizer: selects exactly the <|im_end|>/<|im_start|> glue, and
+      template+user+assistant partition the region 43/43 on the check transcript.
+      Trigger condition met twice: Waves 1-2 null AND E3c' glue finding (OLMo).
 - [ ] Winner: crossed cell + --random-control size-matched
 - [ ] OLMo follow-up: 1-2 targeted cells only, n≈100 (~2 GPU-h each) once Qwen localizes
 
@@ -61,10 +70,36 @@ Q1-Q7 queue complete 2026-08-24, all reports + artifacts pushed. E7 Stage 1 both
 families pushed. Verification loop with OLMo box caught two report errors (lessons
 captured). Bisection is the open thread.
 
-## Queued — per-token capture program (brief: tasks/per_token_capture_brief.md, 2026-08-25)
-- [ ] Stage 0: capture extension — store final-position attention row (all-layer mean
-      default, full tensor behind flag); tests first (row→span-share consistency)
-- [ ] Stage 1: E3c′ targeted closure from measured hot tokens (attack the ~40% residual)
-- [ ] Stage 2: E1d′ pattern-matched per-head restoration (settle 0.28 = instrument vs channel)
-- [ ] Stage 3: E6′ prefill-only vs decode-only exemplar closure (localize installation)
-- [ ] Stage 4: real token-heatmap panel for talk/camera-ready
+## Per-token capture program (brief: tasks/per_token_capture_brief.md; EXECUTING 2026-08-25)
+Box: A100-80GB, OLMo-2-7B-Instruct cached (Stages 1-3 target the OLMo numbers per brief).
+- [x] Stage 0: library done test-first — `stacked_rows`/`mean_attention_row` (capture),
+      `select_hot_token_spans`, `SpanAttentionClamp(window=all|prefill|decode)`,
+      `PerHeadSpanAttentionClamp`, `solve_per_head_biases` (closed-form),
+      `measure_span_share_by_head`, `solve_per_head_pattern` (iterative, all-layer).
+      +44 tests; capture/clamp suite 121 green; drivers gained `--store-rows`
+      (competition + distance sweeps, npz per probe: fp16 mean row + ids + span meta).
+- [x] Stage 1: E3c′ COMPLETE (report E3C_HOT_CLOSE.md, artifacts e3c_hot_close/ incl.
+      365 stored rows). Verdict: residual is NOT instrument slack — anchors reproduce
+      (penalty +0.088 SIG, verbatim net +0.069 SIG vs committed +0.060); content-hot
+      closure (0.087 mass, 11x verbatim's 0.0076) nets +0.003 ns; as-measured hot set =
+      0.42 mass on template glue, closing it nets −0.175 SIG with parse 0.85 and
+      prose-style replies → glue is load-bearing precedent structure (converges with E7
+      Wave 1-2 nulls). Competition penalty follows token CONTENT, not received mass.
+      All contrasts survive parsed-only.
+- [x] Stage 2: E1d′ COMPLETE (report E1D_HEAD_PATTERN.md, artifacts e1d_head_pattern/).
+      Per-head pattern restoration recovers 0.235 [−0.158, 0.588] vs uniform 0.375
+      [0.167, 0.654] in-session (anchors committed 0.28); per-head − uniform −0.021 ns
+      with faithful pattern install (err 0.004, bias_sd 1.22). Head-uniformity is NOT
+      the instrument limitation → within-span token pattern or a second positional
+      channel remain.
+- [x] Stage 3: E6′ COMPLETE (report E6_CLOSE_WINDOWS.md, artifacts e6_close_windows/).
+      Installation test NULL both windows: compliance 0.000 under prefill-only, decode-only,
+      all-window fa closure (anchors reproduce: d0 0.875, fq_close 0.10≈0.132) — the mode
+      does not route through exemplar-answer reading at all. Sharp positive: the fa
+      channel's ACCURACY value is entirely prefill-borne (−0.175 SIG prefill-only, exactly
+      0.000 item-for-item decode-only; all-window ≡ prefill-only item-for-item).
+- [x] Stage 4: COMPLETE. 160 rows captured (e1_rows/rows, 32 probes x 5 arms, 1 session);
+      `make_paper_figures.py --only appendix` now emits token_heatmap.pdf (real
+      local-vs-back_10 pair, shares 0.0883 vs 0.0522 annotated from the stored rows; the
+      bright periodic stripes are the template glue — the E3c' finding is visible raw).
+      Builder registered conditionally so clones without rows still build.
