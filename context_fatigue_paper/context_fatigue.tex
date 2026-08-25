@@ -382,11 +382,29 @@ item difficulty---the model looks harder at confusing vignettes---and has the \e
 to the causal effect below. Reading share--accuracy correlations off this data without
 intervening yields the wrong sign.
 
+\begin{table}[t]
+  \centering\small
+  \caption{\textbf{The mass interventions} (all-layer shares; paired bootstrap 95\% CIs;
+  penalty fractions are against the same panel's own displacement penalty).}
+  \label{tab:mass}
+  \setlength{\tabcolsep}{2.5pt}
+  \begin{tabular}{lllc}
+    \toprule
+    intervention & contrast & $\Delta$ accuracy & of the penalty\\
+    \midrule
+    removal (\texttt{local} $\to$ \texttt{back\_20} share) & \texttt{local} $-$ clamped & $+0.151$ $[+0.099,+0.208]$ & $0.91$ $[0.60,1.46]$\\
+     & clamped $-$ \texttt{back\_20} & $+0.016$ $[-0.052,+0.083]$ & lands on \texttt{back\_20}\\
+    sweep endpoint (displaced share) & natural $-$ endpoint & $+0.168$ $[+0.102,+0.234]$ & matches removal\\
+    restoration (\texttt{back\_20} $\to$ \texttt{local} share) & restored $-$ \texttt{back\_20} & $+0.047$ $[+0.010,+0.083]$ & $0.28$ $[0.07,0.61]$\\
+    restoration, per-head pattern & per-head $-$ uniform & $-0.021$ $[-0.083,+0.042]$ & no gain\\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
 \paragraph{Mass removal.}
 Keeping the evidence at \texttt{local} and clamping its share down to the \emph{same item's own}
-\texttt{back\_20} share costs $+0.151$ $[+0.099,+0.208]$ (paired $n{=}192$) and lands on
-\texttt{back\_20} ($+0.016$ $[-0.052,+0.083]$): removal reproduces $0.91$ $[0.60,1.46]$ of the
-displacement penalty, the interval including full reproduction. \textbf{Mass removal alone
+\texttt{back\_20} share reproduces the displacement penalty and lands the arm on
+\texttt{back\_20} (Table~\ref{tab:mass}; paired $n{=}192$). \textbf{Mass removal alone
 reproduces the displacement penalty, with nothing moved.}
 
 \paragraph{Dose-response.}
@@ -395,23 +413,18 @@ at every level) gives a graded decline from $0.473$ at the natural share ($0.044
 $0.012$ (Fig.~\ref{fig:dilution}b). Six of the seven levels differ significantly from the natural
 share---including a cut of less than a fifth of the mass---and no step is a threshold: the largest
 adjacent step is $0.053$ and the decline is smooth throughout. Its endpoint at the displaced
-share matches the independently-run removal experiment to $0.017$
-($+0.168$ $[+0.102,+0.234]$ vs $+0.151$ $[+0.099,+0.208]$). The relationship is \emph{graded}:
-a slope, not a cliff.
+share matches the independently-run removal experiment (Table~\ref{tab:mass}). The
+relationship is \emph{graded}: a slope, not a cliff.
 
 \paragraph{Mass restoration.}
 The converse is only partial: clamping the displaced evidence's share back \emph{up} to its
-\texttt{local} level recovers a
-nonzero but small $0.28$ $[0.07,0.61]$ of the penalty ($+0.047$ $[+0.010,+0.083]$ of
-$+0.167$ $[+0.099,+0.240]$), leaving most of it in place. The natural suspect is the
-instrument: a uniform clamp strips mass faithfully but cannot reconstruct \emph{which} heads
-should carry the restored mass. A pattern-matched test rules that out. Expanding the additive
-mask per head ($[b,H,q,k]$, one closed-form bias per query head per layer) and restoring each
-item to its own donor's per-layer, per-head pattern---installed to a mean per-head share error
-of $0.004$ against targets of ${\approx}0.077$, bias SD $1.22$ across heads---recovers
-$0.235$ $[-0.158,0.588]$ of the penalty, against the uniform clamp's in-session $0.375$
-$[0.167,0.654]$ (per-head $-$ uniform: $-0.021$ $[-0.083,+0.042]$, $n{=}192$ paired). Head
-identity is not what restoration is missing. What no per-head clamp restores is the
+\texttt{local} level recovers little of the penalty (Table~\ref{tab:mass}), leaving most of it
+in place. The natural suspect is the instrument: a uniform clamp strips mass faithfully but
+cannot reconstruct \emph{which} heads should carry the restored mass. A pattern-matched test
+rules that out: one closed-form bias per query head per layer, restoring each item to its own
+donor's per-layer, per-head pattern---installed to a mean per-head share error of $0.004$,
+bias SD $1.22$ across heads---gains nothing over the uniform clamp (Table~\ref{tab:mass}).
+Head identity is not what restoration is missing. What no per-head clamp restores is the
 distribution \emph{within} the span---one bias per head is still uniform over the evidence's
 ${\sim}90$ tokens---so the unrecovered remainder is either that token-level pattern or a
 positional channel outside attention altogether. The drain itself is positional in
@@ -465,17 +478,33 @@ same accuracy contrast with opposite attention signatures, evidence for two mech
 single-layer measurement could supply. Per-head structure---including the null result that no
 head hides a large countervailing move---is in Appendix~\ref{app:heads}.
 
+\begin{table}[t]
+  \centering\small
+  \caption{\textbf{Generation-time closures on the near-duplicate arm} (paired $n{=}365$;
+  every arm closes the same ${\approx}128$-token budget; net $=$ closure $-$ its size-matched
+  random control).}
+  \label{tab:closures}
+  \setlength{\tabcolsep}{5pt}
+  \begin{tabular}{llc}
+    \toprule
+    closed set & mass closed & net accuracy [95\% CI]\\
+    \midrule
+    verbatim option-name mentions & 0.0077 & $+0.060$ $[+0.008,+0.112]$\\
+    verbatim, re-run alongside the arms below & 0.0076 & $+0.069$ $[+0.016,+0.121]$\\
+    most-read content tokens & 0.087 & $+0.003$ $[-0.049,+0.055]$\\
+    most-read tokens including template glue & 0.416 & $-0.175$ $[-0.230,-0.121]$\\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
 \paragraph{The competitor-closure test.}
 Evidence mass predicting $2\%$ of the effect rules out starvation as the carrier; it does not
 touch the other attentional route,
 in which the filler's (arm-constant) mass lands on \emph{instances of the probe's own answer
 candidates} and reading them is what misleads. We test this directly: closing every context
-occurrence of the probe's option names at generation time (scale $0$; $30.0$ spans, $127.9$
-tokens, union share $0.0077$ per probe) recovers \textbf{59\%} of the competition penalty
-($+0.055$ $[+0.006,+0.104]$, paired $n{=}365$; $+0.060$ $[+0.008,+0.112]$ against a
-size-matched random-closure control that lands at zero, $-0.006$ $[-0.036,+0.025]$), and the
-residual gap to \texttt{random} no longer excludes zero ($+0.038$ $[-0.011,+0.088]$). The
-rescue survives restriction to parsed responses ($+0.058$ $[+0.003,+0.113]$). \textbf{So
+occurrence of the probe's option names at generation time recovers \textbf{59\%} of the
+competition penalty (Table~\ref{tab:closures}), the residual gap to \texttt{random} no longer
+excludes zero, and the rescue survives restriction to parsed responses. \textbf{So
 competition is attention-mediated after all---through the competitors, not the evidence}: less
 than $1\%$ of the attention distribution carries the effect, and removing it removes most of
 the cost. Both accuracy mechanisms are therefore attentional, on different spans: displacement
@@ -483,15 +512,13 @@ removes mass from the evidence, competition directs mass onto the competitors, a
 evidence-mass measurement dissociates them because it is blind to the second by construction.
 The ${\sim}40\%$ residual is not instrument slack of the high-attention kind: storing the
 final position's attention row and closing the most-read \emph{content} tokens of the context
-body at the same $127.9$-token budget---$11\times$ the mentions' mass ($0.087$ vs
-$0.0077$)---recovers nothing ($+0.003$ $[-0.049,+0.055]$ net of its own size-matched control),
-while the verbatim closure replicates in the same session ($+0.069$ $[+0.016,+0.121]$ net;
-panel anchors reproduce). The closure works because of what the closed tokens \emph{say}, not
-the mass they receive, and the residual accordingly points at prefill-borne interference. The
-same measurement finds $0.42$ of the context body's final-position mass on the chat template's
-turn delimiters---closing \emph{that} is broadly destructive ($-0.175$ net, replies abandoning
-the demonstrated reply shape), which is not competition but the precedent carrier of
-\S\ref{sec:mode}. This mechanism is also
+body---$11\times$ the mentions' mass---recovers nothing, while the verbatim closure replicates
+in the same session (Table~\ref{tab:closures}; panel anchors reproduce). The closure works
+because of what the closed tokens \emph{say}, not the mass they receive, and the residual
+accordingly points at prefill-borne interference. The same measurement finds $0.42$ of the
+context body's final-position mass on the chat template's turn delimiters---closing \emph{that}
+is broadly destructive, replies abandoning the demonstrated reply shape, which is not
+competition but the precedent carrier of \S\ref{sec:mode}. This mechanism is also
 the one that does not carry across families: on Qwen2.5-7B the same panel shows no detected
 penalty ($+0.030$ $[-0.016,+0.074]$), the evidence's share \emph{rises} under near-duplicate
 context where OLMo's was flat, and the same closure does nothing
@@ -613,22 +640,43 @@ This asymmetry carries beyond this paper. Behavior modes are
 increasingly localized in compact linear structure---task and function vectors
 \citep{hendel2023taskvectors,todd2024functionvectors}, near-perfect residual decodability after
 attention has closed \citep{dongre2026attentioncloses}---and our mode is exactly such an object
-on the read and write sides, yet no readable direction is its carrier. Decodability and
-installability license no inference to necessity: the probe reads a correlate of the mode, not
-its carrier.
+on the read and write sides, yet no readable direction is its carrier. We can decode the mode
+and we can install it; neither shows what carries it. The probe reads a correlate, not the
+carrier.
 
 \looseness=-1
+\begin{table}[t]
+  \centering\small
+  \caption{\textbf{Counterfactual patching of the format-instruction state} (Qwen2.5-7B,
+  \texttt{code} cell, $n{=}24$; $\Delta\Delta$ $=$ shift of the instructed-formats
+  log-probability contrast).}
+  \label{tab:patch}
+  \setlength{\tabcolsep}{5pt}
+  \begin{tabular}{lcc}
+    \toprule
+    patched positions & $\Delta\Delta$ & share of full\\
+    \midrule
+    full context, all layers & $-2.488$ & $100\%$\\
+    template glue (\texttt{im\_end}/\texttt{im\_start}) & $-1.540$ & $62\%$\\
+    assistant turns & $-0.287$ & $12\%$\\
+    user turns & $+0.165$ & ---\\
+    last $1$/$2$/$4$ turns & $\leq|0.075|$ & ${\sim}0$\\
+    size-matched random positions & $+0.016$ & ---\\
+    template glue $\times$ layers $7$--$13$ & $-1.051$ & $42\%$\\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
 \paragraph{The carrier, localized in tokens.}
 What direction-level search could not find, position-level search does---on the second family,
 where a counterfactual patching instrument exists (Appendix~\ref{app:qwen}): transplanting
 per-position hidden states between two transcripts identical except for their format
-instruction, and reading out the instructed formats' log-probability contrast. The full-context
-patch moves that contrast by $\Delta\Delta = -2.488$; patching only the chat template's turn
-delimiters---the \texttt{im\_end}/\texttt{im\_start} glue, no instruction text and no
-demonstrated answer among them---carries $-1.540$ of it ($62\%$; size-matched random-position
-control $+0.016$), while every \emph{content} subset (assistant turns, user turns, the last $k$
-turns) carries at most $12\%$. Layer-block patches place the state in the lower half of the
-stack, and the crossed cell---glue positions, layers $7$--$13$ only---still carries $42\%$. The
+instruction, and reading out the instructed formats' log-probability contrast
+(Table~\ref{tab:patch}). Patching only the chat template's turn delimiters---the
+\texttt{im\_end}/\texttt{im\_start} glue, no instruction text and no demonstrated answer among
+them---carries $62\%$ of the full-context patch, every \emph{content} subset carries at most
+$12\%$, layer-block patches place the state in the lower half of the stack, and the crossed
+cell---glue positions, layers $7$--$13$ only---still carries $42\%$. The
 format state rides the transcript's \emph{skeleton}: consistent with delimiter tokens hosting
 outsized, bias-like activations \citep{sun2024massiveactivations}, with models spontaneously
 electing low-information tokens as computation slots \citep{darcet2023registers}, and with
