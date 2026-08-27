@@ -669,9 +669,10 @@ carrier.
 \begin{table}[t]
   \centering\small
   \caption{\textbf{Counterfactual patching of the format-instruction state} (Qwen2.5-7B,
-  \texttt{code} cell). Full-transcript row $n{=}39$, bisection rows $n{=}23$. $\Delta\Delta$
-  $=$ shift of the instructed-formats
-  log-probability contrast, against a self-patch baseline (Appendix~\ref{app:qwen}).}
+  \texttt{code} cell). Full-transcript row $n{=}39$, bisection rows $n{=}23$.
+  $\Delta\Delta = \Delta\ell_{\mathrm{patch}} - \Delta\ell_{\mathrm{self}}$: the shift of the
+  instructed-formats log-probability contrast $\Delta\ell$ against a self-patch baseline
+  (Appendix~\ref{app:qwen}).}
   \label{tab:patch}
   \setlength{\tabcolsep}{5pt}
   \begin{tabular}{lcc}
@@ -1402,7 +1403,8 @@ account the way OLMo's \texttt{code} arm (full compliance at half \texttt{mmlu}'
 
 \paragraph{Competition: the family divergence.}
 On the same $n{=}365$ panel the penalty is not detected: \texttt{random} $-$ \texttt{near\_dup}
-$= +0.030$ $[-0.016,+0.074]$, and the cross-family difference-in-differences is suggestive but
+$= +0.030$ $[-0.016,+0.074]$, and the family$\times$confusability interaction (the
+cross-family difference-in-differences: OLMo's paired penalty minus Qwen's) is suggestive but
 not significant ($+0.055$ $[-0.015,+0.125]$). The attention signature, however, inverts with
 disjoint intervals: under near-duplicate context Qwen's evidence share \emph{rises}
 ($+0.0071$ $[+0.0062,+0.0080]$ vs.\ OLMo's $+0.0003$ null, orientation matched)---the model
@@ -1425,13 +1427,18 @@ The instrument behind \S\ref{sec:mode}'s token-level localization: build two tra
 identical in filler and probe but differing in the system instruction (an \texttt{ANSWER:}
 prefix format vs.\ a one-line JSON format), capture per-position hidden states from each, and
 patch the recipient's prefill with the donor's states while reading out the two instructed
-formats' teacher-forced log-probability contrast. The estimand is the
-difference-in-differences $\Delta\Delta$ against a \emph{self-patch} baseline, the
-recipient's own open-captured states pushed through the identical procedure, not against the
-unpatched transcripts. Donor states are captured with the system span open while a pure run's
+formats' teacher-forced log-probability contrast. Writing $\Delta\ell$ for that contrast, the
+estimand is the interaction contrast
+$\Delta\Delta = \Delta\ell_{\mathrm{patch}} - \Delta\ell_{\mathrm{self}}$: a
+difference-in-differences whose baseline is the \emph{self-patch}---the recipient's own
+open-captured states pushed through the identical procedure---not the unpatched transcripts.
+Donor states are captured with the system span open while a pure run's
 states form closed, and preflight showed an unpatched baseline confounds that capture
 difference with donor identity (the unrelated-fact control moved as much as the
 counterfactual patch). Against the self-patch baseline the same control is null. The
+identification requires only additivity---capture-openness shifting both arms' contrasts
+equally---which sharing one capture-and-splice procedure across arms is designed to make
+true. The
 specificity control throughout is an unrelated-fact patch: the same instruction with one
 irrelevant clause changed, token-matched. The deep \texttt{code} cell runs at depth 15 with
 the system span closed, in the A$\to$B direction. The full-transcript patch is the stage-1
