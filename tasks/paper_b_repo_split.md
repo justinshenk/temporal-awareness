@@ -1,8 +1,23 @@
-# Paper B repo split — survey and plan (deferred, 2026-08-27)
+# Paper B repo split — DONE 2026-08-27
+
+The split was executed on 2026-08-27. The new repo is at
+`~/Documents/breaking-down-context-rot`, extracted from this repo's
+`context-fatigue-datasets` branch at commit `7c2b359`, history preserved, `.npz` stripped.
+See `tasks/paper_b_repo_split.md` inside that repo for the full record.
+
+Only cleanup left on this side: `scripts/safety/analyze_route_sweep.py` imports `pearson`
+and `scripts/safety/run_attention_base_vs_lora.py` imports `SelectiveAttentionCapture`,
+both from `src/probes/context_fatigue/`. Inline or vendor those two, then the Paper B trees
+here can be deleted. Not urgent, and deleting them is a separate decision since this is a
+shared repo.
+
+The original survey and plan follow, kept for reference.
+
+---
 
 Goal: extract Paper B (context fatigue) into its own repo under Ronen's GitHub account.
 Current origin is `justinshenk/temporal-awareness`, so the new repo also moves ownership.
-Survey done 2026-08-27. Split itself deferred until Ronen says go.
+Survey done 2026-08-27.
 
 ## Coupling is thin: 4 cross-paper import lines total
 
