@@ -407,6 +407,7 @@ def main():
     df = pd.DataFrame(records)
     summary = {
         "model": args.model,
+        "seed": args.seed,
         "arms": (sorted(df["arm"].unique()) if args.close_arms and len(df)
                  else ArmSpec.overlap_arms()),
         "close_arms": args.close_arms,

@@ -260,6 +260,7 @@ def main():
     df = pd.DataFrame(records)
     summary = {
         "model": args.model,
+        "seed": args.seed,
         "max_ctx": args.max_ctx,
         "arms": ARMS,
         "depths": depths,

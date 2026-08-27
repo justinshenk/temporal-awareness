@@ -1,0 +1,64 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading MMLU (all subjects)...
+  14042 questions across 57 subjects | coherent subject 'high_school_psychology': 545
+Loading allenai/OLMo-2-1124-7B-Instruct...
+Loading weights:   0%|          | 0/355 [00:00<?, ?it/s]Loading weights:   0%|          | 1/355 [00:00<00:44,  8.03it/s]Loading weights:   1%|          | 2/355 [00:00<00:42,  8.35it/s]Loading weights:   5%|▍         | 16/355 [00:00<00:05, 60.52it/s]Loading weights:  10%|▉         | 35/355 [00:00<00:03, 103.90it/s]Loading weights:  15%|█▍        | 53/355 [00:00<00:02, 124.94it/s]Loading weights:  20%|█▉        | 70/355 [00:00<00:02, 129.89it/s]Loading weights:  26%|██▌       | 91/355 [00:00<00:01, 151.55it/s]Loading weights:  30%|███       | 108/355 [00:00<00:01, 150.77it/s]Loading weights:  35%|███▌      | 125/355 [00:01<00:01, 154.36it/s]Loading weights:  41%|████      | 144/355 [00:01<00:01, 163.07it/s]Loading weights:  45%|████▌     | 161/355 [00:01<00:01, 154.15it/s]Loading weights:  50%|█████     | 179/355 [00:01<00:01, 156.93it/s]Loading weights:  55%|█████▍    | 195/355 [00:01<00:01, 156.35it/s]Loading weights:  59%|█████▉    | 211/355 [00:01<00:00, 152.89it/s]Loading weights:  64%|██████▍   | 227/355 [00:01<00:00, 153.89it/s]Loading weights:  69%|██████▉   | 245/355 [00:01<00:00, 153.00it/s]Loading weights:  74%|███████▎  | 261/355 [00:01<00:00, 137.19it/s]Loading weights:  78%|███████▊  | 276/355 [00:02<00:00, 124.58it/s]Loading weights:  81%|████████▏ | 289/355 [00:02<00:00, 109.97it/s]Loading weights:  85%|████████▍ | 301/355 [00:02<00:00, 101.25it/s]Loading weights:  88%|████████▊ | 312/355 [00:02<00:00, 98.47it/s] Loading weights:  91%|█████████ | 323/355 [00:02<00:00, 96.70it/s]Loading weights:  94%|█████████▍| 334/355 [00:02<00:00, 95.32it/s]Loading weights:  97%|█████████▋| 345/355 [00:02<00:00, 94.10it/s]Loading weights: 100%|██████████| 355/355 [00:02<00:00, 120.91it/s]
+The attention mask is not set and cannot be inferred from input because pad token is same as eos token. As a consequence, you may observe unexpected behavior. Please pass your input's `attention_mask` to obtain reliable results.
+  [random] session 1/15: 28 q, acc=0.50
+  [random] session 2/15: 36 q, acc=0.42
+  [random] session 3/15: 32 q, acc=0.72
+  [random] session 4/15: 25 q, acc=0.68
+  [random] session 5/15: 29 q, acc=0.55
+  [random] session 6/15: 32 q, acc=0.62
+  [random] session 7/15: 27 q, acc=0.44
+  [random] session 8/15: 28 q, acc=0.54
+  [random] session 9/15: 34 q, acc=0.47
+  [random] session 10/15: 37 q, acc=0.59
+  [random] session 11/15: 36 q, acc=0.81
+  [random] session 12/15: 26 q, acc=0.42
+  [random] session 13/15: 33 q, acc=0.58
+  [random] session 14/15: 30 q, acc=0.63
+  [random] session 15/15: 40 q, acc=0.65
+  [coherent] session 1/15: 44 q, acc=0.82
+  [coherent] session 2/15: 44 q, acc=0.82
+  [coherent] session 3/15: 45 q, acc=0.80
+  [coherent] session 4/15: 41 q, acc=0.90
+  [coherent] session 5/15: 42 q, acc=0.76
+  [coherent] session 6/15: 41 q, acc=0.83
+  [coherent] session 7/15: 42 q, acc=0.88
+  [coherent] session 8/15: 46 q, acc=0.87
+  [coherent] session 9/15: 43 q, acc=0.79
+  [coherent] session 10/15: 41 q, acc=0.59
+  [coherent] session 11/15: 42 q, acc=0.81
+  [coherent] session 12/15: 44 q, acc=0.89
+  [coherent] session 13/15: 44 q, acc=0.70
+  [coherent] session 14/15: 42 q, acc=0.76
+  [coherent] session 15/15: 42 q, acc=0.79
+
+========================================================================
+ACCURACY vs CONTEXT FILL — does rot lower the score when ICL is deterred?
+========================================================================
+model: allenai/OLMo-2-1124-7B-Instruct
+
+[random]  n=473, overall acc=0.58, corr(correct, fill)=-0.08
+         fill    acc     n
+     0%-20%    0.64   115
+    20%-40%    0.56    93
+    40%-60%    0.58    95
+    60%-80%    0.59   112
+    80%-101%   0.47    58
+   position <5 acc=0.69  vs  >=5 acc=0.56  (Δ=-0.14)
+
+[coherent]  n=643, overall acc=0.80, corr(correct, fill)=+0.02
+         fill    acc     n
+     0%-20%    0.78   134
+    20%-40%    0.82   142
+    40%-60%    0.77   138
+    60%-80%    0.84   134
+    80%-101%   0.80    95
+   position <5 acc=0.75  vs  >=5 acc=0.81  (Δ=+0.06)
+
+If 'random' decays with fill (negative slope) while 'coherent' stays flat/positive,
+that isolates genuine context rot in the score, normally masked by in-context learning.
+
+Saved to results/random_context_topbin/batch_seed20260827/

@@ -78,3 +78,11 @@ where it does. Qwen's stronger instruction adherence shows up everywhere: no gsm
 marker-only mmlu erosion, full recovery by restatement at no accuracy cost, and (per the
 filler-mode finding logged in QWEN_E7_FORMAT_PATCH.md) a tendency to over-generalize the
 format onto non-patient turns against a local instruction.
+
+## Provenance note (2026-08-27 audit follow-up)
+
+The two committed Qwen mmlu passes disagree on depth-42 *natural* compliance: 0.0333
+(`qwen_e6_mmlu/`) vs 0.0667 (`qwen_e6_mmlu_recovery/`). They are different generation
+passes over the same snapshot construction, so a 1–2 probe wobble at a near-floor rate is
+expected; both round to the "≈0 natural compliance at depth 42" the text claims. Documented
+per the recovery task; no action taken.

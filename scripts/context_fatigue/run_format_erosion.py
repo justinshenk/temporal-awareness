@@ -392,7 +392,7 @@ def main():
         for depth, g in df[df["recovery_arm"].isna()].groupby("depth")
     }
     (out_dir / "summary.json").write_text(json.dumps({
-        "model": args.model, "system_prompt": CLINICAL_FORMAT_SYSTEM,
+        "model": args.model, "seed": args.seed, "system_prompt": CLINICAL_FORMAT_SYSTEM,
         "filler": args.filler,
         "filler_excludes_medical": not args.include_medical_filler,
         "filler_subjects": len(subjects), "depths": depths, "n_probes": n_probes,

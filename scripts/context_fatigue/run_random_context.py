@@ -154,7 +154,8 @@ def analyze(df, model_name, out_dir):
         print(f"   position <5 acc={early:.2f}  vs  >=5 acc={late:.2f}  (Δ={late-early:+.2f})")
     pd.DataFrame(summary).to_csv(out_dir / "accuracy_by_fill.csv", index=False)
     with open(out_dir / "summary.json", "w") as f:
-        json.dump(summary, f, indent=2)
+        json.dump({"model": args.model, "seed": args.seed, "fill_target": args.fill_target,
+                   "n_sessions": args.n_sessions, "by_fill": summary}, f, indent=2)
     print(f"\nIf 'random' decays with fill (negative slope) while 'coherent' stays flat/positive,\n"
           f"that isolates genuine context rot in the score, normally masked by in-context learning.")
     print(f"\nSaved to {out_dir}/")

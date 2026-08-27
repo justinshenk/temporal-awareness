@@ -239,7 +239,7 @@ def main():
             "mean_canaries_obeyed": float(g["n_obeyed"].mean()),
             **{f"obey_{s.name}": float(g[f"obey_{s.name}"].mean()) for s in specs},
         }
-    summary = {"model": args.model, "reference_layers": reference_layers,
+    summary = {"model": args.model, "seed": args.seed, "reference_layers": reference_layers,
                "system_span_text": system_text, "levels": levels,
                "n_items": n_items, "overflow_skips": skipped,
                "levels_skipped_above_natural": above_natural, "by_level": by_level}

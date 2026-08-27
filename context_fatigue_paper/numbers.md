@@ -155,6 +155,7 @@ max |Δ| = 0.000), `e6_mmlu_recovery/`, `e6_exemplar_close/`, `e6_format_probes/
 | accuracy under clamp | 0.525 → 0.467, +0.058 [−0.017, +0.133]; parse 0.967 | same |
 | demonstrated / undemonstrated arms | 3.00/3 vs 1.00/3 canaries at every clamp level; reply length 8 vs 1 chars, zero variance, 720/arm | `e5_system_clamp/` |
 | compliance ladders | code 0.875 → 1.000 (interpret to depth 12, fill 0.778); gsm8k ≥0.825 to depth 12, 0.600 at depth 15 (fill 0.480); mmlu 0.875 → 0.000 at depth 3 (fill 0.147) | `e6_{code,gsm8k,mmlu}/` |
+| clinical system prompt token count | 48 on both tokenizers (OLMo-2, Qwen2.5; verified 2026-08-27) | `e6_*/turns.csv` `system_tokens` column |
 | matched fill ≈ 0.5 ordering | code 1.00 / gsm8k 0.60 / mmlu 0.00 | same |
 | mmlu accuracy through the collapse | 0.425 at depth 0; 0.500–0.684 at depths 3–42 | `e6_mmlu/` |
 | system enrichment (flat-to-rising) | code 1.51 → 3.07; gsm8k 1.51 → 2.04; mmlu 1.50 → 2.14 → 1.47 | same |

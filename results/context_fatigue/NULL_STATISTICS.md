@@ -4,8 +4,8 @@
 
 | stream | n | accuracy | corr(correct, fill) 95% CI | upper-half minus lower-half | decline excluded above |
 |---|---:|---:|---|---|---:|
-| coherent | 1138 | 0.823 | +0.013 [-0.045, +0.071] | +0.009 [-0.035, +0.054] | 0.035 |
-| random | 790 | 0.597 | -0.070 [-0.139, +0.000] | -0.053 [-0.120, +0.015] | 0.120 |
+| coherent | 1126 | 0.818 | +0.008 [-0.051, +0.066] | +0.008 [-0.038, +0.053] | 0.038 |
+| random | 817 | 0.597 | -0.051 [-0.119, +0.018] | -0.023 [-0.090, +0.045] | 0.090 |
 
 The final column is the equivalence bound: accuracy declines larger than this (in proportion points, upper vs lower half of the context) are excluded at 95%.
 
@@ -13,8 +13,8 @@ The final column is the equivalence bound: accuracy declines larger than this (i
 
 | stream | n | accuracy | corr(correct, fill) 95% CI | upper-half minus lower-half | decline excluded above |
 |---|---:|---:|---|---|---:|
-| coherent | 1001 | 0.822 | +0.012 [-0.050, +0.074] | +0.008 [-0.041, +0.056] | 0.041 |
-| random | 699 | 0.614 | -0.021 [-0.095, +0.054] | -0.019 [-0.094, +0.055] | 0.094 |
+| coherent | 988 | 0.822 | +0.032 [-0.030, +0.095] | +0.020 [-0.029, +0.068] | 0.029 |
+| random | 728 | 0.614 | +0.002 [-0.071, +0.074] | +0.017 [-0.055, +0.090] | 0.055 |
 
 The flat claim is scoped to fill < 0.8; the ≥0.8 region is quantified in §2 below.
 
@@ -24,8 +24,8 @@ The flat claim is scoped to fill < 0.8; the ≥0.8 region is quantified in §2 b
 
 | stream | n top bin | acc top bin | acc rest | difference 95% CI | significant |
 |---|---:|---:|---:|---|---|
-| coherent | 137 | 0.832 | 0.822 | +0.010 [-0.060, +0.075] | no |
-| random | 91 | 0.473 | 0.614 | -0.141 [-0.249, -0.031] | ~~yes~~ **artifact** |
+| coherent | 138 | 0.790 | 0.822 | -0.032 [-0.104, +0.038] | no |
+| random | 89 | 0.461 | 0.614 | -0.153 [-0.263, -0.042] | ~~yes~~ **artifact** |
 
 ## 3. Per-case inversion with intervals (instruct, layer 24)
 

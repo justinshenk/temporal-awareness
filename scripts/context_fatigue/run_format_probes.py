@@ -144,7 +144,7 @@ def main():
     plan = [("mmlu", MMLU_DEPTHS[:2] if args.preflight else MMLU_DEPTHS, True),
             ("gsm8k", GSM8K_DEPTHS[:2] if args.preflight else GSM8K_DEPTHS, False)]
 
-    manifest = {"model": args.model, "neutral_system": neutral, "rows": []}
+    manifest = {"model": args.model, "seed": args.seed, "neutral_system": neutral, "rows": []}
     for filler_kind, depths, with_neutral_twin in plan:
         snapshots, probes = rebuild_snapshots(model, tokenizer, args, filler_kind, depths)
         probes = probes[:n_probes]
