@@ -113,8 +113,12 @@ First step for everything below: check the A100 box's gitignored results/context
 copy + commit whatever still exists; re-run only what is actually lost.
 
 ### Tier 1 — headline claims with no committed evidence
-- [ ] Recover or re-run OLMo E6 erosion program: `e6_code/`, `e6_gsm8k/`, `e6_mmlu/`,
+- [x] Recover or re-run OLMo E6 erosion program: `e6_code/`, `e6_gsm8k/`, `e6_mmlu/`,
       `e6_mmlu_recovery/`, `e6_exemplar_close/` + report `E6_FORMAT_EROSION.md`
+      → RE-RUN 2026-08-27 (originals absent from this box). All headline anchors
+      reproduce; enrichment gaps cell-exact. Code fill-0.778 cell settles at 0.900
+      (tex says 1.00); skips now 0/0/7 (Appendix E says 2/32) — tex refresh needed,
+      divergence list in the new E6_FORMAT_EROSION.md.
       (driver `run_format_erosion.py`; generation-only, ~40 probes x 3 streams x depths).
       Backs §4.4: 0.875→0.000 ladder, applicability ordering, reversal accuracies,
       enrichment ordering, Fig. 3 data, Appendix E skip counts (2 mmlu / 32 code).

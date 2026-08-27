@@ -1,0 +1,22 @@
+Loading allenai/OLMo-2-1124-7B-Instruct ...
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/355 [00:00<?, ?it/s]Loading weights:   0%|          | 1/355 [00:00<00:43,  8.13it/s]Loading weights:   1%|          | 2/355 [00:00<00:42,  8.23it/s]Loading weights:   5%|▍         | 16/355 [00:00<00:05, 61.67it/s]Loading weights:  10%|█         | 36/355 [00:00<00:02, 108.70it/s]Loading weights:  14%|█▍        | 49/355 [00:00<00:02, 115.07it/s]Loading weights:  19%|█▉        | 68/355 [00:00<00:02, 135.35it/s]Loading weights:  23%|██▎       | 82/355 [00:00<00:02, 135.68it/s]Loading weights:  29%|██▊       | 102/355 [00:00<00:01, 150.31it/s]Loading weights:  33%|███▎      | 118/355 [00:00<00:01, 151.54it/s]Loading weights:  38%|███▊      | 135/355 [00:01<00:01, 152.23it/s]Loading weights:  43%|████▎     | 151/355 [00:01<00:01, 153.10it/s]Loading weights:  47%|████▋     | 168/355 [00:01<00:01, 153.31it/s]Loading weights:  52%|█████▏    | 184/355 [00:01<00:01, 154.45it/s]Loading weights:  57%|█████▋    | 201/355 [00:01<00:00, 155.38it/s]Loading weights:  61%|██████    | 217/355 [00:01<00:00, 154.88it/s]Loading weights:  66%|██████▌   | 234/355 [00:01<00:00, 154.32it/s]Loading weights:  70%|███████   | 250/355 [00:01<00:00, 145.71it/s]Loading weights:  75%|███████▍  | 265/355 [00:01<00:00, 133.17it/s]Loading weights:  79%|███████▊  | 279/355 [00:02<00:00, 110.79it/s]Loading weights:  82%|████████▏ | 291/355 [00:02<00:00, 101.52it/s]Loading weights:  85%|████████▌ | 302/355 [00:02<00:00, 98.75it/s] Loading weights:  88%|████████▊ | 313/355 [00:02<00:00, 96.77it/s]Loading weights:  91%|█████████▏| 324/355 [00:02<00:00, 95.17it/s]Loading weights:  94%|█████████▍| 335/355 [00:02<00:00, 94.20it/s]Loading weights:  97%|█████████▋| 346/355 [00:02<00:00, 93.42it/s]Loading weights: 100%|██████████| 355/355 [00:02<00:00, 119.69it/s]
+  filler 'mmlu': 5338 items over 40 subject(s) | probes 2852
+The attention mask is not set and cannot be inferred from input because pad token is same as eos token. As a consequence, you may observe unexpected behavior. Please pass your input's `attention_mask` to obtain reliable results.
+  depth  0: fill=0.093  sys_share=0.1903  enrich=1.50  compliant=0.875  acc=0.450  chars=414
+  depth 42: fill=0.877  sys_share=0.0196  enrich=1.46  compliant=0.000  acc=0.650  chars=107
+
+recovery at depth 42: restoring system share to its depth-0 value 0.1903
+       both: share=0.1902  compliant=1.000  acc=0.275
+    refresh: share=0.0933  compliant=1.000  acc=0.450
+    upclamp: share=0.1901  compliant=1.000  acc=0.425
+
+==============================================================================
+E6 FORMAT EROSION UNDER IRRELEVANT CONTEXT — allenai/OLMo-2-1124-7B-Instruct
+==============================================================================
+probes 40 | filler 'mmlu' over 40 subject(s) | overflow skips 0
+ depth   fill  sysShare  enrich  compliant  answer:  supporting:  symptoms  grounded    acc  chars
+     0  0.093    0.1903    1.50      0.875    0.875        1.000      2.15     0.656  0.450    414
+    42  0.877    0.0196    1.46      0.000    0.000        0.000      0.00     0.000  0.650    107
+
+Saved to results/context_fatigue/e6_mmlu_recovery/
