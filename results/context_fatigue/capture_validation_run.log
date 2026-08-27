@@ -1,0 +1,51 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/355 [00:00<?, ?it/s]Loading weights:   0%|          | 1/355 [00:00<00:42,  8.24it/s]Loading weights:   1%|          | 2/355 [00:00<00:42,  8.37it/s]Loading weights:   4%|▍         | 14/355 [00:00<00:06, 53.97it/s]Loading weights:  10%|▉         | 34/355 [00:00<00:03, 105.53it/s]Loading weights:  14%|█▎        | 48/355 [00:00<00:02, 113.85it/s]Loading weights:  19%|█▉        | 67/355 [00:00<00:02, 136.20it/s]Loading weights:  23%|██▎       | 81/355 [00:00<00:02, 133.35it/s]Loading weights:  28%|██▊       | 98/355 [00:00<00:01, 142.21it/s]Loading weights:  32%|███▏      | 114/355 [00:00<00:01, 143.71it/s]Loading weights:  37%|███▋      | 130/355 [00:01<00:01, 148.38it/s]Loading weights:  41%|████▏     | 147/355 [00:01<00:01, 147.09it/s]Loading weights:  47%|████▋     | 166/355 [00:01<00:01, 157.17it/s]Loading weights:  51%|█████▏    | 182/355 [00:01<00:01, 147.13it/s]Loading weights:  57%|█████▋    | 201/355 [00:01<00:00, 154.50it/s]Loading weights:  61%|██████    | 217/355 [00:01<00:00, 153.92it/s]Loading weights:  66%|██████▌   | 234/355 [00:01<00:00, 152.39it/s]Loading weights:  70%|███████   | 250/355 [00:01<00:00, 143.04it/s]Loading weights:  75%|███████▍  | 265/355 [00:02<00:00, 132.97it/s]Loading weights:  79%|███████▊  | 279/355 [00:02<00:00, 110.68it/s]Loading weights:  82%|████████▏ | 291/355 [00:02<00:00, 101.40it/s]Loading weights:  85%|████████▌ | 302/355 [00:02<00:00, 98.72it/s] Loading weights:  88%|████████▊ | 313/355 [00:02<00:00, 96.82it/s]Loading weights:  91%|█████████▏| 324/355 [00:02<00:00, 95.15it/s]Loading weights:  94%|█████████▍| 335/355 [00:02<00:00, 93.73it/s]Loading weights:  97%|█████████▋| 346/355 [00:02<00:00, 92.36it/s]Loading weights: 100%|██████████| 355/355 [00:03<00:00, 118.20it/s]
+Traceback (most recent call last):
+  File "/root/Experiments/temporal-awareness/scripts/context_fatigue/validate_capture_realmodels.py", line 66, in <module>
+    main()
+  File "/root/Experiments/temporal-awareness/scripts/context_fatigue/validate_capture_realmodels.py", line 56, in main
+    worst = validate(model_id)
+            ^^^^^^^^^^^^^^^^^^
+  File "/root/Experiments/temporal-awareness/scripts/context_fatigue/validate_capture_realmodels.py", line 36, in validate
+    out = model(ids, output_attentions=True)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/Experiments/temporal-awareness/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1775, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/Experiments/temporal-awareness/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1786, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/Experiments/temporal-awareness/.venv/lib/python3.12/site-packages/transformers/utils/generic.py", line 843, in wrapper
+    output = func(self, *args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/Experiments/temporal-awareness/.venv/lib/python3.12/site-packages/transformers/models/olmo2/modeling_olmo2.py", line 488, in forward
+    outputs: BaseModelOutputWithPast = self.model(
+                                       ^^^^^^^^^^^
+  File "/root/Experiments/temporal-awareness/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1775, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/Experiments/temporal-awareness/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1786, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/Experiments/temporal-awareness/.venv/lib/python3.12/site-packages/transformers/utils/generic.py", line 917, in wrapper
+    output = func(self, *args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/Experiments/temporal-awareness/.venv/lib/python3.12/site-packages/transformers/utils/output_capturing.py", line 253, in wrapper
+    outputs = func(self, *args, **kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/Experiments/temporal-awareness/.venv/lib/python3.12/site-packages/transformers/models/olmo2/modeling_olmo2.py", line 396, in forward
+    inputs_embeds: torch.Tensor = self.embed_tokens(input_ids)
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/Experiments/temporal-awareness/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1775, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/Experiments/temporal-awareness/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1786, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/Experiments/temporal-awareness/.venv/lib/python3.12/site-packages/torch/nn/modules/sparse.py", line 192, in forward
+    return F.embedding(
+           ^^^^^^^^^^^^
+  File "/root/Experiments/temporal-awareness/.venv/lib/python3.12/site-packages/torch/nn/functional.py", line 2542, in embedding
+    return torch.embedding(weight, input, padding_idx, scale_grad_by_freq, sparse)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: embedding(): argument 'indices' (position 2) must be Tensor, not BatchEncoding

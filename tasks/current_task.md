@@ -74,9 +74,15 @@ Expected anchors (from committed numbers.md / E6_CLOSE_WINDOWS.md — new runs s
       anchor 0.525; acc 0.325 vs anchor 0.175), probe-dir erase mmlu 0.000/0.000 and
       gsm8k 0.500/0.600 — all four erase strategies null with clean controls.
       TIER 1 COMPLETE.
-- [ ] Tier 2 queue RUNNING (launched ~15:45 UTC): e3_competition (defaults, 384 probes)
-      → e3_attention (--attention-only) → e3c_competitor_close (--close-arms) →
-      e3_heads_all (--per-head) → e1_heads_all (run_distance_sweep.py --per-head) →
-      analyze_head_structure.py → head_structure.json. Anchors: disjoint 0.485,
-      penalty +0.085, closure 59%, hot_close panel near_dup 0.425 / random 0.512.
-- [ ] Tier 3 (minus skipped 32k adherence) / hygiene items
+- [x] Tier 2 COMPLETE (commit 261464c): disjoint 0.485 exact, shares byte-level,
+      closure 56% (comp_close 0.474 = hot_close), drains 0.0455/0.0022 exact, DiD ns.
+- [x] Tier 3 random_context_topbin REBUILT (commit 3435cdf): nulls hold, tighter bounds.
+- [x] Tier 3 E5 dirs RE-RUN: profile/neutral/main all cell-exact vs E5_SYSTEM_CLAMP.md.
+- [x] Hygiene: seeds in summaries, 48-token row, depth-42 note, capture validation
+      (measured 1.1e-06 / 3.1e-05 fp32 — historical 1.5e-8/0.0 not reproducible on
+      the 2026-08 stack; Appendix B should cite measured bounds).
+- [x] 32k adherence: SKIPPED per user.
+
+## TASK COMPLETE 2026-08-27 — remaining work is the tex/numbers refresh from the
+## divergence lists (E6_FORMAT_EROSION.md, E3_RECOVERY_RERUN.md, NULL_STATISTICS.md),
+## which touches the split repo ~/Documents/breaking-down-context-rot on the user's side.

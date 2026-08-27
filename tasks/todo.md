@@ -146,18 +146,29 @@ copy + commit whatever still exists; re-run only what is actually lost.
 - [x] Recover per-head CSVs: `e1_heads_all/`, `e3_heads_all/`, `head_structure.json`
       → RE-RUN; displacement drain 0.0455 and competition drain 0.0022 both cell-exact.
 
-### Tier 3 — likely just file copies
-- [ ] `results/random_context_topbin/turns_pooled.csv` (behind the n=699/1001 §4.1 nulls).
+### Tier 3 — likely just file copies (turned out: nothing survived, all re-runs)
+- [x] `results/random_context_topbin/turns_pooled.csv` → REBUILT 2026-08-27: fresh
+      15-session/mode batch at fill 0.93 (seed 20260827) pooled with the committed
+      12-session stream. §4.1 nulls hold with tighter bounds (coherent +0.032
+      [−0.030,+0.095] n=988; random +0.002 [−0.071,+0.074] n=728; declines excluded
+      above 2.9/5.5 pts vs paper's 4.1/9.4 — tex cells need the new values).
 - [ ] ~~Qwen 32k adherence run `summary.json`/`turns.csv`~~ SKIPPED per user 2026-08-27:
       re-prefilling ~510 turns at up to 30k tokens costs hours for a floor-effect null whose
       claim already rests on the committed per-arm table in INSTRUCTION_ADHERENCE.md.
       Note: no 4k substitute exists — 4k canary numbers are E5-clamp, not accumulation.
-- [ ] E5 raw dirs (`e5_neutral/`, `e5_system_clamp/`, profile) behind E5_SYSTEM_CLAMP.md.
+- [x] E5 raw dirs (`e5_neutral/`, `e5_system_clamp/`, profile) → RE-RUN 2026-08-27.
+      Profile ladder cell-exact (0.1661→0.0209); neutral cell-exact (share 0.1652,
+      −2.57 nats, prefix 0.99→0.03, suffix 1.00→0.00, acc 0.467); main ladder exact
+      (3.00/3 vs 1.00/3 at every level, zero variance).
 
 ### Cheap hygiene (do alongside any re-run)
-- [ ] Commit a validation log/script asserting capture match on the real models
-      (1.5e-8 OLMo / 0.0 Qwen GQA) — currently traces only to commit message ed9e365.
-- [ ] Record the clinical system prompt's token count (tex claims 48) somewhere durable.
-- [ ] Make drivers write the seed into summary.json (Qwen summaries record none).
-- [ ] Note the two Qwen mmlu depth-42 passes disagree on natural compliance
-      (0.0333 e6_mmlu vs 0.0667 e6_mmlu_recovery) — document, no action.
+- [x] Commit a validation log/script asserting capture match on the real models
+      → `validate_capture_realmodels.py` + `capture_validation.log`. Measured (fp32,
+      2026-08 stack): 1.1e-06 OLMo / 3.1e-05 Qwen — float-reduction noise; the
+      historical 1.5e-8 / 0.0 figures are not reproducible under the current stack,
+      Appendix B should cite the measured bounds instead.
+- [x] Record the clinical system prompt's token count → verified 48 on both tokenizers;
+      row added to numbers.md (durable trace: `system_tokens` column in e6 turns.csv).
+- [x] Make drivers write the seed into summary.json → six drivers updated.
+- [x] Note the two Qwen mmlu depth-42 passes disagree on natural compliance
+      → documented in QWEN_E6_FORMAT_EROSION.md provenance note.
