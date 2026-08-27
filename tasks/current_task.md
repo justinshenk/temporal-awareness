@@ -63,5 +63,15 @@ Expected anchors (from committed numbers.md / E6_CLOSE_WINDOWS.md — new runs s
 - [x] enrichment gaps from spans.csv: mmlu +1.28→+0.65, gsm8k +0.34→+0.07,
       code −0.08→−0.17 — cell-exact vs numbers.md line 162.
 - [x] E6_FORMAT_EROSION.md written (with divergence list for tex refresh), committed
-- [ ] probes + steering (second wave)
+- [x] e6_format_probes capture + analysis: Probe 1 AUC 1.000 all depths p=0.000
+      (cell-exact), layer-mean 0.985→0.789 (anchor 0.791); Probe 2 LOO-AUC 0.875 L22
+      (anchor 0.822 — labels from regenerated gsm8k stream); geometry median cos +0.744.
+      Committed+pushed 3b75110 incl. 220MB npz captures per audit list.
+- [x] analyze_probe_rank.py written+committed; L21 iterative removal 0.868→0.622→0.492
+      reproduces rank≈2 (anchor 0.822→0.619→0.505).
+- [x] steering r1 (install a1 null, 1-layer erase null), r2 (11-layer erase null,
+      install_last_a3 partial 0.225), r3 (decode install real 0.000 vs rand 0.425 —
+      anchor 0.525; acc 0.325 vs anchor 0.175), probe-dir erase mmlu 0.000/0.000 and
+      gsm8k 0.500/0.600 — all four erase strategies null with clean controls.
+      TIER 1 COMPLETE.
 - [ ] Tier 2 / Tier 3 / hygiene items

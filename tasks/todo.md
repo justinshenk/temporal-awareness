@@ -124,12 +124,18 @@ copy + commit whatever still exists; re-run only what is actually lost.
       enrichment ordering, Fig. 3 data, Appendix E skip counts (2 mmlu / 32 code).
       Also settles the code-arm value at fill 0.78 (tex now says 1.00 per numbers.md;
       superseded VOID predecessor is the only committed trace).
-- [ ] Recover or re-run OLMo E6 probe captures + steering: `e6_format_probes/` (npz +
+- [x] Recover or re-run OLMo E6 probe captures + steering: `e6_format_probes/` (npz +
       probe_results.json), `e6_mode_steering{,_r2,_r3}/`, `e6_probe_dir_erase_*/`
       (drivers `run_format_probes.py`, `run_format_steering.py`). Backs probe AUC
       1.000 / 0.822, mode-vector cosine, install/erase asymmetry.
-- [ ] Write + commit the rank≈2 iterative re-probe script (AUC 0.822→0.619→0.505 claim
+      → RE-RUN 2026-08-27. Probe 1 cell-exact (1.000 all depths, p=0.000, layer-mean
+      0.985→0.789); Probe 2 0.875@L22 (was 0.822); all erase strategies null with clean
+      controls; r3 decode-install dissociation reproduces (real 0.000 vs rand 0.425,
+      was 0.525) — cells shifted with the regenerated stream, tex refresh needed.
+- [x] Write + commit the rank≈2 iterative re-probe script (AUC 0.822→0.619→0.505 claim
       currently has NO committed analysis code, independent of the captures).
+      → `scripts/context_fatigue/analyze_probe_rank.py`, reuses the analyzer pipeline;
+      new captures give 0.868→0.622→0.492, rank≈2 confirmed.
 
 ### Tier 2 — one arm and the original closure row
 - [ ] Recover or re-run OLMo competition originals: `e3_competition/`, `e3_attention/`,
