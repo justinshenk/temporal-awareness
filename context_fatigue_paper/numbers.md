@@ -85,7 +85,7 @@ The unpaired intervals previously reported are retained in that JSON for audit.
 | parsed-only | +0.0818 [+0.0252, +0.1384], n=318 | same |
 | gold leaks / starved / overflow | 0 / 15 / 4 | `e3_competition/summary.json` |
 | **evidence share unchanged** | −0.00027 [−0.00088, +0.00035] | `e3_attention/` |
-| mass-predicted share of the effect | 2.0% (6.5% at CI bound); 50× share change needed | derived from E1f slope |
+| mass-predicted share of the effect | WITHDRAWN (2026-08-26 audit): the L24 delta × E1f slope conversion is the same cross-denomination arithmetic `E4_HEAD_STRUCTURE.md` invalidates (as was the 50× figure); tex now states only the share contrast 0.0455 vs 0.0022 | derived from E1f slope — do not quote |
 
 ## §4.3 — the competitor-closure test (E3c)
 
@@ -239,7 +239,7 @@ Reports: `QWEN_E1_DISTANCE_SWEEP.md`, `QWEN_E1C_EVIDENCE_CLAMP.md`, `QWEN_E1F_SH
 | Q6 reading signature | answer-over-question enrichment +0.87..+1.49 mmlu, negative code | `qwen_e6_{mmlu,code}_spans/` |
 | Q6 recovery at depth 42 | natural 0.067 / upclamp 0.733 / refresh 1.000 / both 1.000 | `qwen_e6_mmlu_recovery/` |
 | Q4 competition not detected | random − near_dup +0.030 [−0.016,+0.074]; DiD +0.055 [−0.015,+0.125] n.s. | `qwen_e3_competition/` |
-| Q4 attention inversion | near_dup − random evidence share +0.0071 [+0.0062,+0.0080] (OLMo −0.0003) | `qwen_e3_attention/` |
+| Q4 attention inversion | near_dup − random evidence share +0.0071 [+0.0062,+0.0080] (OLMo +0.0003 in the same near_dup−random orientation; `E3_COMPETITION.md` line 110 records −0.00027 as random−near_dup) | `qwen_e3_attention/` |
 | Q4 closure null | near_dup − comp_close +0.019 [−0.025,+0.063]; rand_close 0.000 | `qwen_e3c_competitor_close/` |
 | Q4 anchor caveat | low-competition arms ≈0.10 above Qwen E1 local (practice benefit) | `QWEN_E3_COMPETITION.md` |
 
@@ -265,7 +265,7 @@ are the durable record.
 | content-hot closure net of its control | +0.003 [−0.049, +0.055] | `e3c_hot_close/turns.csv` via `E3C_HOT_CLOSE.md` |
 | verbatim closure net, same session | +0.069 [+0.016, +0.121] | same |
 | hot-content mass vs verbatim mass | 0.087 vs 0.0077 (11×), same 127.9-token budget | same |
-| glue mass in context body | 0.42 of final-position mass | same (rows/probe_*.npz, all-layer mean) |
+| hot-set mass (top ≈128 most-read tokens, mostly template glue) | 0.416 of the entire final-position row (delimiter-only mass ≈0.36 of row ≈0.62 of context body, recomputed 2026-08-26) | same (rows/probe_*.npz, all-layer mean) |
 | glue closure net | −0.175 [−0.230, −0.121] | same |
 | panel anchors | penalty +0.088 [+0.033, +0.143]; near_dup 0.425 / random 0.512, n=365 | same |
 
@@ -283,11 +283,11 @@ are the durable record.
 
 | claim in tex | value | artifact |
 |---|---|---|
-| full-context patch | ΔΔ_A→B = −2.488 (code cell, depth 15, closed, n=24) | `qwen_e7_format_patch_code/` via `QWEN_E7_FORMAT_PATCH.md` |
+| full-context patch | ΔΔ_A→B = −2.488 (code cell, depth 15, closed; stage-1 run, effective n=39 after 1 skip; bisection cells effective n=23) | `qwen_e7_format_patch_code/` via `QWEN_E7_FORMAT_PATCH.md` |
 | template-glue positions | −1.540 (62%) | `qwen_e7_bisect_pos_template/summary.json` via `QWEN_E7_BISECTION.md` |
 | size-matched random-position control | +0.016 | `qwen_e7_bisect_pos_template_rand/summary.json` |
 | content subsets | assistant −0.287 / user +0.165 / last_1,2,4 ≤ \|0.075\| | `qwen_e7_bisect_pos_{assistant_turns,user_turns,last_*}/` |
 | layer blocks 0–6/7–13/14–20/21–27 | −1.160 / −1.591 / −0.454 / −0.113 | `qwen_e7_bisect_layers_*/summary.json` |
 | crossed template × layers 7–13 | −1.051 (42%) | `qwen_e7_bisect_template_x_7_13/summary.json` |
-| unrelated-instruction control bound | ≤ \|0.11\| in every quoted cell | each cell's `dd_unrelated` |
+| unrelated-fact control bound | ≤ \|0.11\| in every quoted cell EXCEPT last_2 (+0.264) and template_rand (−0.113), both cells with near-null counterfactual effects | each cell's `dd_unrelated` |
 | OLMo channel confirmation | glue-only dd_ab +0.092 / dd_ba −0.090 vs full-patch +0.056 / −0.071; controls −0.011 both | `e7_bisect_pos_template_olmo/summary.json` (n=100, 15 skips) vs `e7_format_patch_code/summary.json` |

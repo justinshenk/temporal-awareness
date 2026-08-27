@@ -316,3 +316,8 @@ order of magnitude) is an established family difference.
 of the two effects. Comparing one CI against another CI's endpoints — or against the other
 run's point estimate — is not a test. The repo's E2b rule applies: overlapping intervals
 are non-robustness, not refutation.
+
+## 2026-08-26 — prose style
+- No semicolons in anything I write for this project (paper tex, notes, replies). Full
+  simple sentences. Period and a new sentence instead of clause-stacking. Colons for
+  definitions are fine. Don't rewrite Ronen's pre-existing prose unless asked.
