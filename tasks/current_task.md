@@ -74,4 +74,9 @@ Expected anchors (from committed numbers.md / E6_CLOSE_WINDOWS.md — new runs s
       anchor 0.525; acc 0.325 vs anchor 0.175), probe-dir erase mmlu 0.000/0.000 and
       gsm8k 0.500/0.600 — all four erase strategies null with clean controls.
       TIER 1 COMPLETE.
-- [ ] Tier 2 / Tier 3 / hygiene items
+- [ ] Tier 2 queue RUNNING (launched ~15:45 UTC): e3_competition (defaults, 384 probes)
+      → e3_attention (--attention-only) → e3c_competitor_close (--close-arms) →
+      e3_heads_all (--per-head) → e1_heads_all (run_distance_sweep.py --per-head) →
+      analyze_head_structure.py → head_structure.json. Anchors: disjoint 0.485,
+      penalty +0.085, closure 59%, hot_close panel near_dup 0.425 / random 0.512.
+- [ ] Tier 3 (minus skipped 32k adherence) / hygiene items

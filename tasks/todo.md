@@ -138,14 +138,13 @@ copy + commit whatever still exists; re-run only what is actually lost.
       new captures give 0.868→0.622→0.492, rank≈2 confirmed.
 
 ### Tier 2 — one arm and the original closure row
-- [ ] Recover or re-run OLMo competition originals: `e3_competition/`, `e3_attention/`,
-      `e3c_competitor_close/` (driver `run_competition_sweep.py`). The surviving
-      `e3c_hot_close/` already reproduces random 0.512 / near_dup 0.425 / verbatim closure,
-      so the unbacked pieces are the disjoint arm (0.485), the joint fit, the original
-      59% closure row, and the cross-family DiD interval. A disjoint-arm + closure re-run
-      on the existing panel suffices if the dirs are lost.
-- [ ] Recover per-head CSVs: `e1_heads_all/`, `e3_heads_all/`, `head_structure.json`
-      (backs all Appendix F numbers).
+- [x] Recover or re-run OLMo competition originals: `e3_competition/`, `e3_attention/`,
+      `e3c_competitor_close/` → FULL RE-RUN 2026-08-27 (dirs were lost). Disjoint 0.485
+      EXACT; attention shares byte-level (0.0341/0.1152); closure row 0.425→0.474 (56%
+      vs 59%, comp_close matches surviving hot_close exactly); cross-family DiD ns
+      (+0.063 [−0.006, +0.134]). Report: E3_RECOVERY_RERUN.md.
+- [x] Recover per-head CSVs: `e1_heads_all/`, `e3_heads_all/`, `head_structure.json`
+      → RE-RUN; displacement drain 0.0455 and competition drain 0.0022 both cell-exact.
 
 ### Tier 3 — likely just file copies
 - [ ] `results/random_context_topbin/turns_pooled.csv` (behind the n=699/1001 §4.1 nulls).

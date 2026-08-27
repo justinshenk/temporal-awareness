@@ -1,0 +1,87 @@
+{
+  "model": "allenai/OLMo-2-1124-7B-Instruct",
+  "arms": [
+    "near_dup",
+    "near_dup_comp_close",
+    "near_dup_rand_close",
+    "random"
+  ],
+  "close_arms": true,
+  "measured_close": null,
+  "store_rows": false,
+  "n_context": 8,
+  "min_overlap": 3,
+  "n_probes_requested": 384,
+  "n_probes_used": 365,
+  "gold_leaks": 0,
+  "starved_probes": 15,
+  "overflow": {
+    "n_seen": 384,
+    "n_skipped": 4,
+    "skip_rate": 0.010416666666666666,
+    "skipped": [
+      {
+        "index": 3,
+        "reason": "overflow",
+        "n_tokens": 4639,
+        "budget": 4048
+      },
+      {
+        "index": 14,
+        "reason": "overflow",
+        "n_tokens": 4281,
+        "budget": 4048
+      },
+      {
+        "index": 76,
+        "reason": "overflow",
+        "n_tokens": 4360,
+        "budget": 4048
+      },
+      {
+        "index": 307,
+        "reason": "overflow",
+        "n_tokens": 4825,
+        "budget": 4048
+      }
+    ]
+  },
+  "by_arm": [
+    {
+      "arm": "near_dup",
+      "n": 365,
+      "accuracy": 0.4246575342465753,
+      "closed_tokens": 0.0,
+      "comp_share_alllayer": 0.007648348585183777,
+      "mean_fill": 0.7383158904109589,
+      "parse_rate": 0.9315068493150684
+    },
+    {
+      "arm": "near_dup_comp_close",
+      "n": 365,
+      "accuracy": 0.473972602739726,
+      "closed_tokens": 127.91506849315068,
+      "comp_share_alllayer": 0.007648348585183777,
+      "mean_fill": 0.7383158904109589,
+      "parse_rate": 0.9342465753424658
+    },
+    {
+      "arm": "near_dup_rand_close",
+      "n": 365,
+      "accuracy": 0.4054794520547945,
+      "closed_tokens": 127.91506849315068,
+      "comp_share_alllayer": 0.007648348585183777,
+      "mean_fill": 0.7383158904109589,
+      "parse_rate": 0.9013698630136986
+    },
+    {
+      "arm": "random",
+      "n": 365,
+      "accuracy": 0.5123287671232877,
+      "closed_tokens": 0.0,
+      "comp_share_alllayer": 0.007648348585183777,
+      "mean_fill": 0.7513254794520547,
+      "parse_rate": 0.9397260273972603
+    }
+  ]
+}

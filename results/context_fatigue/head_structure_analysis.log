@@ -1,0 +1,78 @@
+E1 — per-head evidence share
+  local     effective heads 27.28/32   top-4 fraction 0.260
+  back_2    effective heads 26.33/32   top-4 fraction 0.250
+  back_5    effective heads 25.28/32   top-4 fraction 0.274
+  back_10   effective heads 25.39/32   top-4 fraction 0.264
+  back_20   effective heads 25.82/32   top-4 fraction 0.254
+
+  drain local->back_20: 32/32 heads lose mass, 32 significant at Bonferroni
+  fractional drain 69.0% +- 14.4%, spanning 32.0% to 99.3%
+  corr(level, FRACTIONAL drain) = +0.083 -- high-mass heads are not special
+  one uniform odds-scale (-1.381 nats) reproduces the per-head pattern at R2=0.575
+  per-head implied bias sd 0.789 nats, range -4.99 to -0.39
+
+  evidence span is 10.2% of context; a uniform head scores 0.1021
+  heads with enrichment > 1 (concentrating on the evidence): 0/32
+  top 5 by evidence share at local:
+    head 19  ev 0.0925  q 0.4383  ev/q 0.21  enrich 0.91
+    head 10  ev 0.0852  q 0.1358  ev/q 0.63  enrich 0.83
+    head 24  ev 0.0833  q 0.4019  ev/q 0.21  enrich 0.82
+    head 22  ev 0.0788  q 0.2754  ev/q 0.29  enrich 0.77
+    head  3  ev 0.0713  q 0.4343  ev/q 0.16  enrich 0.70
+
+Redistribution (mean delta vs mean |per-head delta|)
+  [E1 local-back_20] local-back_20          mean +0.02842  mean|d| 0.02842 (null 0.00177, p=0.0005)  ratio   1.00  heads!=0 32 (bonf 32)/32
+  [E3] random-near_dup        mean -0.00029  mean|d| 0.00256 (null 0.00042, p=0.0005)  ratio   8.86  heads!=0 25 (bonf 18)/32
+  [E3] disjoint-near_dup      mean +0.00151  mean|d| 0.00356 (null 0.00048, p=0.0005)  ratio   2.36  heads!=0 26 (bonf 23)/32
+  [E3] random-disjoint        mean -0.00179  mean|d| 0.00221 (null 0.00033, p=0.0005)  ratio   1.23  heads!=0 28 (bonf 25)/32
+
+All 1024 heads across 32 layers
+  heads concentrating on the evidence (enrichment > 1): 255/1024
+  top 10 by enrichment, anywhere in the model:
+    L16H17  enrich  6.12  ev 0.6252  q 0.1334  ev/q   4.69
+    L 0H14  enrich  5.37  ev 0.5487  q 0.0717  ev/q   7.65
+    L17H 6  enrich  4.77  ev 0.4866  q 0.1932  ev/q   2.52
+    L 3H17  enrich  4.39  ev 0.4485  q 0.2467  ev/q   1.82
+    L 5H15  enrich  4.00  ev 0.4085  q 0.1697  ev/q   2.41
+    L16H25  enrich  3.81  ev 0.3887  q 0.3867  ev/q   1.01
+    L 2H26  enrich  3.70  ev 0.3777  q 0.0945  ev/q   4.00
+    L16H26  enrich  3.69  ev 0.3765  q 0.2288  ev/q   1.65
+    L 2H28  enrich  3.50  ev 0.3575  q 0.1722  ev/q   2.08
+    L 0H28  enrich  3.42  ev 0.3489  q 0.2147  ev/q   1.63
+
+  per-layer (evidence share, drain, competition reallocation):
+   layer  meanEv  effHeads  fracDrain  unifR2   compMeanD  compMeanAbsD  ratio
+      0  0.1554    27.03     48.4%  -1.199  -0.00181      0.00241    1.33
+      1  0.1353    28.51     69.6%  -0.256  -0.00148      0.00178    1.21
+      2  0.1521    27.59     59.1%  -0.517  -0.00087      0.00120    1.38
+      3  0.1827    29.12     50.8%  -0.556  -0.00178      0.00265    1.49
+      4  0.1188    28.45     22.1%  -0.461  -0.00102      0.00174    1.71
+      5  0.1216    26.94     21.0%  -1.391  -0.00109      0.00167    1.53
+      6  0.1043    28.49     32.3%  -0.543  -0.00173      0.00229    1.32
+      7  0.0659    26.78     65.2%   0.072  -0.00099      0.00151    1.52
+      8  0.0548    24.91     69.4%   0.174  -0.00040      0.00162    4.10
+      9  0.0554    21.10     66.9%   0.016  +0.00012      0.00150   12.94
+     10  0.0319    22.93     34.1%   0.323  -0.00010      0.00109   10.84
+     11  0.0427    23.51     47.0%   0.011  +0.00065      0.00173    2.66
+     12  0.0463    24.16     53.1%   0.369  +0.00037      0.00172    4.70
+     13  0.0460    25.31     54.7%   0.166  -0.00183      0.00364    1.99
+     14  0.0531    27.27     66.2%   0.318  -0.00392      0.00519    1.32
+     15  0.0765    20.67     60.4%  -1.037  -0.00738      0.00878    1.19
+     16  0.1433    22.65     68.3%   0.425  -0.01108      0.01367    1.23
+     17  0.0936    21.62     49.0%  -0.205  -0.01858      0.02228    1.20
+     18  0.0764    24.04     40.4%   0.573  -0.00927      0.01058    1.14
+     19  0.0466    26.98     53.9%   0.491  -0.00405      0.00569    1.40
+     20  0.0346    26.91     40.6%  -0.003  -0.00109      0.00362    3.33
+     21  0.0511    27.69     50.9%   0.325  +0.00021      0.00375   17.83
+     22  0.0455    28.41     63.1%   0.100  -0.00247      0.00423    1.71
+     23  0.0415    26.49     59.3%   0.013  +0.00014      0.00278   19.56
+     24  0.0408    27.28     69.0%   0.575  -0.00029      0.00256    8.86
+     25  0.0634    27.13     75.1%   0.502  +0.00013      0.00362   28.92
+     26  0.0611    26.08     70.0%   0.467  -0.00353      0.00460    1.30
+     27  0.0413    25.36     60.4%  -0.506  +0.00087      0.00249    2.87
+     28  0.0598    24.36     59.2%   0.273  +0.00061      0.00324    5.31
+     29  0.0503    26.11     62.8%   0.448  +0.00085      0.00256    3.01
+     30  0.0639    24.43     58.9%   0.738  -0.00116      0.00348    2.99
+     31  0.0646    23.60     68.2%   0.716  +0.00005      0.00369   67.22
+
+wrote /root/Experiments/temporal-awareness/results/context_fatigue/head_structure.json
