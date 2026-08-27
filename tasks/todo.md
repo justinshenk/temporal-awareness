@@ -143,7 +143,10 @@ copy + commit whatever still exists; re-run only what is actually lost.
 
 ### Tier 3 — likely just file copies
 - [ ] `results/random_context_topbin/turns_pooled.csv` (behind the n=699/1001 §4.1 nulls).
-- [ ] Qwen 32k adherence run `summary.json`/`turns.csv` (only a prose note is committed).
+- [ ] ~~Qwen 32k adherence run `summary.json`/`turns.csv`~~ SKIPPED per user 2026-08-27:
+      re-prefilling ~510 turns at up to 30k tokens costs hours for a floor-effect null whose
+      claim already rests on the committed per-arm table in INSTRUCTION_ADHERENCE.md.
+      Note: no 4k substitute exists — 4k canary numbers are E5-clamp, not accumulation.
 - [ ] E5 raw dirs (`e5_neutral/`, `e5_system_clamp/`, profile) behind E5_SYSTEM_CLAMP.md.
 
 ### Cheap hygiene (do alongside any re-run)
