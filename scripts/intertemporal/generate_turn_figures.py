@@ -94,24 +94,45 @@ for r in range(nr):
         proj[(L, r)] = (Z, h, lt)
 
 # ---- panels at the shown layer (one file per token per coloring) ---------
+# Drawn at their print size (about 1.7in wide in the paper), so the dots are
+# sized for that scale rather than shrunk from a large canvas.
 for r in range(nr):
     if (shown, r) not in proj:
         continue
     Z, h, lt = proj[(shown, r)]
     for kind in ("term_chosen", "time_scale"):
-        fig, ax = plt.subplots(figsize=(4.2, 3.4))
+        fig, ax = plt.subplots(figsize=(2.1, 1.7))
         if kind == "term_chosen":
-            ax.scatter(Z[lt, 0], Z[lt, 1], s=6, alpha=0.6, c=LONG_C, lw=0)
-            ax.scatter(Z[~lt, 0], Z[~lt, 1], s=6, alpha=0.6, c=SHORT_C, lw=0)
+            ax.scatter(Z[lt, 0], Z[lt, 1], s=11, alpha=0.85, c=LONG_C, lw=0)
+            ax.scatter(Z[~lt, 0], Z[~lt, 1], s=11, alpha=0.85, c=SHORT_C, lw=0)
         else:
-            ax.scatter(Z[:, 0], Z[:, 1], s=6, alpha=0.65,
-                       c=[horizon_color(y) for y in h], lw=0)
+            ax.scatter(Z[:, 0], Z[:, 1], s=11, alpha=0.9,
+                       c=np.log10(h), cmap="turbo", lw=0)
         ax.set_xticks([]); ax.set_yticks([])
         for sp in ax.spines.values():
             sp.set_color("#cccccc")
-        fig.tight_layout()
+        fig.tight_layout(pad=0.3)
         fig.savefig(out / f"{run}_L{shown}__chat_suffix_{r}__{kind}.pdf")
         plt.close(fig)
+
+# ---- a slim labeled color strip to place under the horizon panels --------
+import matplotlib as mpl
+fig, cax = plt.subplots(figsize=(5.2, 0.42))
+lo, hi = float(np.log10(min(min(v[1]) for v in proj.values()))), \
+         float(np.log10(max(max(v[1]) for v in proj.values())))
+cb = mpl.colorbar.ColorbarBase(cax, cmap=plt.get_cmap("turbo"),
+        norm=mpl.colors.Normalize(lo, hi), orientation="horizontal")
+SECONDS = 1 / 31557600
+ticks = [("seconds", 30 * SECONDS), ("hours", 3600 * SECONDS), ("days", 86400 * SECONDS),
+         ("months", 1 / 12), ("years", 1.0), ("decades", 10.0), ("centuries", 100.0)]
+cb.set_ticks([np.log10(v) for _, v in ticks])
+cb.set_ticklabels([n for n, _ in ticks])
+cax.tick_params(labelsize=7, length=2)
+cb.outline.set_edgecolor("#bbbbbb")
+fig.tight_layout(pad=0.2)
+fig.savefig(out / "horizon_scale_strip.pdf")
+plt.close(fig)
+print("wrote horizon_scale_strip.pdf")
 
 # ---- fans ----------------------------------------------------------------
 fig, axes = plt.subplots(1, nr, figsize=(3.0 * nr, 3.0), squeeze=False)
