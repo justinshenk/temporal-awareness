@@ -4,20 +4,27 @@ Self-contained; copy into a notebook. Needs torch, transformers, scipy,
 scikit-learn, matplotlib.
 
 Builds 116 investment choices with the stated time horizon log-swept from
-seconds to centuries, runs a small chat model, and keeps hidden states at the
-last nine positions: the turn-transition tokens plus the template's empty
-think block. Per (layer, token): PCA, then Spearman |rho| between PC1 and
-log horizon. Prints the table and saves a scatter at the best cell.
+seconds to centuries. For each prompt the model greedily generates its answer,
+then one forward pass keeps hidden states at every turn-transition token (the
+template suffix, including its empty think block) and at the generated
+response tokens through the answer. Per (layer, token): PCA, then Spearman
+|rho| between PC1 and log horizon. Prints the table and saves one scatter per
+token at the best display layer, colored by horizon.
 
-Expected with these defaults: peak |rho| = 0.918 at <|im_start|>. Layer-0
-special-token columns are constant, and an early layer can win by clustering
-one string per horizon; compare with a mid-layer cell (0.865 at L20).
+Expected with these defaults: peak |rho| = 0.955 at a turn newline (L12), a
+display layer of 10, and the ordering visible in every panel, including the
+answer token and the model's own closing <|im_end|>. Layer-0 special-token
+columns are constant, and an early layer can win a single cell by clustering
+one string per horizon; the display layer maximizes the MEAN |rho| across
+tokens instead. If the answer token varies with the choice (it is starred),
+structure there is the choice, not the horizon.
 
-    python spar_starter_geometry.py            # ~10 min, laptop CPU
+    python spar_starter_geometry.py            # ~15 min, laptop CPU
 """
 
 import itertools
 import random
+from collections import Counter
 
 import matplotlib
 
@@ -32,8 +39,9 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 SECONDS_PER_YEAR = 31_557_600
 
 # ---- knobs: change these ---------------------------------------------------
-MODEL = "Qwen/Qwen3-0.6B"
-N_POSITIONS = 9  # <|im_end|> \n <|im_start|> assistant \n + the empty think block
+MODEL = "Qwen/Qwen3.5-0.8B"
+N_POSITIONS = 9   # turn suffix: <|im_end|> \n <|im_start|> assistant \n + empty think block
+N_RESPONSE = 6    # generated tokens to keep: covers "I choose: a)"
 
 # Horizons in years, log-spaced from 30 seconds to 5 centuries.
 HORIZONS = [
@@ -91,62 +99,99 @@ def build_prompts(seed=0):
 
 
 def extract(prompts):
-    """Return per-layer arrays of shape [n_prompts, N_POSITIONS, d_model], plus the tokens."""
+    """Generate each answer, then keep hidden states at the turn tokens and the
+    response tokens. Returns per-layer arrays [n_prompts, n_positions, d_model]
+    and one token label per position (majority label; '*' marks positions whose
+    token varies across prompts, such as the answer token)."""
     device = "mps" if torch.backends.mps.is_available() else (
         "cuda" if torch.cuda.is_available() else "cpu")
     tokenizer = AutoTokenizer.from_pretrained(MODEL)
     model = AutoModelForCausalLM.from_pretrained(MODEL, dtype=torch.float32)
     model.to(device).eval()
 
-    activations, tokens = None, None
+    n_positions = N_POSITIONS + N_RESPONSE
+    end_id = tokenizer.convert_tokens_to_ids("<|im_end|>")
+    activations, label_counts = None, [Counter() for _ in range(n_positions)]
+    turn_len = N_RESPONSE  # shortest generated turn (through its closing token)
     for i, prompt in enumerate(prompts):
         text = tokenizer.apply_chat_template(
             [{"role": "user", "content": prompt}],
             tokenize=False, add_generation_prompt=True, enable_thinking=False)
         ids = tokenizer(text, return_tensors="pt").to(device)
-        if tokens is None:
-            tokens = [tokenizer.decode(t) for t in ids["input_ids"][0, -N_POSITIONS:]]
+        prompt_len = ids["input_ids"].shape[1]
         with torch.no_grad():
-            out = model(**ids, output_hidden_states=True)
-        per_layer = [h[0, -N_POSITIONS:].float().cpu().numpy() for h in out.hidden_states]
+            full = model.generate(
+                **ids, max_new_tokens=N_RESPONSE, min_new_tokens=N_RESPONSE,
+                do_sample=False, pad_token_id=tokenizer.eos_token_id)
+            out = model(input_ids=full, output_hidden_states=True)
+        response = full[0, prompt_len:].tolist()
+        if end_id in response:
+            turn_len = min(turn_len, response.index(end_id) + 1)
+        keep = slice(prompt_len - N_POSITIONS, prompt_len + N_RESPONSE)
+        for pos, tok_id in enumerate(full[0, keep]):
+            label_counts[pos][tokenizer.decode(tok_id)] += 1
+        per_layer = [h[0, keep].float().cpu().numpy() for h in out.hidden_states]
         if activations is None:
             activations = [[] for _ in per_layer]
         for layer, vectors in zip(activations, per_layer):
             layer.append(vectors)
-        if (i + 1) % 40 == 0:
+        if (i + 1) % 20 == 0:
             print(f"  {i + 1}/{len(prompts)} prompts")
-    return [np.stack(layer) for layer in activations], tokens
+
+    # Drop positions past the model's own turn close: they belong to a next
+    # turn the model hallucinates, not to this answer.
+    n_keep = N_POSITIONS + turn_len
+    print(f"answers: {dict(label_counts[N_POSITIONS])}  (turn closes after {turn_len} tokens)")
+    tokens = [c.most_common(1)[0][0] + ("*" if len(c) > 1 else "")
+              for c in label_counts[:n_keep]]
+    return [np.stack(layer)[:, :n_keep] for layer in activations], tokens
 
 
 def sweep(activations, tokens, has_horizon, log_horizons):
-    """Print |rho|(PC1, log horizon) per (layer, token); return the best cell."""
-    best = (0.0, 0, 0, None)
-    print("\nlayer  " + "  ".join(f"{t!r:>14}" for t in tokens))
+    """Print |rho|(PC1, log horizon) per (layer, token). Returns rho[layer][pos]
+    (nan where the column is constant) and the embeddings Z[layer][pos]."""
+    n_positions = len(tokens)
+    rho = np.full((len(activations), n_positions), np.nan)
+    Z_all = [[None] * n_positions for _ in activations]
+    print("\nlayer  " + "  ".join(f"{t!r:>10}" for t in tokens))
     for layer, X in enumerate(activations):
         row = []
-        for pos in range(N_POSITIONS):
+        for pos in range(n_positions):
             X_pos = X[:, pos] - X[:, pos].mean(0)
             if np.allclose(X_pos, 0):
-                row.append("            --")  # constant column: same token, same embedding
+                row.append("        --")  # constant column: same token, same embedding
                 continue
             Z = PCA(n_components=2).fit_transform(X_pos)
-            rho = abs(spearmanr(Z[has_horizon, 0], log_horizons)[0])
-            row.append(f"{rho:>14.3f}")
-            if rho > best[0]:
-                best = (rho, layer, pos, Z)
+            rho[layer, pos] = abs(spearmanr(Z[has_horizon, 0], log_horizons)[0])
+            Z_all[layer][pos] = Z
+            row.append(f"{rho[layer, pos]:>10.3f}")
         print(f"{layer:>5}  " + "  ".join(row))
-    return best
+    return rho, Z_all
 
 
-def plot(Z, rho, layer, token, has_horizon, log_horizons):
-    fig, ax = plt.subplots(figsize=(7, 5.5))
-    colored = ax.scatter(Z[has_horizon, 0], Z[has_horizon, 1], c=log_horizons, cmap="turbo", s=26)
-    ax.scatter(Z[~has_horizon, 0], Z[~has_horizon, 1], c="#8c8c8c", s=26, label="no horizon")
-    ax.set_title(f"{MODEL} L{layer} at {token!r}: PC1 orders the horizon (|rho|={rho:.2f})")
-    ax.set_xlabel("PC1")
-    ax.set_ylabel("PC2")
-    fig.colorbar(colored, label="log10 horizon (years)")
-    ax.legend()
+def plot(display_layer, rho, Z_all, tokens, has_horizon, log_horizons):
+    """One scatter per token at the display layer, colored by horizon."""
+    n_positions = len(tokens)
+    cols = 3
+    rows = -(-n_positions // cols)
+    fig, axes = plt.subplots(rows, cols, figsize=(3.4 * cols, 2.9 * rows))
+    for pos in range(rows * cols):
+        ax = axes.flat[pos]
+        if pos >= n_positions or Z_all[display_layer][pos] is None:
+            ax.axis("off")
+            continue
+        Z = Z_all[display_layer][pos]
+        ax.scatter(Z[has_horizon, 0], Z[has_horizon, 1], c=log_horizons, cmap="turbo", s=14)
+        ax.scatter(Z[~has_horizon, 0], Z[~has_horizon, 1], c="#8c8c8c", s=14)
+        region = "turn" if pos < N_POSITIONS else "response"
+        if pos == N_POSITIONS:
+            region = "response, answer"
+        ax.set_title(f"{tokens[pos]!r} ({region})  |rho|={rho[display_layer, pos]:.2f}",
+                     fontsize=9)
+        ax.set_xticks([])
+        ax.set_yticks([])
+    fig.suptitle(f"{MODEL}, layer {display_layer}: PC1 vs horizon at every position "
+                 "(gray = no horizon; * = token varies, e.g. the answer)", fontsize=11)
     fig.tight_layout()
     fig.savefig("starter_geometry.png", dpi=150)
     print("wrote starter_geometry.png")
@@ -160,9 +205,15 @@ def main():
     has_horizon = np.array([h is not None for h in horizons])
     log_horizons = np.log10([h for h in horizons if h is not None])
 
-    rho, layer, pos, Z = sweep(activations, tokens, has_horizon, log_horizons)
-    print(f"\nPEAK |rho| = {rho:.3f} at layer {layer}, token {tokens[pos]!r}")
-    plot(Z, rho, layer, tokens[pos], has_horizon, log_horizons)
+    rho, Z_all = sweep(activations, tokens, has_horizon, log_horizons)
+    peak = np.unravel_index(np.nanargmax(rho), rho.shape)
+    print(f"\nPEAK |rho| = {rho[peak]:.3f} at layer {peak[0]}, token {tokens[peak[1]]!r}")
+    with np.errstate(invalid="ignore"):
+        mean_rho = np.array([np.nanmean(r) if not np.all(np.isnan(r)) else -np.inf
+                             for r in rho])
+    display_layer = int(np.argmax(mean_rho))
+    print(f"display layer (best mean |rho| across tokens): {display_layer}")
+    plot(display_layer, rho, Z_all, tokens, has_horizon, log_horizons)
 
 
 if __name__ == "__main__":
