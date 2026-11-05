@@ -10,6 +10,7 @@ import {
   useStreamingEmbedding,
   useMetadata,
   useSample,
+  useSampleTokens,
   usePrefetch,
   useBackendPrefetch,
   useLayerTrajectory,
@@ -65,6 +66,8 @@ function App() {
   const [viewMode, setViewMode] = useState<ViewMode>('3D');
   const [pcaMode, setPcaMode] = useState<PCAMode>('aligned');
   const [legendCollapsed, setLegendCollapsed] = useState(false);
+  // Mobile: collapse controls/details so the plot leads; opens on point select.
+  const [mobilePanelsOpen, setMobilePanelsOpen] = useState(false);
 
   // Control state - layer and position are initialized to -1/'', then set from config
   const [layer, setLayer] = useState<number>(-1);
@@ -105,6 +108,12 @@ function App() {
     }
     setSelectedSampleIdx(null);
   }, [layer, component, position, method, viewMode]);
+
+  // On mobile, reveal the collapsible panels when a point is selected so its
+  // details are visible without hunting for the toggle.
+  useEffect(() => {
+    if (selectedSampleIdx !== null) setMobilePanelsOpen(true);
+  }, [selectedSampleIdx]);
 
   // Fetch config
   const { data: config, isLoading: configLoading } = useConfig();
@@ -169,11 +178,23 @@ function App() {
   }, [streamingEmbed.positions, streamingEmbed.indices, streamingEmbed.loadedPoints]);
 
   const embeddingLoading = streamingEmbed.isStreaming && streamingEmbed.loadedPoints === 0;
-  const embeddingError = streamingEmbed.error;
+  const rawEmbeddingError = streamingEmbed.error;
+  // "No embedding data" is an expected empty selection (e.g. resid_pre at layer 0 has
+  // ~zero variance across position-aligned samples, so PCA can't be computed and none
+  // was precomputed) — surface it as a neutral notice, not a red error banner.
+  const embeddingNoData = rawEmbeddingError?.message?.startsWith('No embedding data')
+    ? rawEmbeddingError.message
+    : null;
+  const embeddingError = embeddingNoData ? null : rawEmbeddingError;
   const streamingProgress = streamingEmbed.progress;
 
   // Fetch metadata for coloring
   const { data: metadata, isLoading: metadataLoading, error: metadataError } = useMetadata(colorBy);
+
+  // Extra per-sample fields for point tooltips (cheap, cached, independent of colorBy)
+  const { data: thMeta } = useMetadata('time_horizon');
+  const { data: tsMeta } = useMetadata('time_scale');
+  const { data: tcMeta } = useMetadata('term_chosen');
 
   // Log when waiting for metadata
   useEffect(() => {
@@ -195,6 +216,21 @@ function App() {
   const { data: selectedSample, isLoading: sampleLoading } = useSample(
     selectedSampleIdx
   );
+
+  // Decoded token(s) the selected point's embedding was taken from, at the
+  // current semantic position (e.g. "response_choice" -> "I"). Positions can
+  // span multiple tokens (rel_pos 0,1,...); join them in order.
+  const { data: selectedTokens } = useSampleTokens(selectedSampleIdx);
+  const positionToken = useMemo<string | null>(() => {
+    if (!selectedTokens?.tokens || !position) return null;
+    const base = position.includes(':') ? position.split(':')[0] : position;
+    const relPos = position.includes(':') ? Number(position.split(':')[1]) : null;
+    const matches = selectedTokens.tokens
+      .filter(t => t.format_pos === base && (relPos === null || t.rel_pos === relPos))
+      .sort((a, b) => a.rel_pos - b.rel_pos);
+    if (matches.length === 0) return null;
+    return matches.map(t => t.decoded_token).join('');
+  }, [selectedTokens, position]);
 
   // Prefetch adjacent layers, positions, and all color options in background
   // Only prefetch for scatter views (trajectory views load all data anyway)
@@ -575,11 +611,23 @@ function App() {
     return computeColors(values, numPoints);
   }, [metadata, embedding?.indices, computeColors]);
 
-  // Point data for scatter views
+  // Point data for scatter views — enrich with a few per-sample fields so the
+  // hover tooltip shows meaningful info (time horizon, scale, chosen term) instead
+  // of just the sample index.
   const scatterPointData = useMemo<PointData[]>(() => {
     if (!embedding?.indices) return [];
-    return embedding.indices.map((idx) => ({ sampleIdx: idx }));
-  }, [embedding?.indices]);
+    return embedding.indices.map((idx) => {
+      const th = thMeta?.values?.[idx];
+      const ts = tsMeta?.values?.[idx];
+      const tc = tcMeta?.values?.[idx];
+      return {
+        sampleIdx: idx,
+        timeHorizon: typeof th === 'number' && th >= 0 ? th : undefined,
+        timeScale: typeof ts === 'string' ? ts : undefined,
+        choiceType: typeof tc === 'string' ? tc : undefined,
+      };
+    });
+  }, [embedding?.indices, thMeta?.values, tsMeta?.values, tcMeta?.values]);
 
   // Colors for trajectory views - only computed when needed
   const trajectoryColors = useMemo(() => {
@@ -1209,9 +1257,9 @@ function App() {
       />
 
       {/* Main Content */}
-      <div className="flex h-[calc(100vh-80px)]">
-        {/* Left Sidebar - Controls */}
-        <aside className="w-72 flex-shrink-0 p-4 overflow-y-auto border-r border-white/40 dark:border-[#3a3633] bg-white/30 dark:bg-[#1a1613]/50 backdrop-blur-sm">
+      <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-80px)] overflow-x-hidden">
+        {/* Left Sidebar - Controls (collapsible below the plot on mobile) */}
+        <aside className={`order-3 lg:order-none w-full lg:w-72 flex-shrink-0 p-4 lg:overflow-y-auto border-b lg:border-b-0 lg:border-r border-white/40 dark:border-[#3a3633] bg-white/30 dark:bg-[#1a1613]/50 backdrop-blur-sm ${mobilePanelsOpen ? '' : 'hidden'} lg:block`}>
           <ControlPanel
             layer={layer}
             layers={layers}
@@ -1250,8 +1298,8 @@ function App() {
           />
         </aside>
 
-        {/* Main Visualization Area */}
-        <main className="flex-1 p-4 flex flex-col min-w-0 min-h-0 dark:bg-[#1a1613]">
+        {/* Main Visualization Area (first on mobile so the plot leads) */}
+        <main className="order-1 lg:order-none flex-1 p-4 flex flex-col min-w-0 min-h-0 dark:bg-[#1a1613]">
           {/* Error State */}
           {(embeddingError || metadataError || hasHorizonError || layerTrajectory.error || positionTrajectory.error) && (
             <div className="mb-4 p-4 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 rounded-xl text-rose-700 dark:text-rose-300">
@@ -1265,9 +1313,18 @@ function App() {
             </div>
           )}
 
+          {/* Neutral notice for expected empty selections (e.g. resid_pre @ layer 0) */}
+          {isScatterView && embeddingNoData && (
+            <div className="mb-4 p-4 bg-stone-50 dark:bg-[#2a2623] border border-stone-200 dark:border-[#3a3633] rounded-xl text-ink-soft dark:text-stone-300 text-sm">
+              No embedding data for L{layer}/{component}/{position}. This layer/component has
+              no variance to project (common for <code>resid_pre</code> at layer 0). Try a
+              different layer or component.
+            </div>
+          )}
+
           {/* Visualization Toolbar - above plot (hidden for Scree/Align) */}
           {viewMode !== 'Scree' && viewMode !== 'Align' && (
-            <div className="flex items-center justify-between mb-2 px-2">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2 px-2">
               {/* PCA mode toggle - only for trajectory views */}
               {isTrajectoryViewMode(viewMode) && (
                 <div className="flex items-center gap-2 bg-white/95 dark:bg-[#2a2623] backdrop-blur-sm rounded-lg shadow-sm border border-white/60 dark:border-[#3a3633] px-3 py-1.5">
@@ -1304,7 +1361,7 @@ function App() {
           )}
 
           {/* Visualization Area - requires min-h-[400px] for Canvas to render properly */}
-          <div ref={plotContainerRef} className="flex-1 relative rounded-2xl overflow-hidden shadow-2xl shadow-purple-500/10 border border-white/60 dark:border-[#3a3633] min-h-[400px] bg-[#faf8f5] dark:bg-[#1a1613]">
+          <div ref={plotContainerRef} className="flex-1 relative rounded-2xl overflow-hidden shadow-2xl shadow-purple-500/10 border border-white/60 dark:border-[#3a3633] min-h-[56svh] lg:min-h-[400px] bg-[#faf8f5] dark:bg-[#1a1613]">
             {allSamplesFiltered ? (
               <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#faf8f5] to-[#f5f0eb] dark:from-[#1a1613] dark:to-[#252220]">
                 <div className="text-center p-8">
@@ -1375,7 +1432,7 @@ function App() {
                 positions={positions}
                 colors={colors}
                 pointData={pointData}
-                pointSize={5}
+                pointSize={3}
                 showAxes={false}
                 showGrid={true}
                 onPointSelect={handlePointSelect}
@@ -1391,7 +1448,7 @@ function App() {
                 positions={positions}
                 colors={colors}
                 pointData={pointData}
-                pointSize={4}
+                pointSize={2.5}
                 showAxes={true}
                 showGrid={true}
                 onPointSelect={handlePointSelect}
@@ -1516,8 +1573,18 @@ function App() {
           </div>
         </main>
 
-        {/* Right Sidebar - Position, Color By, and Info Panel */}
-        <aside className="w-80 flex-shrink-0 p-4 overflow-y-auto border-l border-white/40 dark:border-[#3a3633] bg-white/30 dark:bg-[#1a1613]/30 backdrop-blur-sm">
+        {/* Mobile controls toggle - the plot leads; controls & details collapse below it */}
+        <button
+          type="button"
+          onClick={() => setMobilePanelsOpen((v) => !v)}
+          aria-expanded={mobilePanelsOpen}
+          className="order-2 lg:hidden mx-4 mb-3 rounded-xl border border-white/60 dark:border-[#3a3633] bg-white/80 dark:bg-[#2a2623] px-4 py-2.5 text-sm font-medium text-[#1a1613] dark:text-white shadow-sm"
+        >
+          {mobilePanelsOpen ? 'Hide controls & details' : 'Show controls & details'}
+        </button>
+
+        {/* Right Sidebar - Position, Color By, and Info Panel (collapsible on mobile) */}
+        <aside className={`order-4 lg:order-none w-full lg:w-80 flex-shrink-0 p-4 lg:overflow-y-auto border-t lg:border-t-0 lg:border-l border-white/40 dark:border-[#3a3633] bg-white/30 dark:bg-[#1a1613]/30 backdrop-blur-sm ${mobilePanelsOpen ? '' : 'hidden'} lg:block`}>
           <div className="flex flex-col gap-4">
             {/* Position Selector - hidden for position trajectory views */}
             {viewMode !== '1DxPos' && viewMode !== '2DxPos' && (config?.promptTemplate?.length ?? 0) > 0 && (
@@ -1597,6 +1664,8 @@ function App() {
               onClose={handleClearSelection}
               onRandomSelect={handleRandomSelect}
               markers={config?.markers}
+              position={position}
+              positionToken={positionToken}
             />
             )}
           </div>

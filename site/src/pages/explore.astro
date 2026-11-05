@@ -1,18 +1,30 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
 import ExploreEmbed from "../components/ExploreEmbed.tsx";
-import { REPO_URL } from "../lib/site";
+import { BASE, REPO_URL } from "../lib/site";
+
+const steps = [
+  "Keep Color By on Time Horizon. Set Layer to Layer 31 and Component to Residual Post.",
+  "In the Position panel, select the stated horizon, such as “1 second.”, and look at how the samples are arranged.",
+  "Select the <|im_end|> token at the end of the prompt, then the “a)” token under Response, and compare.",
+];
 ---
 
-<BaseLayout title="Explore">
+<BaseLayout title="Explore" description="An interactive view of time-horizon geometry in model activations.">
   <section class="mx-auto max-w-4xl px-4 pt-12">
-    <p class="kicker-accent">Explore</p>
-    <h1 class="font-display mt-2 text-4xl font-bold text-ink">The geometry of the temporal signal</h1>
-    <p class="mt-4 text-[1.075rem] leading-8 text-ink-soft">
-      The temporal signal isn't just a number — it has shape. This interactive explorer (the project's
-      <code class="rounded bg-stone-100 px-1 font-sans text-[0.85em] text-accent-800 dark:bg-stone-800 dark:text-accent-300">geoapp</code>) lets you
-      rotate through PCA projections of model activations, watch how the short-term vs long-term split forms
-      across layers, and inspect alignment heatmaps.
+    <h1 class="font-display text-4xl font-bold leading-tight text-ink">Explore the geometry</h1>
+    <p class="mt-4 max-w-2xl text-lg leading-8 text-ink-soft">
+      Rotate through PCA projections of model activations by layer, component and prompt position. This accompanies
+      the sections on <a class="link-accent" href={`${BASE}representation#shape`}>horizon form</a> and
+      <a class="link-accent" href={`${BASE}representation#when`}>the turn boundary</a>.
+    </p>
+    <ol class="mt-6 max-w-2xl list-decimal space-y-2 pl-6 leading-7 text-ink-soft">
+      {steps.map((step) => <li>{step}</li>)}
+    </ol>
+    <p class="mt-5 max-w-2xl font-sans text-sm leading-6 text-ink-soft">
+      The explorer loads 80 precomputed samples and 15 layers, not the full dataset behind the papers. L22 and L26
+      aren't included, so it can't show the peak steering or probe layers from Qwen3-4B. Use it to build intuition,
+      not as evidence.
     </p>
   </section>
 
@@ -20,10 +32,8 @@ import { REPO_URL } from "../lib/site";
     <ExploreEmbed client:load />
   </section>
 
-  <section class="mx-auto max-w-4xl px-4 pb-16 text-sm text-ink-soft">
-    Built with React, Three.js and a FastAPI backend that serves pre-computed embeddings. Source:
-    <a class="link-accent" href={`${REPO_URL}/tree/main/src/intertemporal/geoapp`}>
-      src/intertemporal/geoapp
-    </a>.
+  <section class="mx-auto max-w-4xl px-4 pb-16 font-sans text-sm text-ink-soft">
+    Built with React, Three.js and a FastAPI backend that serves precomputed embeddings.
+    <a class="link-accent" href={`${REPO_URL}/tree/main/src/intertemporal/geoapp`}>View the source</a>.
   </section>
 </BaseLayout>

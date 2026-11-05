@@ -1,247 +1,162 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
-import {
-  BASE,
-  ISSUES_URL,
-  GOOD_FIRST_ISSUES_URL,
-  RESULTS_URL,
-  CONTRIBUTING_URL,
-  RESEARCH_PROGRAM_URL,
-} from "../lib/site";
+import LayerAxis from "../components/LayerAxis.astro";
+import ledger from "../data/evidence_ledger.json";
+import { BASE, asset } from "../lib/site";
 
-const findings = [
-  {
-    big: "92.5%",
-    lead: "We can read it.",
-    body: "In a small AI, we can tell whether it's leaning short-term or long-term just by looking inside it — right about nine times out of ten.",
-    tag: "",
-  },
-  {
-    big: "99.2%",
-    lead: "Even in bigger models.",
-    body: "In a larger, modern AI we can read that sense of time almost perfectly — even after removing every time-related word from the text.",
-    tag: "",
-  },
-  {
-    big: "~4×",
-    lead: "We can nudge it.",
-    body: "Gently adjusting that inner signal makes the AI several times more likely to favour patient, long-term answers.",
-    tag: "early",
-  },
-  {
-    big: "Early warning",
-    lead: "Why it matters.",
-    body: "An AI's safety habits can quietly fade over long, repetitive sessions. Reading this signal could warn us before anything goes wrong in what it says.",
-    tag: "",
-  },
+const { sources, questions } = ledger;
+const results = questions.filter((question) => question.answer);
+const papers = [sources.rios, sources.mraz];
+
+const horizonScale = [
+  ["Seconds", "#3078ed"],
+  ["Minutes", "#199ed9"],
+  ["Hours", "#33bab3"],
+  ["Days", "#66cc80"],
+  ["Weeks", "#a6d959"],
+  ["Months", "#e6cc4d"],
+  ["Years", "#f29940"],
+  ["Decades", "#e66633"],
+  ["Centuries", "#cc4033"],
+  ["No horizon", "#596680"],
 ];
 
-const done = [
+const limits = [
   {
-    title: "We learned to read an AI's sense of time",
-    body: "Working with a small, well-studied AI, we showed that its short- versus long-term leaning can be read straight from inside it — and even gently adjusted.",
+    title: "No surface baseline for the probes",
+    body: "Shuffled labels rule out chance, but no text-only baseline has been run on these datasets, and the same kind of baseline explained an apparent planning signal in generated code.",
   },
   {
-    title: "We checked it on bigger, modern models",
-    body: "A team of eleven researchers found the same idea holds in today's larger AIs, like Qwen and Llama — not only the small one we started with.",
+    title: "No prompting baseline for the steering",
+    body: "Asking for a short- or long-term answer might produce similar shifts. The strongest steering settings are also large perturbations.",
   },
   {
-    title: "We started watching safety “drift”",
-    body: "A larger study looked at how an AI's good behaviour can weaken over long, repetitive conversations — and which kinds of models hold up best.",
+    title: "One model family, narrow tasks",
+    body: "The two papers cover Qwen3 models with thinking disabled, mainly on choice tasks. Multi-turn and agentic settings are untested.",
   },
   {
-    title: "We built open tools for everyone",
-    body: "A free toolkit lets anyone create tests, read the signal, and explore its “shape” in an interactive viewer.",
-  },
-  {
-    title: "We made it easy to join",
-    body: "Every task is a plain GitHub issue. No PhD, no expensive computer, and no special background needed to help.",
-  },
-];
-
-const missing = [
-  {
-    h: "We need more examples",
-    body: "Some of our most exciting hints rest on only a handful of cases. We need many more before we can be sure.",
-  },
-  {
-    h: "Mostly shown on one small model",
-    body: "Our clearest results come from one small, older AI. We're still confirming they hold across today's bigger ones.",
-  },
-  {
-    h: "Are we measuring the real thing?",
-    body: "In one test a simple shortcut did just as well as our method — a reminder to keep checking we're reading real understanding, not a trick.",
-  },
-  {
-    h: "Nudging is still hit-or-miss",
-    body: "Steering an AI's sense of time works only about 60% of the time so far — promising, but not yet reliable.",
-  },
-  {
-    h: "A lot is built but unfinished",
-    body: "Many experiments are set up but haven't been fully run, and some safety tests didn't finish.",
-  },
-  {
-    h: "Newer tools, not yet applied",
-    body: "Some of the most promising new techniques are ready in principle but haven't been pointed at the time question yet.",
-  },
-  {
-    h: "Big-model questions remain",
-    body: "We haven't yet seen real long-range “planning” in the models small enough for us to study affordably.",
-  },
-  {
-    h: "Some data is still missing",
-    body: "A couple of key datasets aren't in the public project yet — a concrete, friendly place to start helping.",
+    title: "Not yet a monitor",
+    body: "No result here shows a probe flagging a change in advance. A related study of repetition looked for that lead time and found none.",
   },
 ];
 ---
 
 <BaseLayout title="Temporal Awareness">
-  <!-- Hero -->
-  <section class="ombre-wash">
-    <div class="mx-auto max-w-3xl px-4 pb-14 pt-16 text-center">
-      <p class="kicker-accent">An Open Safety Project</p>
-      <h1 class="font-display mt-4 text-4xl font-bold leading-[1.1] text-ink sm:text-5xl">
-        Can we tell what an AI is thinking about <span class="text-ombre">time</span>?
+  <section class="mx-auto grid max-w-6xl items-center gap-x-12 gap-y-8 px-4 pb-12 pt-12 lg:grid-cols-12 lg:pt-16">
+    <div class="lg:col-span-6">
+      <p class="font-sans text-base text-ink-soft">How is time represented in LLMs?</p>
+      <h1 class="font-display mt-4 text-4xl font-bold leading-[1.12] text-ink sm:text-5xl">
+        Can we measure the time horizon behind a language model's output?
       </h1>
-      <p class="mx-auto mt-5 max-w-xl text-lg leading-8 text-ink-soft">
-        AIs quietly weigh “now” against “later” — and a capable one might act one way under test,
-        another once the stakes are real. We're learning to read that inner sense of time directly,
-        and to catch it drifting before it ever shows up in what the AI says.
+      <p class="mt-6 max-w-xl text-lg leading-8 text-ink-soft">
+        So far, a direction in the activations of two Qwen3 models can be read and steered, shifting outputs
+        between short- and long-term options. In one of them, horizons from seconds to centuries form an ordered
+        map. These results come mainly from choice tasks, and open-ended output has only a rough, unvalidated
+        score so far.
       </p>
-      <div class="mt-8 flex flex-wrap justify-center gap-3 font-sans text-sm font-semibold">
-        <a href={`${BASE}understand`} class="btn-ombre rounded-full px-6 py-3 shadow-sm transition hover:opacity-90">
-          Start with the idea →
+      <div class="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3 font-sans text-sm font-semibold">
+        <a href={`${BASE}representation`} class="rounded-full bg-accent-800 px-6 py-3 text-white transition hover:bg-accent-700">
+          Read the argument
         </a>
-        <a href={GOOD_FIRST_ISSUES_URL} class="rounded-full border border-ink/20 px-6 py-3 text-ink transition hover:border-accent-500 hover:text-accent-700">
-          Help out
-        </a>
+        <a href={`${BASE}evidence`} class="link-accent">See every number</a>
       </div>
     </div>
+    <figure class="lg:col-span-6">
+      <img
+        src={asset("paper-figures/horizon-map.png")}
+        alt="A scatter plot of model activations. Colored clusters run in order from seconds through minutes, hours, days, weeks, months, years and decades to centuries, with no-horizon samples in a separate gray cluster."
+        width="1400"
+        height="1165"
+        class="paper-figure"
+      />
+      <ul class="mt-3 flex flex-wrap gap-x-3 gap-y-1 font-sans text-xs text-ink-soft" aria-label="Color key, in order of horizon">
+        {
+          horizonScale.map(([label, color]) => (
+            <li class="flex items-center gap-1.5">
+              <span class="h-2.5 w-2.5 rounded-full" style={`background:${color}`} aria-hidden="true" />
+              {label}
+            </li>
+          ))
+        }
+      </ul>
+      <figcaption class="mt-3 font-sans text-sm leading-6 text-ink-soft">
+        Time-horizon geometry in Qwen3-4B, projected with PCA. A projection shows structure, not a viewpoint inside
+        the model. From <a class="link-accent" href={sources.rios.url}>{sources.rios.label}</a>, Figure 1.
+      </figcaption>
+    </figure>
   </section>
 
-  <!-- Plain-language explainer -->
-  <article class="mx-auto max-w-2xl px-4 py-12">
-    <p class="dropcap text-lg leading-8 text-ink-soft">
-      Every day, AI systems make choices that play out over time — answer right now or think a
-      little longer, help with this one reply or look after the whole conversation.
-      <strong class="text-ink">Temporal awareness</strong> is simply how an AI leans in those
-      moments: toward the quick payoff, or the patient one.
-    </p>
-    <p class="mt-5 text-lg leading-8 text-ink-soft">
-      Here's the catch that makes it a safety question: an AI's words and its inner leanings don't
-      always match. It can <em>say</em> something careful and short-term while, inside, it's set on
-      a longer game — or the other way around. As AIs are trusted to run on their own for longer
-      stretches, that hidden drift is exactly what we'd like to notice early.
-    </p>
-    <p class="mt-5 text-lg leading-8 text-ink-soft">
-      There's a sharper version of the worry. A capable AI might behave one way when it senses it's
-      being <em>watched or tested</em>, and another when it thinks the stakes are real — and "is this
-      a test, or the real thing?" is, underneath, a question about <em>where it is in time</em>. If
-      that sense leaves a trace inside the model, that's something we'd want to be able to read.
-    </p>
-    <p class="mt-5 text-lg leading-8 text-ink-soft">
-      The encouraging news: this inner sense of time turns out to be
-      <strong class="text-ink">surprisingly easy to read</strong> from inside the model. If that
-      holds up, a small, cheap “detector” could watch for trouble in real time — a practical safety
-      tool, not just a worry.
-    </p>
-    <p class="mt-5 text-lg leading-8 text-ink-soft">
-      What follows is an honest scorecard: what we're fairly sure of, and the much longer list of
-      what we still don't know.
-    </p>
-  </article>
-
-  <!-- What we've found -->
   <section class="border-t border-rule">
-    <div class="mx-auto max-w-4xl px-4 py-12">
-      <p class="kicker-accent">What we've found</p>
-      <h2 class="font-display mt-2 text-3xl font-bold text-ink">The story so far, in plain terms</h2>
-      <hr class="rule-ombre mt-3 w-28" />
-      <div class="mt-8 grid gap-5 sm:grid-cols-2">
-        {
-          findings.map((f) => (
-            <div class="rounded-2xl border border-rule bg-surface/70 p-6">
-              <div class="font-display text-3xl font-bold text-ombre">{f.big}</div>
-              <div class="mt-2 font-semibold text-ink">{f.lead}</div>
-              <p class="mt-1.5 leading-7 text-ink-soft">{f.body}</p>
-              {f.tag === "early" && (
-                <span class="mt-3 inline-block font-sans text-xs uppercase tracking-wide text-accent-700">
-                  ◦ early result
-                </span>
-              )}
-            </div>
-          ))
-        }
-      </div>
-      <p class="mt-4 text-sm text-ink-soft">
-        Want the exact numbers and the methods behind them?{" "}
-        <a class="link-accent" href={`${BASE}what-we-score`}>See the full breakdown →</a>
-      </p>
-    </div>
-  </section>
-
-  <!-- What we've done -->
-  <section class="mx-auto max-w-4xl px-4 py-12">
-    <p class="kicker-accent">What we've done</p>
-    <h2 class="font-display mt-2 text-3xl font-bold text-ink">Real progress, so far</h2>
-    <div class="mt-8 space-y-7">
-      {
-        done.map((item, i) => (
-          <div class="flex gap-5">
-            <div class="font-display text-2xl font-bold text-ombre">{String(i + 1).padStart(2, "0")}</div>
-            <div>
-              <h3 class="font-display text-xl font-bold text-ink">{item.title}</h3>
-              <p class="mt-1 leading-7 text-ink-soft">{item.body}</p>
-            </div>
-          </div>
-        ))
-      }
-    </div>
-  </section>
-
-  <!-- What's missing -->
-  <section class="ombre-soft border-y border-rule">
-    <div class="mx-auto max-w-4xl px-4 py-12">
-      <p class="kicker-accent">What's missing</p>
-      <h2 class="font-display mt-2 text-3xl font-bold text-ink">And what we still don't know</h2>
+    <div class="mx-auto max-w-6xl px-4 py-14">
+      <h2 class="font-display text-3xl font-bold text-ink">How does a time horizon become an output?</h2>
       <p class="mt-3 max-w-2xl text-lg leading-8 text-ink-soft">
-        A safety project should be upfront about its limits. Here's what these results
-        <em>don't</em> prove yet — and where you could help.
+        The current answer, step by step, with how much weight each step can carry.
       </p>
-      <div class="mt-8 grid gap-x-10 gap-y-6 md:grid-cols-2">
+      <div class="mt-8 divide-y divide-rule border-y border-rule">
         {
-          missing.map((item) => (
-            <div>
-              <h3 class="font-display text-lg font-bold text-ink">{item.h}</h3>
-              <p class="mt-1 leading-7 text-ink-soft">{item.body}</p>
-            </div>
+          results.map((question) => (
+            <a
+              href={`${BASE}representation#${question.id}`}
+              class="group grid gap-x-8 gap-y-2 py-5 md:grid-cols-12"
+            >
+              <h3 class="font-display text-lg font-bold leading-snug text-ink group-hover:text-accent-700 dark:group-hover:text-accent-400 md:col-span-3">
+                {question.title}
+              </h3>
+              <p class="leading-7 text-ink-soft md:col-span-6">{question.answer}</p>
+              <p class="font-sans text-sm font-medium leading-6 text-ink md:col-span-3">{question.strength}</p>
+            </a>
           ))
         }
       </div>
     </div>
   </section>
 
-  <!-- Contribute -->
-  <section class="mx-auto max-w-3xl px-4 py-14 text-center">
-    <p class="kicker-accent">Join in</p>
-    <h2 class="font-display mt-2 text-3xl font-bold text-ink">You can help — really</h2>
-    <p class="mx-auto mt-3 max-w-xl text-lg leading-8 text-ink-soft">
-      No PhD, no fancy hardware, and no background in AI safety required. Every task is a friendly
-      GitHub issue. Pick one and dive in.
-    </p>
-    <div class="mt-8 flex flex-wrap justify-center gap-3 font-sans text-sm font-semibold">
-      <a href={GOOD_FIRST_ISSUES_URL} class="btn-ombre rounded-full px-6 py-3 shadow-sm transition hover:opacity-90">
-        Find a beginner-friendly task
-      </a>
-      <a href={`${BASE}understand`} class="rounded-full border border-ink/20 px-6 py-3 text-ink transition hover:border-accent-500 hover:text-accent-700">
-        Read the intro
-      </a>
+  <section class="border-t border-rule">
+    <div class="mx-auto max-w-6xl px-4 py-14">
+      <h2 class="font-display text-3xl font-bold text-ink">Reading a signal and changing it are different tests</h2>
+      <p class="mb-8 mt-3 max-w-2xl text-lg leading-8 text-ink-soft">
+        In both studies, the layers with the best probe accuracy differ from the layers with the largest steering
+        effect. A probe used for oversight has to track what affects the output, so accuracy alone isn't enough.
+      </p>
+      <LayerAxis />
     </div>
-    <p class="mt-6 font-sans text-xs uppercase tracking-widest text-ink-soft">
-      <a class="hover:text-ink" href={ISSUES_URL}>All tasks</a> ·
-      <a class="hover:text-ink" href={CONTRIBUTING_URL}>Contributor guide</a> ·
-      <a class="hover:text-ink" href={RESEARCH_PROGRAM_URL}>Research program</a> ·
-      <a class="hover:text-ink" href={RESULTS_URL}>Results</a>
-    </p>
+  </section>
+
+  <section class="border-t border-rule">
+    <div class="mx-auto max-w-6xl px-4 py-14">
+      <h2 class="font-display text-3xl font-bold text-ink">What these results don't show</h2>
+      <div class="mt-8 grid gap-x-12 gap-y-7 md:grid-cols-2">
+        {
+          limits.map((limit) => (
+            <div>
+              <h3 class="font-display text-lg font-bold text-ink">{limit.title}</h3>
+              <p class="mt-1 leading-7 text-ink-soft">{limit.body}</p>
+            </div>
+          ))
+        }
+      </div>
+      <p class="mt-8 text-lg leading-8 text-ink-soft">
+        Each gap is open work. <a class="link-accent" href={`${BASE}contribute`}>See what you can pick up</a>.
+      </p>
+    </div>
+  </section>
+
+  <section class="border-t border-rule">
+    <div class="mx-auto max-w-6xl px-4 py-14">
+      <h2 class="font-display text-3xl font-bold text-ink">Papers</h2>
+      <ul class="mt-6 space-y-6">
+        {
+          papers.map((paper) => (
+            <li class="max-w-3xl">
+              <a class="font-display text-lg font-bold text-ink underline decoration-rule underline-offset-4 hover:text-accent-700 dark:hover:text-accent-400" href={paper.url}>
+                {paper.title}
+              </a>
+              <p class="mt-1 leading-7 text-ink-soft">{paper.authors}</p>
+              <p class="font-sans text-sm text-ink-soft">{paper.venue}</p>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
   </section>
 </BaseLayout>

@@ -13,7 +13,7 @@
 // Exits non-zero if any built page contains an internal link whose path segment
 // is glued directly onto the base path (the missing-slash bug).
 
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 
@@ -69,4 +69,25 @@ if (offenders.length) {
   process.exit(1);
 }
 
-console.log(`✓ ${htmlFiles.length} built page(s): every internal link is correctly prefixed with ${base}/`);
+// A correctly prefixed link can still point at a page that no longer exists.
+const internalLink = new RegExp(`(?:href|src)="${escaped}/([^"#?]*)`, "g");
+const missing = new Set();
+for (const file of htmlFiles) {
+  const rel = file.slice(DIST.length);
+  const html = readFileSync(file, "utf8");
+  // A redirect stub must stay on this deployment, not jump to another domain.
+  if (/http-equiv="refresh"[^>]*url=https?:/.test(html)) missing.add(`  ${rel}: redirect leaves this deployment`);
+  for (const [, target] of html.matchAll(internalLink)) {
+    const candidates = [join(DIST, target), join(DIST, target, "index.html")];
+    const resolves = candidates.some((path) => existsSync(path) && (statSync(path).isFile() || target === ""));
+    if (!resolves) missing.add(`  ${rel}: ${base}/${target}`);
+  }
+}
+
+if (missing.size) {
+  console.error(`✗ ${missing.size} internal link(s) point at nothing in the build:`);
+  console.error([...missing].sort().join("\n"));
+  process.exit(1);
+}
+
+console.log(`✓ ${htmlFiles.length} built page(s): every internal link is prefixed with ${base}/ and resolves`);

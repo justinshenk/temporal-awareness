@@ -50,6 +50,10 @@ interface InfoPanelProps {
   className?: string;
   /** Section markers from config (e.g., {situation_marker: "SITUATION:"}) */
   markers?: Record<string, string>;
+  /** Currently selected semantic position (e.g., "response_choice"). */
+  position?: string;
+  /** Decoded token(s) at `position` for this sample, or null if unavailable. */
+  positionToken?: string | null;
 }
 
 const CopyIcon = () => (
@@ -427,6 +431,8 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({
   onRandomSelect,
   className = '',
   markers,
+  position,
+  positionToken,
 }) => {
   const [copied, setCopied] = useState(false);
 
@@ -513,6 +519,16 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({
                   </Badge>
                 )}
               </BadgeGroup>
+
+              {/* Token this point's embedding was taken from, at the current position */}
+              {position && positionToken != null && (
+                <div className="text-xs text-gray-500 dark:text-stone-400">
+                  Token at <span className="font-medium">{position}</span>:{' '}
+                  <code className="rounded bg-gray-100 dark:bg-stone-800 px-1.5 py-0.5 font-mono text-[11px] text-emerald-700 dark:text-emerald-300">
+                    {JSON.stringify(positionToken)}
+                  </code>
+                </div>
+              )}
 
               {/* Sample text - formatted prompt display */}
               <div className="relative group">

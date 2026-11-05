@@ -4,7 +4,6 @@
 
 :root {
   color-scheme: light;
-  --ombre: linear-gradient(135deg, #065f46 0%, #059669 50%, #10b981 100%);
 
   /* Light "newsprint" palette — consumed by the Tailwind semantic tokens
      (paper/ink/ink-soft/rule/surface) as space-separated RGB channels. */
@@ -13,6 +12,11 @@
   --color-ink-soft: 57 52 46; /* #39342e warm body */
   --color-rule: 216 211 200; /* #d8d3c8 hairline */
   --color-surface: 255 255 255; /* #ffffff raised cards */
+
+  /* Layer-axis series, validated for color-vision separation on both surfaces. */
+  --color-series-read: 42 120 214; /* #2a78d6 */
+  --color-series-causal: 235 104 52; /* #eb6834 */
+  --color-series-steer: 27 175 122; /* #1baf7a */
 }
 
 /* Dark "newsprint at night" palette — warm, not pure black. Set on <html> by the
@@ -24,10 +28,19 @@ html.dark {
   --color-ink-soft: 179 172 161; /* #b3aca1 muted warm gray */
   --color-rule: 60 55 48; /* #3c3730 subtle border */
   --color-surface: 33 30 25; /* #211e19 lifted card */
+  --color-series-read: 57 135 229; /* #3987e5 */
+  --color-series-causal: 217 89 38; /* #d95926 */
+  --color-series-steer: 25 158 112; /* #199e70 */
 }
 
 html {
   scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
 }
 
 body {
@@ -36,18 +49,14 @@ body {
   font-feature-settings: "kern", "liga";
 }
 
+:focus-visible {
+  @apply rounded-sm outline outline-2 outline-offset-2 outline-accent-600;
+}
+
 /* ---------- Editorial utilities ---------- */
 
 .font-display {
   font-family: "Libre Caslon Text", Georgia, "Times New Roman", serif;
-}
-
-/* Uppercase Franklin label above a headline */
-.kicker {
-  @apply font-sans text-xs font-semibold uppercase tracking-[0.2em] text-ink-soft;
-}
-.kicker-accent {
-  @apply font-sans text-xs font-semibold uppercase tracking-[0.2em] text-accent-700;
 }
 
 /* Inline editorial link */
@@ -55,49 +64,12 @@ body {
   @apply font-medium text-accent-700 underline decoration-accent-300 underline-offset-2 hover:text-accent-800;
 }
 
-/* Hairline + nameplate rules */
-.rule {
-  @apply border-0 border-t border-rule;
+/* Paper figures have white backgrounds: blend into the page by day, sit on a panel by night. */
+.paper-figure {
+  @apply w-full mix-blend-multiply;
 }
-.rule-ombre {
-  height: 3px;
-  border: 0;
-  background: var(--ombre);
-  border-radius: 2px;
-}
-.text-ombre {
-  background: var(--ombre);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
-}
-
-/* Soft purple fades for sections — a little more color, not a full wash */
-.ombre-wash {
-  background: linear-gradient(180deg, rgba(5, 150, 105, 0.13) 0%, rgba(52, 211, 153, 0.06) 45%, transparent 85%);
-}
-.ombre-soft {
-  background: linear-gradient(180deg, rgba(5, 150, 105, 0.07) 0%, rgba(110, 231, 183, 0.04) 100%);
-}
-.btn-ombre {
-  background: linear-gradient(135deg, #065f46 0%, #047857 55%, #059669 100%);
-  color: #fff;
-}
-
-/* Purple-ombre drop cap on the opening paragraph of a story */
-.dropcap::first-letter {
-  float: left;
-  margin: 0.04em 0.08em 0 0;
-  font-family: "Libre Caslon Text", Georgia, serif;
-  font-weight: 700;
-  font-size: 3.7em;
-  line-height: 0.78;
-  background: var(--ombre);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
+html.dark .paper-figure {
+  @apply rounded-lg bg-white p-3 mix-blend-normal;
 }
 
 /* ---------- Prose (MDX pages): light editorial ---------- */
@@ -109,19 +81,13 @@ body {
   @apply font-display mb-3 text-4xl font-bold leading-tight text-ink;
 }
 .prose-site :where(h2) {
-  @apply font-display mt-12 mb-3 border-t border-rule pt-5 text-2xl font-bold text-ink;
-}
-.prose-site :where(h3) {
-  @apply font-display mt-8 mb-2 text-xl font-semibold text-ink;
+  @apply font-display mt-12 mb-3 scroll-mt-20 border-t border-rule pt-5 text-2xl font-bold text-ink;
 }
 .prose-site :where(p) {
   @apply my-4 text-[1.075rem] leading-8 text-ink-soft;
 }
 .prose-site :where(ul) {
-  @apply my-4 list-disc space-y-2 pl-6 text-ink-soft;
-}
-.prose-site :where(ol) {
-  @apply my-4 list-decimal space-y-2 pl-6 text-ink-soft;
+  @apply my-4 list-disc space-y-2 pl-6 text-[1.075rem] leading-8 text-ink-soft;
 }
 .prose-site :where(li)::marker {
   @apply text-accent-500;
@@ -138,15 +104,18 @@ body {
 .prose-site :where(code) {
   @apply rounded bg-stone-100 px-1.5 py-0.5 font-sans text-[0.85em] text-accent-800;
 }
+.prose-site :where(figcaption) {
+  @apply mt-2 font-sans text-sm leading-6 text-ink-soft;
+}
+.prose-site :where(figure) {
+  @apply my-8;
+}
 
 /* ---------- Dark-mode refinements ----------
    The variable-backed tokens cover most of the site. These touch up the few
    spots where the static emerald accent is too dark to read on the night palette. */
 html.dark .link-accent {
   @apply text-accent-400 decoration-accent-700 hover:text-accent-300;
-}
-html.dark .kicker-accent {
-  @apply text-accent-400;
 }
 html.dark .prose-site :where(a) {
   @apply text-accent-400 decoration-accent-700 hover:text-accent-300;

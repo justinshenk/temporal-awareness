@@ -289,8 +289,10 @@ function ScatterPlot3DInner({
       (minZ + maxZ) / 2,
     ];
     const maxRange = Math.max(maxX - minX, maxY - minY, maxZ - minZ, 0.1);
-    const camDist = maxRange * 2;
-    const grid = maxRange * 1.5;
+    // Frame the cloud so it fills most of the view. The previous 2x pulled the
+    // camera so far back the points read as empty, especially on small screens.
+    const camDist = maxRange * 1.1;
+    const grid = maxRange;
 
     return { center: centerPt, cameraDistance: camDist, gridSize: grid };
   }, [positions]);

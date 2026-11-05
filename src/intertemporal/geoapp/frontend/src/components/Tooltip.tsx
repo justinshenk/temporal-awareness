@@ -62,6 +62,7 @@ export function Tooltip({ data, mousePosition, visible }: TooltipProps) {
     if (value === null || value === undefined) return 'N/A';
     if (typeof value === 'boolean') return value ? 'Yes' : 'No';
     if (typeof value === 'number') {
+      if (key === 'sampleIdx') return String(Math.round(value));
       if (key.includes('time') || key.includes('horizon')) {
         return `${value.toFixed(1)} months`;
       }

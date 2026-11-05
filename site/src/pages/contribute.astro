@@ -1,44 +1,133 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
 import IssueBoard from "../components/IssueBoard.tsx";
-import { CONTRIBUTING_URL, RESEARCH_PROGRAM_URL } from "../lib/site";
+import { BASE, CONTRIBUTING_URL, GOOD_FIRST_ISSUES_URL, ISSUES_URL, REPO_URL, RESEARCH_PROGRAM_URL } from "../lib/site";
 
-const steps = [
-  { n: 1, title: "Pick an issue", body: "Filter the board below. No experience? Start with a good first issue." },
-  { n: 2, title: "Claim it", body: "Open the issue and comment that you'd like to take it. A maintainer will assign you." },
-  { n: 3, title: "Set up", body: "Follow the 5-minute setup — many tasks need no GPU and no API keys." },
-  { n: 4, title: "Open a PR", body: "Small, focused PRs welcome. Ask questions in the PR; that's how we stay open." },
+const openQuestions = [
+  {
+    title: "Run a text-only baseline on the implicit pairs",
+    body: "Train a bag-of-words classifier on the same splits as the temporal probes. This needs no GPU, and the result decides how much weight the probe numbers can carry.",
+    question: "really-time",
+    issue: null,
+  },
+  {
+    title: "Add a prompting baseline for steering",
+    body: "Test whether asking for a short- or long-term answer produces shifts comparable to steering.",
+    question: "steering",
+    issue: null,
+  },
+  {
+    title: "Compare steering directions at matched norm",
+    body: "Check whether other probe families steer as well as the mean-difference direction.",
+    question: "steering",
+    issue: null,
+  },
+  {
+    title: "Replicate beyond Qwen3",
+    body: "Repeat localization and steering in another model family, and in multi-turn settings.",
+    question: "generalize",
+    issue: null,
+  },
+  {
+    title: "Stress-test the probes",
+    body: "Find inputs and distribution shifts where temporal probes fail.",
+    question: "really-time",
+    issue: 14,
+  },
+  {
+    title: "Measure probe reliability",
+    body: "Work out what a probe would need to show before it could support oversight.",
+    question: "really-time",
+    issue: 17,
+  },
+];
+
+const glossary = [
+  ["Probe", "A small linear classifier trained on activations to read off a property."],
+  ["Steering", "Changing outputs by adding a direction to activations during inference."],
+  ["Activation", "The internal numeric state a model produces while processing text."],
+  ["Activation patching", "Swapping activations between two inputs to test which components causally affect an output."],
+  ["Surface baseline", "A classifier that sees only the text, used to test whether a probe's score could come from wording alone."],
 ];
 ---
 
-<BaseLayout title="Contribute">
+<BaseLayout
+  title="Contribute"
+  description="Open questions you can work on, how to set up the project, and how to open your first pull request."
+>
   <section class="mx-auto max-w-4xl px-4 pt-12">
-    <p class="kicker-accent">Contribute</p>
-    <h1 class="font-display mt-2 text-4xl font-bold text-ink">Do real safety work — start small</h1>
-    <p class="mt-4 text-[1.075rem] leading-8 text-ink-soft">
-      This is an <strong class="text-ink">Open Safety Project</strong>: built so people new to AI safety can
-      make real contributions with a low barrier to entry. Every piece of work is a GitHub issue — claim one
-      and go.
+    <h1 class="font-display text-4xl font-bold leading-tight text-ink">Work on the open questions</h1>
+    <p class="mt-4 max-w-2xl text-lg leading-8 text-ink-soft">
+      Temporal Awareness is an open safety project. The results so far leave clear gaps, and many of them can be
+      worked on without a GPU or API keys.
     </p>
-    <div class="mt-6 grid gap-px overflow-hidden rounded-lg border border-rule bg-rule sm:grid-cols-4">
+  </section>
+
+  <section class="mx-auto max-w-4xl px-4 pt-12">
+    <h2 class="font-display border-b border-rule pb-3 text-2xl font-bold text-ink">Open questions</h2>
+    <div class="divide-y divide-rule">
       {
-        steps.map((s) => (
-          <div class="bg-paper p-4">
-            <div class="font-sans text-xs font-bold uppercase tracking-wide text-accent-700">Step {s.n}</div>
-            <div class="mt-1 font-display font-bold text-ink">{s.title}</div>
-            <div class="mt-1 text-sm text-ink-soft">{s.body}</div>
+        openQuestions.map((item) => (
+          <div class="py-5">
+            <h3 class="font-display text-lg font-bold text-ink">{item.title}</h3>
+            <p class="mt-1 leading-7 text-ink-soft">{item.body}</p>
+            <p class="mt-2 font-sans text-sm text-ink-soft">
+              <a class="link-accent" href={`${BASE}representation#${item.question}`}>See the context</a>
+              {item.issue ? (
+                <>
+                  , or <a class="link-accent" href={`${ISSUES_URL}/${item.issue}`}>join issue #{item.issue}</a>
+                </>
+              ) : (
+                <>
+                  . No issue yet, so <a class="link-accent" href={`${ISSUES_URL}/new`}>open one</a> if you'd like to
+                  take it
+                </>
+              )}
+              .
+            </p>
           </div>
         ))
       }
     </div>
-    <p class="mt-5 text-sm text-ink-soft">
-      Full walkthrough in the <a class="link-accent" href={CONTRIBUTING_URL}>contributor guide</a>.
-      How issues map to Tracks and Thrusts: the <a class="link-accent" href={RESEARCH_PROGRAM_URL}>research program</a>.
+  </section>
+
+  <section class="mx-auto max-w-4xl px-4 pt-12">
+    <h2 class="font-display border-b border-rule pb-3 text-2xl font-bold text-ink">Set up</h2>
+    <pre class="mt-5 overflow-x-auto rounded-lg border border-rule bg-surface p-4 font-mono text-sm leading-6 text-ink"><code>{`git clone ${REPO_URL}
+cd temporal-awareness
+uv pip install -e ".[dev]"
+
+# To work on this website
+npm --prefix site ci
+npm --prefix site run dev`}</code></pre>
+    <p class="mt-5 leading-7 text-ink-soft">
+      Comment on an issue to claim it and say where you're starting from, so a maintainer can help you scope it. Before
+      opening a pull request, run <code class="rounded bg-stone-100 px-1 font-sans text-[0.9em] dark:bg-stone-800">ruff check . &amp;&amp; pytest</code>.
+      Small pull requests are welcome, and so are questions in them. The
+      <a class="link-accent" href={CONTRIBUTING_URL}>contributor guide</a> and
+      <a class="link-accent" href={RESEARCH_PROGRAM_URL}>research program</a> have the details.
     </p>
   </section>
 
-  <section class="mx-auto max-w-4xl px-4 py-10">
-    <h2 class="font-display mb-4 text-2xl font-bold text-ink">Open issues</h2>
+  <section class="mx-auto max-w-4xl px-4 pt-12">
+    <h2 class="font-display border-b border-rule pb-3 text-2xl font-bold text-ink">Terms you'll see</h2>
+    <dl class="mt-5 grid gap-x-8 gap-y-3 leading-7 sm:grid-cols-[auto_1fr]">
+      {
+        glossary.map(([term, meaning]) => (
+          <>
+            <dt class="font-semibold text-ink">{term}</dt>
+            <dd class="mb-2 text-ink-soft sm:mb-0">{meaning}</dd>
+          </>
+        ))
+      }
+    </dl>
+  </section>
+
+  <section class="mx-auto max-w-4xl px-4 py-12">
+    <h2 class="font-display mb-3 text-2xl font-bold text-ink">Open issues</h2>
+    <p class="mb-5 leading-7 text-ink-soft">
+      New here? Start with the <a class="link-accent" href={GOOD_FIRST_ISSUES_URL}>good first issues</a>.
+    </p>
     <IssueBoard client:load />
   </section>
 </BaseLayout>

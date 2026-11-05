@@ -58,7 +58,9 @@ export const ScreePlot: React.FC<ScreePlotProps> = ({
       series = series.filter((_, i) => i % step === 0).slice(0, 10);
     }
 
-    const maxComp = Math.max(...series.map(s => s.values.length), 10);
+    // Fit the x-axis to the number of stored PCs (we store 3) instead of padding
+    // to 10, which crammed the curve into the left third and looked empty.
+    const maxComp = Math.max(...series.map(s => s.values.length), 2);
     const maxY = Math.max(...series.flatMap(s => s.values), 1);
 
     return { filteredSeries: series, maxComponents: maxComp, yMax: maxY };
@@ -86,7 +88,7 @@ export const ScreePlot: React.FC<ScreePlotProps> = ({
   const plotWidth = width - padding.left - padding.right;
   const plotHeight = height - padding.top - padding.bottom;
 
-  const xScale = (i: number) => padding.left + (i / (maxComponents - 1)) * plotWidth;
+  const xScale = (i: number) => padding.left + (i / Math.max(maxComponents - 1, 1)) * plotWidth;
   const yScale = (v: number) => padding.top + plotHeight - (v / yMax) * plotHeight;
 
   return (

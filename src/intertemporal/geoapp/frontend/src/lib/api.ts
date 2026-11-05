@@ -1,8 +1,11 @@
-// Extract dataset name from URL path (e.g., /investment -> investment)
+// Extract dataset name from URL path (e.g., /investment -> investment).
+// When served at the site root ("/", e.g. embedded in an iframe) there is no
+// path segment, so fall back to "geometry" — the default dataset — to match
+// main.tsx and App.tsx (which use `pathname.split('/')[1] || 'geometry'`).
 export function getDataset(): string {
   const path = window.location.pathname
   const match = path.match(/^\/([^/]+)/)
-  return match ? match[1] : 'default'
+  return match ? match[1] : 'geometry'
 }
 
 // Dynamic API base that includes dataset name

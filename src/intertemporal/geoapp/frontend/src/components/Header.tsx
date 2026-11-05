@@ -109,10 +109,10 @@ export const Header: React.FC<HeaderProps> = ({
         ${className}
       `}
     >
-      <div className="px-6 py-3">
-        <div className="flex items-center justify-between">
+      <div className="px-4 sm:px-6 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-y-2">
           {/* Logo and Title */}
-          <div className="flex items-center gap-3">
+          <div className="order-1 flex items-center gap-3">
             <div className="relative">
               {/* Glow effect */}
               <div className="absolute inset-0 bg-[#D97757] rounded-xl blur-lg opacity-30" />
@@ -138,25 +138,27 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
 
-          {/* View Mode Tabs - center/prominent position */}
-          <div className="flex items-center gap-1 bg-white/95 dark:bg-[#2a2623] backdrop-blur-sm rounded-lg shadow-sm border border-white/60 dark:border-[#3a3633] p-1">
-            {(['2D', '3D', '1DxLayer', '1DxPos', '2DxLayer', '2DxPos', 'Scree', 'Align'] as ViewMode[]).map((mode) => (
-              <button
-                key={mode}
-                onClick={() => onViewModeChange?.(mode)}
-                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
-                  viewMode === mode
-                    ? 'bg-gradient-to-r from-[#D97757] to-[#348296] text-white shadow-sm'
-                    : 'text-[#1a1613]/70 dark:text-white/70 hover:bg-gray-100 dark:hover:bg-[#3a3633]'
-                }`}
-              >
-                {mode}
-              </button>
-            ))}
+          {/* View Mode Tabs - full-width scrollable row on mobile, inline on desktop */}
+          <div className="order-3 lg:order-2 w-full lg:w-auto overflow-x-auto">
+            <div className="inline-flex items-center gap-1 bg-white/95 dark:bg-[#2a2623] backdrop-blur-sm rounded-lg shadow-sm border border-white/60 dark:border-[#3a3633] p-1">
+              {(['2D', '3D', '1DxLayer', '1DxPos', '2DxLayer', '2DxPos', 'Scree', 'Align'] as ViewMode[]).map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => onViewModeChange?.(mode)}
+                  className={`flex-shrink-0 whitespace-nowrap px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
+                    viewMode === mode
+                      ? 'bg-gradient-to-r from-[#D97757] to-[#348296] text-white shadow-sm'
+                      : 'text-[#1a1613]/70 dark:text-white/70 hover:bg-gray-100 dark:hover:bg-[#3a3633]'
+                  }`}
+                >
+                  {mode}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Actions */}
-          <div className="flex items-center gap-2">
+          <div className="order-2 lg:order-3 flex items-center gap-2">
             {/* Theme Toggle */}
             <button
               onClick={() => onDarkModeChange?.(!isDarkMode)}
