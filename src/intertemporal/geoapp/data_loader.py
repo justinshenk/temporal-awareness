@@ -67,6 +67,8 @@ class GeometryDataLoader:
     _metadata_cache: dict = field(default_factory=dict, repr=False)
     # Summary from summary.json - contains precomputed positions/layers
     _summary: dict = field(default_factory=dict, repr=False)
+    # False for analysis-only bundles (no raw .npy activations shipped)
+    _has_activations: bool = field(default=True, repr=False)
 
     def __post_init__(self):
         if isinstance(self.data_dir, str):
@@ -209,16 +211,17 @@ class GeometryDataLoader:
 
         self._position_mapping = {"mappings": mappings}
 
-        # Discover layers and semantic positions from mapping and files
-        self._discover_targets()
-
-        # Load summary.json to get precomputed positions/layers
+        # Load summary.json first - _discover_targets falls back to it for
+        # analysis-only bundles that ship no raw activation folders
         summary_path = self.data_dir / "summary.json"
         if summary_path.exists():
             with open(summary_path) as f:
                 self._summary = json.load(f)
         else:
             self._summary = {}
+
+        # Discover layers and semantic positions from mapping and files
+        self._discover_targets()
 
         elapsed = time.time() - start_time
         _log("load_data", "Data loaded", n_samples=len(self._samples), n_layers=len(self._layers), n_positions=len(self._semantic_positions), elapsed_ms=f"{elapsed*1000:.1f}")
@@ -251,11 +254,17 @@ class GeometryDataLoader:
                         if match:
                             layers.add(int(match.group(1)))
                 if not layers:
-                    raise ValueError(
-                        f"No layer subfolders found in {sample_dirs[0]}.\n"
-                        "Expected format: sample_0/L0/, sample_0/L1/, etc.\n"
-                        "Data may be corrupted or in wrong format. Re-run compute_geometry_analysis.py."
-                    )
+                    # Analysis-only bundle: layers come from summary.json instead
+                    if self._summary.get("layers"):
+                        self._has_activations = False
+                        layers.update(self._summary["layers"])
+                    else:
+                        raise ValueError(
+                            f"No layer subfolders found in {sample_dirs[0]} "
+                            "and no layers listed in summary.json.\n"
+                            "Expected format: sample_0/L0/, sample_0/L1/, etc.\n"
+                            "Data may be corrupted or in wrong format. Re-run compute_geometry_analysis.py."
+                        )
 
         self._layers = sorted(layers)
         self._semantic_positions = semantic_positions
@@ -555,12 +564,15 @@ class GeometryDataLoader:
 
             # Check if at least one activation file exists
             # Format: sample_dir/L{layer}/{component}_{abs_pos}.npy
-            has_data = False
-            for abs_pos in abs_positions:
-                npy_path = sample_dir / f"L{layer}" / f"{component}_{abs_pos}.npy"
-                if npy_path.exists():
-                    has_data = True
-                    break
+            # Analysis-only bundles ship no .npy files; position-mapping presence
+            # is equivalent there (verified identical on full activation data)
+            if self._has_activations:
+                has_data = any(
+                    (sample_dir / f"L{layer}" / f"{component}_{abs_pos}.npy").exists()
+                    for abs_pos in abs_positions
+                )
+            else:
+                has_data = True
 
             if has_data:
                 valid_indices.append(sample_idx)

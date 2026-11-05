@@ -17,7 +17,7 @@ import argparse
 import json
 import re
 import sys
-from collections import defaultdict
+from collections import Counter, defaultdict
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -56,6 +56,10 @@ def short_model_name(model: str) -> str:
     """Human-friendly short name for display."""
     if model.startswith("anthropic:"):
         return model[10:]
+    if model.startswith("openai:"):
+        return model[7:]
+    if model.startswith("gemini:"):
+        return model[7:]
     return model.split("/")[-1] if "/" in model else model
 
 
@@ -82,76 +86,214 @@ def _save_fig(fig, output_dir: Path, name: str):
 # ---------------------------------------------------------------------------
 
 
-def query_model(model_name: str, samples, choice_prefix: str) -> list[dict]:
-    """Query a model with all samples, return list of {response, choice}."""
+def query_model(
+    model_name: str,
+    samples,
+    choice_prefix: str,
+    reasoning: bool = False,
+    cache_path: Path | None = None,
+) -> list[dict]:
+    """Query a model with all samples, return list of {response, choice}.
+
+    When reasoning=True, prefilling is skipped (model is allowed to think) and
+    max_new_tokens is raised to accommodate the <think>...</think> block.
+
+    When cache_path is given, per-sample results are checkpointed after every
+    sample. On restart, already-completed samples are loaded and skipped.
+    """
     from src.inference import ModelRunner
 
+    label = short_model_name(model_name) + ("-thinking" if reasoning else "")
+    results: list[dict] = []
+    if cache_path is not None and cache_path.exists():
+        with open(cache_path) as f:
+            results = json.load(f)
+        print(
+            f"  [{label}] resumed from cache: {len(results)}/{len(samples)} done"
+        )
+
+    if len(results) >= len(samples):
+        return results[: len(samples)]
+
     runner = ModelRunner(model_name)
-    # Use skip_thinking_prefix as prefilling for reasoning models
-    # (same approach as PreferenceQuerier)
-    prefilling = runner.skip_thinking_prefix
-    results = []
-    for i, sample in enumerate(samples):
-        print(f"  [{short_model_name(model_name)}] sample {i + 1}/{len(samples)}")
+    # OpenAI o-series are reasoning models that consume tokens internally
+    # before emitting the final answer; need a high cap even outside
+    # --reasoning mode (gpt-5.x is fine at 256).
+    is_openai_o_series = model_name.startswith("openai:") and any(
+        s in model_name.lower() for s in (":o1", ":o3", ":o4")
+    )
+    # Gemini 2.5 family ("flash"/"pro") uses internal thinking tokens; needs
+    # a high max_output_tokens to leave budget for the visible answer.
+    is_gemini_thinking = model_name.startswith("gemini:") and "2.5" in model_name
+    if reasoning:
+        prefilling = ""
+        max_new_tokens = 4096
+    elif is_openai_o_series or is_gemini_thinking:
+        prefilling = runner.skip_thinking_prefix
+        max_new_tokens = 4096
+    else:
+        prefilling = runner.skip_thinking_prefix
+        max_new_tokens = 256
+
+    start_idx = len(results)
+    for i in range(start_idx, len(samples)):
+        sample = samples[i]
+        print(f"  [{label}] sample {i + 1}/{len(samples)}")
         response = runner.generate(
             sample.text,
-            max_new_tokens=256,
+            max_new_tokens=max_new_tokens,
             temperature=0.0,
             prefilling=prefilling,
         )
         choice = parse_choice(response, sample, choice_prefix)
         results.append({"response": response, "choice": choice})
+        if cache_path is not None:
+            tmp = cache_path.with_suffix(cache_path.suffix + ".tmp")
+            with open(tmp, "w") as f:
+                json.dump(results, f, default=str)
+            tmp.replace(cache_path)
     return results
+
+
+CHOICE_PHRASES = [
+    r"i\s+choose",
+    r"i\s+would\s+choose",
+    r"i\s+(?:will|'ll)\s+choose",
+    r"i\s+pick",
+    r"i\s+select",
+    r"i\s+go\s+with",
+    r"my\s+choice\s+is",
+    r"my\s+answer\s+is",
+    r"the\s+answer\s+is",
+    r"final\s+answer\s*:?",
+    r"answer\s*:",
+    r"choice\s*:",
+    r"option",
+]
+
+
+# Strong first-person commit phrases used by the unclosed-<think> salvage.
+STRONG_COMMIT_PHRASES = [
+    r"i\s*'ll\s+go\s+with",
+    r"i\s+will\s+go\s+with",
+    r"i\s+would\s+go\s+with",
+    r"i\s+go\s+with",
+    r"i\s+am\s+going\s+with",
+    r"i'm\s+going\s+with",
+    r"going\s+with",
+    r"i\s*'ll\s+choose",
+    r"i\s+will\s+choose",
+    r"i\s+would\s+choose",
+    r"i\s+choose",
+    r"i\s*'ll\s+pick",
+    r"i\s+will\s+pick",
+    r"i\s+pick",
+    r"i\s*'ll\s+select",
+    r"i\s+will\s+select",
+    r"i\s+select",
+    r"my\s+(?:final\s+)?(?:choice|pick|selection)\s+is",
+    r"final\s+answer\s*[:=]",
+    r"my\s+(?:final\s+)?answer\s+is",
+    r"i\s+conclude\s+(?:that\s+)?(?:the\s+)?(?:answer\s+)?(?:is\s+)?",
+]
+
+# Hedged third-person commit phrases used by the unclosed-<think> salvage.
+WEAK_COMMIT_PHRASES = [
+    r"i\s+(?:think|believe|guess)\s+the\s+answer\s+is",
+    r"i\s+(?:think|believe)\s+the\s+correct\s+answer\s+is",
+    r"i\s+(?:think|believe)\s+(?:that\s+)?the\s+answer\s+(?:would|should|might|must)\s+be",
+    r"the\s+answer\s+is",
+    r"the\s+correct\s+answer\s+is",
+    r"the\s+answer\s+(?:would|should|might|must)\s+be",
+    r"the\s+best\s+option\s+is",
+    r"the\s+better\s+option\s+is",
+    r"the\s+best\s+choice\s+is",
+    r"the\s+better\s+choice\s+is",
+    r"the\s+(?:better|best)\s+(?:investment|alternative)\s+is",
+    r"so\s+the\s+answer\s+is",
+    r"thus\s+the\s+answer\s+is",
+    r"therefore[,]?\s+the\s+answer\s+is",
+    r"hence\s+the\s+answer\s+is",
+]
 
 
 def parse_choice(response: str, sample, choice_prefix: str) -> str | None:
     """Parse model response to determine short_term or long_term choice.
 
     Returns 'short_term', 'long_term', or None if unparseable.
+
+    Reasoning-mode failures: if `<think>` is open without a closing `</think>`,
+    falls back to the unclosed-<think> SALVAGE strategy. The salvage looks
+    for first-person ("I choose X", "I'll go with X") and hedged
+    ("the answer is X") commitment phrases in the last 800 chars and uses
+    label/descriptor matching (the descriptor mapping is dataset-specific;
+    see `_english_descriptor_for`).
+
+    False-positive risk: in cases where the model loops with conflicting
+    commits ("I think X. But maybe Y. I think X."), we take the LAST strong
+    commit (or last-3-agree weak commit). Single hedged commits are also
+    accepted. This is more aggressive than refusing to guess at all and may
+    occasionally miscategorize models that flip at the very end.
     """
     pair = sample.prompt.preference_pair
     short_label = pair.short_term.label.strip().rstrip(".")
     long_label = pair.long_term.label.strip().rstrip(".")
 
-    # Strip <think>...</think> blocks from reasoning models
-    response = re.sub(r"<think>.*?</think>", "", response, flags=re.DOTALL).strip()
+    if not response:
+        return None
 
-    # Strip markdown bold/italic for matching
-    clean_response = re.sub(r"\*+", "", response)
+    # Reasoning models that ran over max_new_tokens leave <think> unclosed.
+    # Try the salvage path before giving up.
+    if "<think>" in response and "</think>" not in response:
+        return _salvage_unclosed_think(response, short_label, long_label)
 
-    # Strategy 1: Look for "I choose: <label>" pattern
+    # Strip <think>...</think>; what remains is the model's final answer.
+    answer = re.sub(r"<think>.*?</think>", "", response, flags=re.DOTALL).strip()
+    if not answer:
+        return None
+
+    clean = re.sub(r"[*_`]+", "", answer)
+
+    # Strategy 1: original "I choose: <label>" pattern (with colon)
     prefix_pattern = re.escape(choice_prefix.strip())
-    match = re.search(prefix_pattern + r"\s*(.+?)[\.\n]", clean_response, re.IGNORECASE)
-    if match:
-        chosen_text = match.group(1).strip().rstrip(".")
-        if _label_match(chosen_text, short_label):
+    m = re.search(prefix_pattern + r"\s*(.+?)[\.\n]", clean, re.IGNORECASE)
+    if m:
+        chosen = m.group(1).strip().rstrip(".")
+        if _label_match(chosen, short_label):
             return "short_term"
-        if _label_match(chosen_text, long_label):
+        if _label_match(chosen, long_label):
             return "long_term"
 
-    # Strategy 2: Check first line / first few words for label
-    first_line = clean_response.strip().split("\n")[0].strip()
-    if _label_match(first_line, short_label):
-        return "short_term"
-    if _label_match(first_line, long_label):
-        return "long_term"
+    # Strategy 2: phrase-based detection ("I choose X", "Option A", ...)
+    phrase_result = _try_phrase_match(clean, short_label, long_label)
+    if phrase_result is not None:
+        return phrase_result
 
-    # Strategy 3: Search anywhere in response for labels
-    response_lower = response.lower()
-    short_found = short_label.lower() in response_lower
-    long_found = long_label.lower() in response_lower
-    if short_found and not long_found:
-        return "short_term"
-    if long_found and not short_found:
-        return "long_term"
-
-    # Strategy 4: Look for "short" or "long" term mentions
-    if "short-term" in response_lower or "short term" in response_lower:
-        if "long-term" not in response_lower and "long term" not in response_lower:
+    # Strategy 3: first non-empty line starts with a label
+    for line in clean.strip().split("\n"):
+        line = line.strip()
+        if not line:
+            continue
+        if _label_match(line, short_label):
             return "short_term"
-    if "long-term" in response_lower or "long term" in response_lower:
-        if "short-term" not in response_lower and "short term" not in response_lower:
+        if _label_match(line, long_label):
             return "long_term"
+        break
+
+    # Strategy 4: word-boundary search (only one label present)
+    answer_lower = answer.lower()
+    if _word_boundary_search(short_label, answer_lower) and not _word_boundary_search(long_label, answer_lower):
+        return "short_term"
+    if _word_boundary_search(long_label, answer_lower) and not _word_boundary_search(short_label, answer_lower):
+        return "long_term"
+
+    # Strategy 5: "short-term" / "long-term" phrasing
+    has_short = "short-term" in answer_lower or "short term" in answer_lower
+    has_long = "long-term" in answer_lower or "long term" in answer_lower
+    if has_short and not has_long:
+        return "short_term"
+    if has_long and not has_short:
+        return "long_term"
 
     return None
 
@@ -160,7 +302,188 @@ def _label_match(text: str, label: str) -> bool:
     """Check if text matches or starts with a label."""
     text_clean = text.strip().lower().rstrip(".)")
     label_clean = label.strip().lower().rstrip(".)")
+    if not text_clean or not label_clean:
+        return False
     return text_clean.startswith(label_clean) or label_clean.startswith(text_clean)
+
+
+def _word_boundary_search(label: str, text_lower: str) -> bool:
+    """Word-boundary search for label (avoids 'x' matching 'six', 'max', etc.)."""
+    bare = label.strip().lower().rstrip(".)")
+    if not bare:
+        return False
+    return re.search(r"\b" + re.escape(bare) + r"\b", text_lower) is not None
+
+
+def _try_phrase_match(text: str, short_label: str, long_label: str) -> str | None:
+    """Look for 'I choose X' / 'Answer: A' / 'Option B' patterns."""
+    for phrase in CHOICE_PHRASES:
+        pattern = (
+            r"\b" + phrase + r"\b"
+            r"\s*[:\-]?\s*"
+            r"\(?\s*"
+            r"([A-Za-z0-9]{1,3})"
+            r"\s*[\.\)]?\s*\)?"
+        )
+        for m in re.finditer(pattern, text, re.IGNORECASE):
+            token = m.group(1)
+            if _label_match(token, short_label):
+                return "short_term"
+            if _label_match(token, long_label):
+                return "long_term"
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Unclosed-<think> salvage helpers
+# ---------------------------------------------------------------------------
+
+
+def _english_descriptor_for(captured: str) -> str | None:
+    """Map a captured chunk to 'short' or 'long' based on dataset descriptors.
+
+    Hardcoded for the investment_behave schema:
+        short_term = $20,000 in 6 months
+        long_term  = $100k / $300k / $500k in 10 years
+
+    Returns the FIRST (leftmost) descriptor mention, or None.
+    Update if other reward/horizon schemas are introduced.
+    """
+    s = captured.lower()
+    short_patterns = [
+        re.compile(r"\$?\s*20[\s,]?000"),
+        re.compile(r"\$?\s*20\s*k\b"),
+        re.compile(r"\b6\s*[-\s]?month"),
+        re.compile(r"\bsix\s*[-\s]?month"),
+        re.compile(r"\bshort[-\s]term"),
+    ]
+    long_patterns = [
+        re.compile(r"\$?\s*100[\s,]?000"),
+        re.compile(r"\$?\s*300[\s,]?000"),
+        re.compile(r"\$?\s*500[\s,]?000"),
+        re.compile(r"\$?\s*100\s*k\b"),
+        re.compile(r"\$?\s*300\s*k\b"),
+        re.compile(r"\$?\s*500\s*k\b"),
+        re.compile(r"\b10\s*[-\s]?year"),
+        re.compile(r"\bten\s*[-\s]?year"),
+        re.compile(r"\blong[-\s]term"),
+    ]
+    earliest: tuple[int, str] | None = None
+    for pat in short_patterns:
+        m = pat.search(s)
+        if m and (earliest is None or m.start() < earliest[0]):
+            earliest = (m.start(), "short")
+    for pat in long_patterns:
+        m = pat.search(s)
+        if m and (earliest is None or m.start() < earliest[0]):
+            earliest = (m.start(), "long")
+    return earliest[1] if earliest else None
+
+
+def _classify_capture(captured: str, short_label: str, long_label: str) -> str | None:
+    """Classify a captured post-phrase chunk as 'short' or 'long'."""
+    captured = captured.strip()
+    by_token = None
+    by_desc = _english_descriptor_for(captured)
+
+    m = re.match(r"\(?\s*([A-Za-z0-9]{1,3})\s*[\.\)\]\"']?\b", captured)
+    if m:
+        token = m.group(1)
+        if _label_match(token, short_label):
+            by_token = "short"
+        elif _label_match(token, long_label):
+            by_token = "long"
+
+    if by_token is None:
+        m2 = re.search(r"\boption\s+([A-Za-z0-9]{1,3})\b", captured, re.IGNORECASE)
+        if m2:
+            token = m2.group(1)
+            if _label_match(token, short_label):
+                by_token = "short"
+            elif _label_match(token, long_label):
+                by_token = "long"
+
+    if by_token is not None and by_desc is not None and by_token != by_desc:
+        return None
+    return by_token or by_desc
+
+
+def _find_phrase_commits(
+    text: str,
+    phrases: list[str],
+    short_label: str,
+    long_label: str,
+    window: int,
+) -> list[tuple[int, str]]:
+    """Find all phrase commits in the last `window` chars of `text`.
+    Returns list of (position, kind) where kind is 'short' or 'long'."""
+    text = re.sub(r"[*_`]+", "", text)
+    tail = text[-window:]
+    base = len(text) - len(tail)
+    out: list[tuple[int, str]] = []
+    for phrase in phrases:
+        pattern = re.compile(
+            r"\b" + phrase + r"\b"
+            r"\s*[:\-]?\s*"
+            r"(?:that\s+|to\s+(?:choose\s+|pick\s+|invest\s+in\s+|go\s+with\s+|select\s+)?|option\s+|the\s+)?"
+            r"[\(\[\"']?"
+            r"([\w\$%\.,\-\s]{1,80})",
+            re.IGNORECASE,
+        )
+        for m in pattern.finditer(tail):
+            kind = _classify_capture(m.group(1), short_label, long_label)
+            if kind is not None:
+                out.append((base + m.start(), kind))
+    return out
+
+
+def _salvage_unclosed_think(
+    response: str, short_label: str, long_label: str, window: int = 800
+) -> str | None:
+    """Salvage a choice from a response that ran over max_new_tokens
+    inside <think>...</think>. Tiered:
+      - A1: a STRONG commit phrase exists; use the last one (with majority
+        tiebreak across the last 3 if the last two disagree).
+      - A2: only WEAK commit phrases; require last-3 agreement OR a clear
+        last-5 majority OR the phrase appears exactly once.
+    """
+    strong = _find_phrase_commits(
+        response, STRONG_COMMIT_PHRASES, short_label, long_label, window
+    )
+    weak = _find_phrase_commits(
+        response, WEAK_COMMIT_PHRASES, short_label, long_label, window
+    )
+
+    if strong:
+        strong.sort(key=lambda x: x[0])
+        if len(strong) >= 2 and strong[-1][1] != strong[-2][1]:
+            last_three = [s[1] for s in strong[-3:]]
+            c = Counter(last_three)
+            if c["short"] > c["long"]:
+                return "short_term"
+            if c["long"] > c["short"]:
+                return "long_term"
+        kind = strong[-1][1]
+        return "short_term" if kind == "short" else "long_term"
+
+    if weak:
+        weak.sort(key=lambda x: x[0])
+        last_three = [w[1] for w in weak[-3:]]
+        if len(last_three) >= 2 and len(set(last_three)) == 1:
+            kind = last_three[0]
+            return "short_term" if kind == "short" else "long_term"
+        if len(weak) >= 5:
+            last_five = [w[1] for w in weak[-5:]]
+            c = Counter(last_five)
+            if c["short"] >= 4:
+                return "short_term"
+            if c["long"] >= 4:
+                return "long_term"
+        if len(weak) == 1:
+            kind = weak[0][1]
+            return "short_term" if kind == "short" else "long_term"
+
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -169,10 +492,14 @@ def _label_match(text: str, label: str) -> bool:
 
 
 def build_results(
-    samples, model_names: list[str], all_model_results: dict[str, list[dict]]
+    samples,
+    model_names: list[str],
+    all_model_results: dict[str, list[dict]],
+    reasoning: bool = False,
 ) -> list[dict]:
     """Build the combined results list with per-model responses."""
     results = []
+    suffix = "-thinking" if reasoning else ""
     for i, sample in enumerate(samples):
         pair = sample.prompt.preference_pair
         horizon = sample.prompt.time_horizon
@@ -191,7 +518,7 @@ def build_results(
             "long_term_time": pair.long_term.time.to_months(),
         }
         for model_name in model_names:
-            key = short_model_name(model_name)
+            key = short_model_name(model_name) + suffix
             mr = all_model_results[model_name][i]
             entry[f"{key}_response"] = mr["response"]
             entry[f"{key}_choice"] = mr["choice"]
@@ -580,6 +907,24 @@ def get_args():
         default=None,
         help="Output directory (default: out/behavioral/<config_name>/)",
     )
+    parser.add_argument(
+        "--reasoning",
+        action="store_true",
+        help="Enable thinking/reasoning mode (skip prefilling, raise max_tokens, "
+             "suffix output keys with -thinking).",
+    )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="Cap number of samples (for smoke tests).",
+    )
+    parser.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Disable per-sample checkpointing (cache is on by default; "
+             "cache files live at <output_dir>/_cache_<label>.json).",
+    )
     return parser.parse_args()
 
 
@@ -599,6 +944,9 @@ def main() -> int:
     generator = PromptDatasetGenerator(config)
     dataset = generator.generate()
     samples = dataset.samples
+    if args.limit is not None:
+        samples = samples[: args.limit]
+        print(f"Limiting to first {len(samples)} samples")
     print(f"Generated {len(samples)} prompt samples")
 
     choice_prefix = config.prompt_format_config.get_response_prefix_before_choice()
@@ -609,16 +957,31 @@ def main() -> int:
 
     # 3. Determine models
     model_names = args.models if args.models else list(ALL_MODELS)
-    model_keys = [short_model_name(m) for m in model_names]
+    model_key_suffix = "-thinking" if args.reasoning else ""
+    model_keys = [short_model_name(m) + model_key_suffix for m in model_names]
 
     # 4. Query each model
     all_model_results: dict[str, list[dict]] = {}
     for model_name in model_names:
-        print(f"\n--- Querying {short_model_name(model_name)} ---")
-        all_model_results[model_name] = query_model(model_name, samples, choice_prefix)
+        suffix = "-thinking" if args.reasoning else ""
+        print(f"\n--- Querying {short_model_name(model_name)}{suffix} ---")
+        cache_path = (
+            None
+            if args.no_cache
+            else output_dir / f"_cache_{short_model_name(model_name)}{suffix}.json"
+        )
+        all_model_results[model_name] = query_model(
+            model_name,
+            samples,
+            choice_prefix,
+            reasoning=args.reasoning,
+            cache_path=cache_path,
+        )
 
     # 5. Build and save results
-    results = build_results(samples, model_names, all_model_results)
+    results = build_results(
+        samples, model_names, all_model_results, reasoning=args.reasoning
+    )
 
     responses_path = output_dir / "responses.json"
     with open(responses_path, "w") as f:

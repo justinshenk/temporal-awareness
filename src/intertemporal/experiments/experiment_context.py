@@ -152,27 +152,33 @@ class ExperimentContext(ExperimentMixin):
 
     def _build_pairs(self) -> None:
         """Build contrastive pairs from preference data."""
-        pair_req = (
-            PrefPairRequirement.from_dict(self.cfg.pair_req_cfg)
-            if self.cfg.pair_req_cfg
-            else None
-        )
-        all_prefs = get_contrastive_preferences(self.pref_data, req=pair_req)
-
-        # When using cached pairs, use the cached count instead of config
-        if self._use_cached_pairs:
-            cached_count = self.get_cached_pair_count()
-            n_select = (
-                cached_count
-                if cached_count > 0
-                else (self.cfg.n_pairs or len(all_prefs))
-            )
-            log(f"[ctx] Using cached pair count: {n_select}")
+        # If --pairs-from is set, load pair indices from the source experiment
+        # instead of running the pair selection algorithm.
+        if self.cfg.pairs_from:
+            selected = self._load_pairs_from_source(self.cfg.pairs_from)
         else:
-            n_select = self.cfg.n_pairs or len(all_prefs)
+            pair_req = (
+                PrefPairRequirement.from_dict(self.cfg.pair_req_cfg)
+                if self.cfg.pair_req_cfg
+                else None
+            )
+            all_prefs = get_contrastive_preferences(self.pref_data, req=pair_req)
 
-        selected = all_prefs[:n_select]
-        log(f"[ctx] Found {len(all_prefs)} contrastive prefs, using {len(selected)}")
+            # When using cached pairs, use the cached count instead of config
+            if self._use_cached_pairs:
+                cached_count = self.get_cached_pair_count()
+                n_select = (
+                    cached_count
+                    if cached_count > 0
+                    else (self.cfg.n_pairs or len(all_prefs))
+                )
+                log(f"[ctx] Using cached pair count: {n_select}")
+            else:
+                n_select = self.cfg.n_pairs or len(all_prefs)
+
+            selected = all_prefs[:n_select]
+
+        log(f"[ctx] Found {len(selected)} contrastive prefs, using {len(selected)}")
 
         self._pairs, self._pref_pairs, self._pair_to_pref_idx = [], [], {}
 
@@ -206,6 +212,62 @@ class ExperimentContext(ExperimentMixin):
                 self._position_mappings[idx] = (short_term_mapping, long_term_mapping)
 
         log(f"[ctx] Built {len(self._pairs)} valid pairs")
+
+    def _load_pairs_from_source(self, source_dir: str) -> list:
+        """Load pair indices from a source experiment and build preferences
+        using THIS experiment's PreferenceDataset.
+
+        The source experiment's contrastive_preference.json files provide
+        (short_term_sample_idx, long_term_sample_idx) pairs. We look those
+        indices up in our PreferenceDataset (which was generated fresh for
+        the current model). If a sample_idx isn't in our dataset (e.g. the
+        new model didn't produce a contrastive choice for that sample), we
+        skip the pair and log a warning.
+        """
+        import json
+        from ..common import get_experiment_dir
+
+        source_path = Path(source_dir)
+        if not source_path.is_absolute():
+            source_path = get_experiment_dir() / source_dir
+        pairs_dir = source_path / "pairs"
+        if not pairs_dir.exists():
+            raise FileNotFoundError(f"No pairs/ directory in source experiment: {pairs_dir}")
+
+        pair_dirs = sorted(pairs_dir.glob("pair_*"))
+        if not pair_dirs:
+            raise FileNotFoundError(f"No pair_* directories in {pairs_dir}")
+
+        log(f"[ctx] Loading {len(pair_dirs)} pair indices from {source_path.name}")
+
+        # Build sample_idx lookup from this experiment's pref_data
+        pref_by_idx = {s.sample_idx: s for s in self.pref_data.preferences}
+
+        loaded: list[ContrastivePreferences] = []
+        skipped = 0
+        for pair_dir in pair_dirs:
+            pref_path = pair_dir / "contrastive_preference.json"
+            if not pref_path.exists():
+                continue
+            raw = json.loads(pref_path.read_text())
+            short_idx = raw["short_term_sample_idx"]
+            long_idx = raw["long_term_sample_idx"]
+
+            short_sample = pref_by_idx.get(short_idx)
+            long_sample = pref_by_idx.get(long_idx)
+            if short_sample is None or long_sample is None:
+                skipped += 1
+                continue
+
+            loaded.append(ContrastivePreferences(
+                short_term=short_sample,
+                long_term=long_sample,
+            ))
+
+        if skipped:
+            log(f"[ctx] WARNING: skipped {skipped} pairs (sample_idx not in current dataset)")
+        log(f"[ctx] Loaded {len(loaded)} pairs from source")
+        return loaded
 
     def get_prompt_sample(self, sample_idx: int):
         """Get PromptSample by sample_idx from prompt_dataset."""

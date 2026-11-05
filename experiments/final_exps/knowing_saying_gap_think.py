@@ -43,10 +43,15 @@ VAST.AI SETUP:
     scp -P PORT contrastive_math_dataset.json  root@ssh.vast.ai:/root/
 """
 
-import json, os, re, sys, random, time, warnings, argparse, gc
+import json
+import re
+import random
+import time
+import warnings
+import argparse
+import gc
 from collections import defaultdict
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -553,7 +558,7 @@ def stage2_probes(args):
         cross_val_predict
     )
 
-    from sklearn.metrics import roc_auc_score, roc_curve
+    from sklearn.metrics import roc_curve
 
     print("\n" + "="*65)
     print("  STAGE 2: Train layer-wise probes")
@@ -641,7 +646,7 @@ def stage2_probes(args):
 
     print(f"  Threshold (youden): {youden_tau:.4f}  TPR={tpr[youden_idx]:.3f}  FPR={fpr[youden_idx]:.3f}")
     print(f"  Threshold (conservative): {cons_tau:.4f}")
-    print(f"  Saved: probe_weights.npz, probe_threshold.json, layer_probe_results.csv")
+    print("  Saved: probe_weights.npz, probe_threshold.json, layer_probe_results.csv")
 
     return probe_df, threshold_data
 
@@ -690,7 +695,7 @@ def stage3_behavioral(args):
         vals = df[sig].values
         try:
             auroc_det = roc_auc_score(y_label, vals)
-        except:
+        except Exception:
             auroc_det = 0.5
 
         # Failure prediction: among error traces, does signal predict final wrong?
@@ -699,7 +704,7 @@ def stage3_behavioral(args):
         if err["final_wrong"].nunique() > 1 and sig in err.columns:
             try:
                 auroc_fail = roc_auc_score(err["final_wrong"], err[sig])
-            except:
+            except Exception:
                 auroc_fail = 0.5
         else:
             auroc_fail = 0.5
@@ -734,8 +739,8 @@ def stage3_behavioral(args):
         print(f"    Unique values: {sorted(set(round(v,2) for v in vals))}")
 
         # Absurd crossover
-        abs_idx = verb[verb["is_absurd"] == True].index
-        pla_idx = verb[verb["is_absurd"] == False].index
+        abs_idx = verb[verb["is_absurd"] == True].index  # noqa: E712
+        pla_idx = verb[verb["is_absurd"] == False].index  # noqa: E712
         abs_parsed = verb.loc[abs_idx, "verbalized_conf"].dropna()
         pla_parsed = verb.loc[pla_idx, "verbalized_conf"].dropna()
         if len(abs_parsed) > 0:
@@ -800,7 +805,6 @@ def get_probe_input(model, tokenizer, prompt, probe):
 def run_intervention_chain(trace, model, tokenizer, probe, condition,
                             fire_mode="youden", branch_k=4):
     """Run one trace through one condition, return result dict."""
-    import torch
     hop_depth = len(trace["hops"])
     probe_scores = []
     overrides = {}
@@ -954,7 +958,6 @@ def stage4_intervention(args, dataset, by_base, model, tokenizer, n_layers):
 
 
 def _print_intervention_summary(df):
-    from scipy.stats import binom
     print("\n  INTERVENTION RESULTS:")
     pivot = df.pivot_table(index="base_id", columns="condition",
                             values="final_correct", aggfunc="first").dropna()
@@ -1068,10 +1071,8 @@ def stage6_figures(args):
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
-    from matplotlib.patches import Polygon
-    import matplotlib.patches as mpatches
     from scipy.stats import gaussian_kde
-    from sklearn.metrics import roc_auc_score, roc_curve
+    from sklearn.metrics import roc_auc_score
 
     print("\n" + "="*65)
     print("  STAGE 6: Paper figures")
@@ -1117,7 +1118,7 @@ def stage6_figures(args):
 
             if len(aurocs) > 1 and aurocs[0] < 0.6 and aurocs[1] > 0.85:
                 ax.scatter([0], [aurocs[0]], s=80, color=CRIMSON, zorder=5)
-                ax.annotate(f"L0: chance", xy=(0, aurocs[0]),
+                ax.annotate("L0: chance", xy=(0, aurocs[0]),
                              xytext=(2, aurocs[0]+0.05), fontsize=8, color=CRIMSON,
                              arrowprops=dict(arrowstyle="-", color=CRIMSON, lw=0.5))
                 ax.scatter([1], [aurocs[1]], s=80, color=GOLD, zorder=5)
@@ -1239,8 +1240,8 @@ def stage6_figures(args):
             fig, axes = plt.subplots(1, 2, figsize=(7, 3.2))
             fig.patch.set_facecolor(PAPER)
 
-            correct = base[base["final_correct"] == True]
-            wrong = base[base["final_correct"] == False]
+            correct = base[base["final_correct"] == True]  # noqa: E712
+            wrong = base[base["final_correct"] == False]  # noqa: E712
 
             ax = axes[0]; ax.set_facecolor(PAPER)
             for sub, c, lbl in [(correct, EMERALD, "correct"), (wrong, CRIMSON, "wrong")]:
@@ -1255,7 +1256,7 @@ def stage6_figures(args):
                 auroc_mean = roc_auc_score(y, base["mean_probe_score"])
                 ax.text(0.96, 0.96, f"AUROC = {auroc_mean:.3f}", transform=ax.transAxes,
                         va="top", ha="right", fontsize=8.5, fontweight="bold")
-            except:
+            except Exception:
                 pass
             ax.set_xlabel("Mean probe score"); ax.set_ylabel("Density")
             ax.set_title("(a) Mean: a calibrated signal", fontsize=9.5)
@@ -1324,7 +1325,7 @@ def main():
     out = Path(args.output_dir)
     out.mkdir(parents=True, exist_ok=True)
 
-    print(f"\nKnowing-Saying Gap Pipeline")
+    print("\nKnowing-Saying Gap Pipeline")
     print(f"  Model: {args.model}")
     print(f"  Stages: {sorted(stages)}")
     print(f"  Output: {args.output_dir}")
@@ -1364,7 +1365,7 @@ def main():
         stage6_figures(args)
 
     print(f"\n{'='*65}")
-    print(f"  PIPELINE COMPLETE")
+    print("  PIPELINE COMPLETE")
     print(f"  Output directory: {args.output_dir}/")
     print(f"{'='*65}")
 

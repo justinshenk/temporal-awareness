@@ -104,6 +104,17 @@ def parse_args() -> argparse.Namespace:
         help="Path to JSON file containing dataset config (PromptDatasetConfig)",
     )
 
+    parser.add_argument(
+        "--pairs-from",
+        type=str,
+        default=None,
+        metavar="FOLDER",
+        help="Load pair indices (sample_idx pairs) from another experiment's "
+             "cached contrastive_preference.json files. Skips pair selection "
+             "algorithm — reuses the exact pairing from the source experiment. "
+             "The prompt dataset is still generated fresh for the current model.",
+    )
+
     # --- Output directory ---
     parser.add_argument(
         "--out",
@@ -234,6 +245,8 @@ def build_base_config(args: argparse.Namespace) -> dict:
         config["model"] = args.model
     if args.n_pairs:
         config["n_pairs"] = args.n_pairs
+    if args.pairs_from:
+        config["pairs_from"] = args.pairs_from
 
     return config
 
@@ -378,6 +391,9 @@ def main() -> int:
         if args.camera_ready:
             working_cfg.viz_cfg["save_svg"] = True
             working_cfg.viz_cfg["save_pdf"] = True
+        # --pairs-from is a CLI-only arg; apply even when using cached config
+        if args.pairs_from:
+            working_cfg.pairs_from = args.pairs_from
         exp_cfg = working_cfg
     else:
         # Build experiment config from CLI args
@@ -395,6 +411,8 @@ def main() -> int:
                 config["model"] = args.model
             if args.n_pairs:
                 config["n_pairs"] = args.n_pairs
+            if args.pairs_from:
+                config["pairs_from"] = args.pairs_from
         else:
             config = build_base_config(args)
 

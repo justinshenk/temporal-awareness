@@ -49,7 +49,8 @@ class ContrastivePreferences(BaseSchema):
 
         short_traj = self.short_term.chosen_traj
         long_traj = self.long_term.chosen_traj
-        assert short_traj is not None and long_traj is not None
+        if short_traj is None or long_traj is None:
+            return None
 
         # Use format_pos-based alignment
         src_tokens = decode_token_ids(runner._tokenizer, short_traj.token_ids)

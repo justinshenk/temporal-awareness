@@ -36,6 +36,7 @@ class ModelBackend(Enum):
     NNSIGHT = "nnsight"
     OPENAI = "openai"
     ANTHROPIC = "anthropic"
+    GEMINI = "gemini"
 
 
 class Backend(ABC):

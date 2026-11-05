@@ -144,16 +144,21 @@ class HuggingFaceBackend(Backend):
                     "or ln_2 (GPT-2)."
                 )
         elif component == "attn_out":
-            if hasattr(layer, "attn"):
-                return layer.attn
-            elif hasattr(layer, "attention"):
-                return layer.attention
-            elif hasattr(layer, "self_attn"):
-                return layer.self_attn
-            else:
-                raise ValueError(
-                    f"Cannot find attention module in layer: {type(layer)}"
-                )
+            # For hybrid architectures (e.g. Qwen3.5) where layer_type varies
+            # per layer, check _modules directly — hasattr is unreliable
+            # when __getattr__ is overridden.
+            mods = getattr(layer, "_modules", {})
+            if "self_attn" in mods and mods["self_attn"] is not None:
+                return layer.self_attn  # Llama/Qwen3/Mistral
+            if "attn" in mods and mods["attn"] is not None:
+                return layer.attn  # GPT-2
+            if "attention" in mods and mods["attention"] is not None:
+                return layer.attention  # GPT-NeoX
+            if "linear_attn" in mods and mods["linear_attn"] is not None:
+                return layer.linear_attn  # Qwen3.5 hybrid linear attn layers
+            raise ValueError(
+                f"Cannot find attention module in layer: {type(layer)}"
+            )
         elif component == "mlp_out":
             return layer.mlp
         else:
@@ -277,12 +282,15 @@ class HuggingFaceBackend(Backend):
     def _get_attn_module(self, layer_idx: int):
         """Get the self-attention module for a layer."""
         layer = self._layers[layer_idx]
-        if hasattr(layer, "self_attn"):
+        mods = getattr(layer, "_modules", {})
+        if "self_attn" in mods and mods["self_attn"] is not None:
             return layer.self_attn  # Llama, Qwen3, Mistral
-        elif hasattr(layer, "attn"):
+        if "attn" in mods and mods["attn"] is not None:
             return layer.attn  # GPT-2
-        elif hasattr(layer, "attention"):
+        if "attention" in mods and mods["attention"] is not None:
             return layer.attention  # GPT-NeoX
+        if "linear_attn" in mods and mods["linear_attn"] is not None:
+            return layer.linear_attn  # Qwen3.5 hybrid linear attn layers
         raise ValueError(f"Cannot find attention module in layer: {type(layer)}")
 
     def _register_attention_pattern_hook(

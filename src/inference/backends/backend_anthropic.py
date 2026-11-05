@@ -58,6 +58,11 @@ class AnthropicBackend(Backend):
         self._tokenizer = APITokenizer(encoding_name="cl100k_base")
         self._client = None
 
+    _NO_TEMPERATURE_MODELS = ("claude-opus-4-7", "claude-sonnet-4-6")
+
+    def _supports_temperature(self) -> bool:
+        return not any(self._model.startswith(m) for m in self._NO_TEMPERATURE_MODELS)
+
     def _get_client(self):
         """Lazy-load Anthropic client."""
         if self._client is None:
@@ -115,15 +120,15 @@ class AnthropicBackend(Backend):
 
         client = self._get_client()
 
-        # Anthropic requires temperature >= 0
-        temp = temperature if temperature > 0 else 0.0
+        kwargs: dict[str, Any] = {
+            "model": self._model,
+            "max_tokens": max_new_tokens,
+            "messages": [{"role": "user", "content": prompt}],
+        }
+        if self._supports_temperature():
+            kwargs["temperature"] = temperature if temperature > 0 else 0.0
 
-        response = client.messages.create(
-            model=self._model,
-            max_tokens=max_new_tokens,
-            temperature=temp,
-            messages=[{"role": "user", "content": prompt}],
-        )
+        response = client.messages.create(**kwargs)
 
         # Extract text from response
         if response.content and len(response.content) > 0:
@@ -183,12 +188,14 @@ class AnthropicBackend(Backend):
             {"role": "assistant", "content": prefill},
         ]
 
-        response = client.messages.create(
-            model=self._model,
-            messages=messages,
-            max_tokens=1,
-            temperature=0,
-        )
+        kwargs: dict[str, Any] = {
+            "model": self._model,
+            "messages": messages,
+            "max_tokens": 1,
+        }
+        if self._supports_temperature():
+            kwargs["temperature"] = 0
+        response = client.messages.create(**kwargs)
 
         # Extract the generated token
         generated = ""

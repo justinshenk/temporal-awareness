@@ -136,6 +136,9 @@ class ExperimentConfig(BaseSchema):
     n_pairs: int | None = None
     pair_req_cfg: dict = field(default_factory=lambda: PAIR_REQ_CFG.copy())
 
+    # Load pair indices from another experiment (skips pair selection)
+    pairs_from: str | None = None
+
     # Viz config
     viz_cfg: dict = field(default_factory=lambda: VIZ_CFG.copy())
 

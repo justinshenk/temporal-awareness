@@ -693,6 +693,26 @@ def process_progressive_agg(
 # =============================================================================
 
 
+def _extract_sample_indices_from_source(source_dir: str) -> set[int]:
+    """Extract the unique sample_idx values needed by pairs in a source experiment."""
+    import json
+    from ..common import get_experiment_dir
+
+    source_path = Path(source_dir)
+    if not source_path.is_absolute():
+        source_path = get_experiment_dir() / source_dir
+    pairs_dir = source_path / "pairs"
+
+    indices: set[int] = set()
+    for pref_path in sorted(pairs_dir.glob("pair_*/contrastive_preference.json")):
+        raw = json.loads(pref_path.read_text())
+        indices.add(raw["short_term_sample_idx"])
+        indices.add(raw["long_term_sample_idx"])
+
+    log(f"[pairs-from] Extracted {len(indices)} unique sample indices from {source_path.name}")
+    return indices
+
+
 @profile("step_preference_data")
 def step_preference_data(
     ctx: ExperimentContext, try_loading_data: bool = False
@@ -707,11 +727,18 @@ def step_preference_data(
         ctx.enable_cached_pairs()
 
     if not ctx.pref_data:
+        # When --pairs-from is set, extract the needed sample indices from
+        # the source experiment so we only query those (not all 4590).
+        needed_indices = None
+        if ctx.cfg.pairs_from:
+            needed_indices = _extract_sample_indices_from_source(ctx.cfg.pairs_from)
+
         ctx.pref_data, ctx.prompt_dataset = generate_preference_data(
             model=ctx.cfg.model,
             dataset_config=ctx.cfg.dataset_config,
             max_samples=ctx.cfg.max_samples,
             save_data=True,
+            sample_indices=needed_indices,
         )
 
 

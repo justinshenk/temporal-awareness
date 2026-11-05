@@ -29,6 +29,7 @@ def generate_preference_data(
     save_data: bool = False,
     prompt_datasets_dir: Optional[Path] = None,
     pref_datasets_dir: Optional[Path] = None,
+    sample_indices: set[int] | None = None,
 ) -> tuple[PreferenceDataset, PromptDataset]:
     """Generate preference data on-the-fly by querying a model."""
 
@@ -52,7 +53,9 @@ def generate_preference_data(
 
     # Query model
     with P("generate_preference_dataset"):
-        pref_data = PreferenceQuerier(query_config).query_dataset(prompt_dataset, model)
+        pref_data = PreferenceQuerier(query_config).query_dataset(
+            prompt_dataset, model, sample_indices=sample_indices,
+        )
 
     # Strip heavy data (full_logits tensors) before saving to reduce file size
     pref_data.pop_heavy()

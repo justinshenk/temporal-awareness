@@ -8,7 +8,10 @@ Usage:
     python compare_models.py
 """
 
-import pandas as pd, numpy as np, json, glob, os, sys
+import pandas as pd
+import numpy as np
+import glob
+import os
 
 import matplotlib
 matplotlib.use("Agg")
@@ -84,7 +87,7 @@ def load_model_results(d):
             try:
                 row["persist_mean_auroc"] = roc_auc_score(y, base["mean_probe_score"])
                 row["persist_max_auroc"]  = roc_auc_score(y, base["max_probe_score"])
-            except:
+            except Exception:
                 pass
 
     return row
@@ -132,7 +135,7 @@ def main():
               f"{g('persist_mean_auroc','.3f'):>5}")
 
     # ── Key replication questions ─────────────────────────────────
-    print(f"\n  REPLICATION QUESTIONS:")
+    print("\n  REPLICATION QUESTIONS:")
     if "det_auroc" in df.columns:
         vals = df["det_auroc"].dropna()
         if len(vals) > 1:
@@ -170,7 +173,7 @@ def main():
     # ── Save CSV ──────────────────────────────────────────────────
     out_cols = [c for c in cols if c in df.columns]
     df[out_cols].to_csv("cross_model_comparison.csv", index=False)
-    print(f"\n  Saved: cross_model_comparison.csv")
+    print("\n  Saved: cross_model_comparison.csv")
 
     # ── Paper figure: layer profiles side by side ─────────────────
     profiles = [(r["model"], r["_profile"])
@@ -203,7 +206,7 @@ def main():
         fig.savefig("figures/fig_cross_model_layers.pdf",
                     bbox_inches="tight", facecolor=PAPER)
         plt.close()
-        print(f"  Saved: figures/fig_cross_model_layers.pdf")
+        print("  Saved: figures/fig_cross_model_layers.pdf")
 
     # ── Paper figure: intervention comparison ─────────────────────
     interv_models = df.dropna(subset=["bp_delta"])
@@ -238,7 +241,7 @@ def main():
         fig.savefig("figures/fig_cross_model_intervention.pdf",
                     bbox_inches="tight", facecolor=PAPER)
         plt.close()
-        print(f"  Saved: figures/fig_cross_model_intervention.pdf")
+        print("  Saved: figures/fig_cross_model_intervention.pdf")
 
     print(f"\n{'='*80}")
 

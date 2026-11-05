@@ -230,14 +230,23 @@ class PreferenceQuerier:
         )
 
     def query_dataset(
-        self, prompt_dataset: PromptDataset, model_name: str, verbose: bool = False
+        self, prompt_dataset: PromptDataset, model_name: str, verbose: bool = False,
+        sample_indices: set[int] | None = None,
     ) -> PreferenceDataset:
-        """Query a single dataset with a model. Returns results in memory."""
+        """Query a single dataset with a model. Returns results in memory.
+
+        Args:
+            sample_indices: If provided, only query these sample_idx values
+                           (used by --pairs-from to skip unneeded samples).
+        """
 
         runner = self._load_model(model_name)
 
         samples = prompt_dataset.samples
-        if self.config.subsample < 1.0:
+        if sample_indices is not None:
+            samples = [s for s in samples if s.sample_idx in sample_indices]
+            log(f"[query] Filtered to {len(samples)} samples (--pairs-from)")
+        elif self.config.subsample < 1.0:
             n = max(1, int(len(samples) * self.config.subsample))
             samples = random.sample(samples, n)
 

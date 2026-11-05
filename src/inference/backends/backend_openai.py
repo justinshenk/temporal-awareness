@@ -78,6 +78,18 @@ class OpenAIBackend(Backend):
             token_ids = token_ids[0]
         return self._tokenizer.decode(token_ids, skip_special_tokens=False)
 
+    # Newer chat models (gpt-5.x, o-series) require max_completion_tokens
+    # and reject the deprecated max_tokens.
+    _NEW_TOKEN_PARAM_PREFIXES = ("gpt-5", "gpt-5.", "o1", "o3", "o4")
+    # Reasoning + newer flagship models reject temperature.
+    _NO_TEMPERATURE_PREFIXES = ("o1", "o3", "o4", "gpt-5")
+
+    def _uses_completion_tokens(self) -> bool:
+        return any(self._model.startswith(p) for p in self._NEW_TOKEN_PARAM_PREFIXES)
+
+    def _supports_temperature(self) -> bool:
+        return not any(self._model.startswith(p) for p in self._NO_TEMPERATURE_PREFIXES)
+
     def generate(
         self,
         prompt: str,
@@ -91,16 +103,18 @@ class OpenAIBackend(Backend):
 
         client = self._get_client()
 
-        # Use temperature=0 for greedy, otherwise provided value
-        temp = temperature if temperature > 0 else 0
+        kwargs: dict[str, Any] = {
+            "model": self._model,
+            "messages": [{"role": "user", "content": prompt}],
+        }
+        if self._uses_completion_tokens():
+            kwargs["max_completion_tokens"] = max_new_tokens
+        else:
+            kwargs["max_tokens"] = max_new_tokens
+        if self._supports_temperature():
+            kwargs["temperature"] = temperature if temperature > 0 else 0
 
-        response = client.chat.completions.create(
-            model=self._model,
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=max_new_tokens,
-            temperature=temp,
-        )
-
+        response = client.chat.completions.create(**kwargs)
         return response.choices[0].message.content or ""
 
     def get_next_token_probs(
