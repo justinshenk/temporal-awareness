@@ -5,7 +5,6 @@ export const ISSUES_URL = `${REPO_URL}/issues`;
 export const GOOD_FIRST_ISSUES_URL = `${ISSUES_URL}?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22`;
 export const CONTRIBUTING_URL = `${REPO_URL}/blob/main/docs/CONTRIBUTING.md`;
 export const RESEARCH_PROGRAM_URL = `${REPO_URL}/blob/main/docs/RESEARCH_PROGRAM.md`;
-export const RESULTS_URL = `${REPO_URL}/tree/main/results`;
 
 /** Hosted geoapp FastAPI URL. Set PUBLIC_GEOAPP_URL at build time to enable the live explorer. */
 export const GEOAPP_URL: string = import.meta.env.PUBLIC_GEOAPP_URL ?? "";

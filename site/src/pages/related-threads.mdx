@@ -1,0 +1,39 @@
+---
+layout: ../layouts/BaseLayout.astro
+title: Related threads
+description: Work from the same project on planning, repetition, sycophancy, uncertainty and long contexts.
+prose: true
+---
+
+import ledger from "../data/evidence_ledger.json";
+import { BASE } from "../lib/site";
+
+export const { spar, compiled, draft } = ledger.sources;
+
+# Related threads
+
+These studies share the project's methods, but they measure other things. They aren't evidence about how a time horizon is represented, so they're kept separate from <a href={BASE + "representation"}>the main argument</a>. Most come from the <a href={spar.url}>SPAR final report</a> and haven't been separately published.
+
+## Apparent planning in generated code
+
+Across 11 models, probes predicted a function's return type with 80–91% accuracy, which looked like evidence of planning ahead. A classifier using only function and parameter names scored 87–95%, matching or beating the probes. Acrostic tests were also near chance. This is why the "no surface baseline yet" label appears on the temporal probes.
+
+These models go up to 7B parameters, so larger models remain untested.
+
+## Behavior under repetition
+
+Repetition affects models differently. In the <a href={compiled.url}>compiled results</a>, the refusal rate in Qwen3-8B falls from 0.75 to 0.50 over 20 repetitions, while Llama-3.1-8B-Instruct stays at 0.75. Injection resistance improves with repetition in the two models tested. Rates move in steps of 0.125, which implies few prompts per cell.
+
+A <a href={draft.url}>draft study</a> looked for probe activation ahead of behavioral change and found no gap across 17 runs. Representation and behavior shifted together from the first repetition.
+
+## Sycophancy under social pressure
+
+Social pressure flips answers in 10–62.5% of cases, but true surrender occurs in 1.5–15.5%. The hidden-state probe is underpowered, with 11 positive examples where about 1,000 are needed.
+
+## Uncertainty across reasoning steps
+
+Uncertainty encoding is strongest at the first reasoning step and weakens after it. It varies significantly across datasets and only weakly predicts future states.
+
+## Output entropy in long contexts
+
+Output entropy collapses as context fills, without a matching gain in accuracy. In-context learning partly offsets this on some task patterns.

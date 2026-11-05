@@ -1,0 +1,101 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import ledger from "../data/evidence_ledger.json";
+
+const { sources, questions, claims } = ledger;
+
+type SourceKey = keyof typeof sources;
+const sourceOf = (key: string) => sources[key as SourceKey];
+
+const statusLabels: Record<string, string> = {
+  paper: "Paper",
+  "project-report": "Project report",
+  repository: "Repository result",
+  unverified: "Unverified",
+};
+
+const groups = questions
+  .map((question) => ({
+    id: question.id,
+    title: question.title,
+    entries: claims.filter((claim) => claim.featured && claim.question === question.id),
+  }))
+  .filter((group) => group.entries.length > 0);
+const retired = claims.filter((claim) => !claim.featured);
+const sections = [
+  ...groups,
+  {
+    id: "retired",
+    title: "Numbers this site no longer features",
+    entries: retired,
+  },
+];
+---
+
+<BaseLayout
+  title="Evidence"
+  description="Every number on this site, with its model, dataset, sample size, method, source and limits."
+>
+  <section class="mx-auto max-w-5xl px-4 pt-12">
+    <h1 class="font-display text-4xl font-bold leading-tight text-ink">Every number, and what it rests on</h1>
+    <p class="mt-4 max-w-2xl text-lg leading-8 text-ink-soft">
+      Each entry gives the model, dataset, sample size, method and source. Paper values were checked against the
+      arXiv PDFs. Read the caveats alongside the numbers: most results come from one model or a small sample.
+    </p>
+    <nav aria-label="Evidence sections" class="mt-6 flex flex-wrap gap-x-5 gap-y-2 font-sans text-sm">
+      {sections.map((section) => <a class="link-accent" href={`#${section.id}`}>{section.title}</a>)}
+    </nav>
+  </section>
+
+  <div class="mx-auto max-w-5xl px-4 pb-16">
+    {
+      sections.map((section) => (
+        <section id={section.id} class="scroll-mt-20 pt-12">
+          <h2 class="font-display border-b border-rule pb-3 text-2xl font-bold text-ink">{section.title}</h2>
+          {section.id === "retired" && (
+            <p class="mt-4 max-w-2xl leading-7 text-ink-soft">
+              These earlier GPT-2 numbers remain here so readers can trace what changed. An earlier
+              steering-correlation figure is withdrawn altogether: its plot is missing and its verification never
+              resolved.
+            </p>
+          )}
+          <div class="divide-y divide-rule">
+            {section.entries.map((entry) => {
+              const source = sourceOf(entry.source);
+              return (
+                <article id={entry.id} class="grid scroll-mt-20 gap-x-8 gap-y-2 py-6 md:grid-cols-12">
+                  <div class="md:col-span-3">
+                    <p class="font-display text-xl font-bold leading-snug text-ink">{entry.value}</p>
+                    <p class="mt-1 font-sans text-xs font-medium text-ink-soft">{statusLabels[entry.status]}</p>
+                  </div>
+                  <div class="md:col-span-9">
+                    <p class="font-semibold leading-7 text-ink">{entry.claim}</p>
+                    <p class="mt-1 leading-7 text-ink-soft">{entry.caveat}</p>
+                    <dl class="mt-3 grid gap-x-6 gap-y-1 font-sans text-sm text-ink-soft sm:grid-cols-[auto_1fr]">
+                      <dt class="font-medium text-ink">Model</dt>
+                      <dd>{entry.model}</dd>
+                      <dt class="font-medium text-ink">Dataset</dt>
+                      <dd>{entry.dataset}</dd>
+                      {entry.n !== null && (
+                        <>
+                          <dt class="font-medium text-ink">n</dt>
+                          <dd>{entry.n.toLocaleString("en-US")}</dd>
+                        </>
+                      )}
+                      <dt class="font-medium text-ink">Method</dt>
+                      <dd>{entry.method}</dd>
+                      <dt class="font-medium text-ink">Source</dt>
+                      <dd>
+                        <a class="link-accent" href={source.url}>{source.label}</a>, {entry.locator}
+                      </dd>
+                    </dl>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      ))
+    }
+  </div>
+</BaseLayout>

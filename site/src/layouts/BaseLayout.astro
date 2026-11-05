@@ -1,6 +1,6 @@
 ---
 import "../styles/global.css";
-import { BASE, REPO_URL, ISSUES_URL } from "../lib/site";
+import { BASE, REPO_URL } from "../lib/site";
 
 interface Props {
   title?: string;
@@ -15,18 +15,19 @@ const title = props.title ?? fm.title ?? "Temporal Awareness";
 const description =
   props.description ??
   fm.description ??
-  "An Open Safety Project: detecting how AI models internally represent time, and why it matters.";
+  "How is time represented in LLMs? An open safety project measuring how time horizons shape language model outputs, and where the evidence stops.";
 const prose = props.prose ?? fm.prose ?? false;
 const fullTitle = title === "Temporal Awareness" ? title : `${title} · Temporal Awareness`;
 
 const nav = [
-  { href: `${BASE}`, label: "Home" },
-  { href: `${BASE}understand`, label: "Understand" },
-  { href: `${BASE}what-we-score`, label: "What we score" },
+  { href: `${BASE}representation`, label: "Representation" },
+  { href: `${BASE}evidence`, label: "Evidence" },
   { href: `${BASE}explore`, label: "Explore" },
+  { href: `${BASE}related-threads`, label: "Related threads" },
   { href: `${BASE}contribute`, label: "Contribute" },
 ];
 const path = Astro.url.pathname;
+const isActive = (href: string) => path === href || path.startsWith(`${href}/`);
 ---
 
 <!doctype html>
@@ -56,71 +57,61 @@ const path = Astro.url.pathname;
     />
   </head>
   <body class="flex min-h-screen flex-col">
-    <header class="sticky top-0 z-30 border-b border-rule bg-paper/90 backdrop-blur">
-      <nav class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-2.5">
+    <header class="z-30 border-b border-rule bg-paper/90 backdrop-blur md:sticky md:top-0">
+      <nav aria-label="Main" class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2.5">
         <a href={`${BASE}`} class="font-display text-lg font-bold tracking-tight text-ink">
           Temporal Awareness
         </a>
-        <div class="flex items-center gap-3 sm:gap-5">
-          <div class="hidden items-center gap-5 sm:flex">
-            {
-              nav.map((item) => {
-                const active = path === item.href || (item.href !== BASE && path.startsWith(item.href));
-                return (
-                  <a
-                    href={item.href}
-                    class={`font-sans text-xs font-semibold uppercase tracking-widest transition ${
-                      active ? "text-accent-700 dark:text-accent-400" : "text-ink-soft hover:text-ink"
-                    }`}
-                  >
-                    {item.label}
-                  </a>
-                );
-              })
-            }
-            <a
-              href={ISSUES_URL}
-              class="font-sans text-xs font-semibold uppercase tracking-widest text-accent-700 hover:text-accent-800 dark:text-accent-400 dark:hover:text-accent-300"
-            >
-              Browse issues →
-            </a>
-          </div>
-          <button
-            id="theme-toggle"
-            type="button"
-            aria-label="Toggle dark mode"
-            title="Toggle dark mode"
-            class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-rule text-ink-soft transition hover:border-accent-500 hover:text-ink"
-          >
-            <svg
-              class="h-[18px] w-[18px] dark:hidden"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.7"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"></path>
-            </svg>
-            <svg
-              class="hidden h-[18px] w-[18px] dark:block"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.7"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <circle cx="12" cy="12" r="4"></circle>
-              <path
-                d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"
-              ></path>
-            </svg>
-          </button>
+        <div class="order-last flex w-full flex-wrap gap-x-4 gap-y-1 md:order-none md:ml-auto md:w-auto md:gap-x-5">
+          {
+            nav.map((item) => (
+              <a
+                href={item.href}
+                aria-current={isActive(item.href) ? "page" : undefined}
+                class={`font-sans text-sm font-medium transition ${
+                  isActive(item.href) ? "text-accent-700 dark:text-accent-400" : "text-ink-soft hover:text-ink"
+                }`}
+              >
+                {item.label}
+              </a>
+            ))
+          }
         </div>
+        <button
+          id="theme-toggle"
+          type="button"
+          aria-label="Toggle dark mode"
+          title="Toggle dark mode"
+          class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-rule text-ink-soft transition hover:border-accent-500 hover:text-ink"
+        >
+          <svg
+            class="h-[18px] w-[18px] dark:hidden"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"></path>
+          </svg>
+          <svg
+            class="hidden h-[18px] w-[18px] dark:block"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="4"></circle>
+            <path
+              d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"
+            ></path>
+          </svg>
+        </button>
       </nav>
     </header>
 
@@ -139,12 +130,12 @@ const path = Astro.url.pathname;
     <footer class="border-t border-rule">
       <div class="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-8 text-sm text-ink-soft sm:flex-row sm:items-center sm:justify-between">
         <p class="font-sans">
-          <span class="font-semibold text-ink">Temporal Awareness</span> · an Open Safety Project · MIT licensed
+          <span class="font-semibold text-ink">Temporal Awareness</span>, an open safety project. MIT licensed.
         </p>
-        <div class="flex gap-5 font-sans text-xs uppercase tracking-widest">
+        <div class="flex flex-wrap gap-x-5 gap-y-1 font-sans text-sm">
           <a href={REPO_URL} class="hover:text-ink">GitHub</a>
+          <a href={`${BASE}evidence`} class="hover:text-ink">Evidence</a>
           <a href={`${BASE}contribute`} class="hover:text-ink">Contribute</a>
-          <a href={`${BASE}start-here`} class="hover:text-ink">Start here</a>
         </div>
       </div>
     </footer>

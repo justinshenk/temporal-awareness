@@ -1,0 +1,145 @@
+---
+interface Mark {
+  from: number;
+  to?: number;
+  note: string;
+}
+interface Row {
+  label: string;
+  detail: string;
+  series: "read" | "causal" | "steer";
+  range?: [number, number];
+  peaks: Mark[];
+}
+interface Panel {
+  model: string;
+  layers: number;
+  ticks: number[];
+  rows: Row[];
+}
+
+const panels: Panel[] = [
+  {
+    model: "Qwen3-4B",
+    layers: 36,
+    ticks: [0, 9, 18, 27, 35],
+    rows: [
+      {
+        label: "Best probe accuracy",
+        detail: "Peak at L26, plateau from about L17",
+        series: "read",
+        range: [17, 35],
+        peaks: [{ from: 26, note: "Peak probe accuracy at L26" }],
+      },
+      {
+        label: "Top patched components",
+        detail: "L21 and L24 attention, L31 and L35 MLPs",
+        series: "causal",
+        peaks: [
+          { from: 21, note: "L21 attention" },
+          { from: 24, note: "L24 attention" },
+          { from: 31, note: "L31 MLP" },
+          { from: 35, note: "L35 MLP" },
+        ],
+      },
+      {
+        label: "Largest steering effect",
+        detail: "L19–22 strongest, weak at L26",
+        series: "steer",
+        range: [19, 27],
+        peaks: [{ from: 19, to: 22, note: "Strongest steering at L19–22" }],
+      },
+    ],
+  },
+  {
+    model: "Qwen3-32B",
+    layers: 64,
+    ticks: [0, 16, 32, 48, 63],
+    rows: [
+      {
+        label: "Best probe accuracy",
+        detail: "L24, L28 or L32, by probe family",
+        series: "read",
+        range: [24, 48],
+        peaks: [
+          { from: 24, note: "Best layer for the steering probe on explicit prompts" },
+          { from: 28, note: "Best layer for logistic regression on explicit prompts" },
+          { from: 32, note: "Best layer for whitened probes on explicit prompts" },
+        ],
+      },
+      {
+        label: "Top patched components",
+        detail: "Not measured in this study",
+        series: "causal",
+        peaks: [],
+      },
+      {
+        label: "Largest steering effect",
+        detail: "Choice gap largest at L44, logprob gap at L48 by a small margin",
+        series: "steer",
+        range: [24, 48],
+        peaks: [{ from: 44, note: "Largest choice gap at L44" }],
+      },
+    ],
+  },
+];
+
+const left = (layer: number, layers: number) => `${(layer / layers) * 100}%`;
+const width = (from: number, to: number, layers: number) => `${((to - from + 1) / layers) * 100}%`;
+const seriesClass: Record<Row["series"], string> = {
+  read: "bg-series-read",
+  causal: "bg-series-causal",
+  steer: "bg-series-steer",
+};
+---
+
+<figure class="not-prose">
+  <div class="grid gap-x-12 gap-y-10 lg:grid-cols-2">
+    {
+      panels.map((panel) => (
+        <div>
+          <h3 class="font-display text-xl font-bold text-ink">
+            {panel.model}
+            <span class="ml-2 font-sans text-sm font-normal text-ink-soft">{panel.layers} layers</span>
+          </h3>
+          <div class="mt-4 space-y-5">
+            {panel.rows.map((row) => (
+              <div>
+                <div class="font-sans text-sm font-semibold text-ink">{row.label}</div>
+                <div class="font-sans text-sm text-ink-soft">{row.detail}</div>
+                <div class="relative mt-2 h-3 rounded-full bg-rule/40">
+                  {row.range && (
+                    <span
+                      class={`absolute inset-y-0 rounded-full opacity-30 ${seriesClass[row.series]}`}
+                      style={`left:${left(row.range[0], panel.layers)};width:${width(row.range[0], row.range[1], panel.layers)}`}
+                      title={`Layers ${row.range[0]} to ${row.range[1]}`}
+                    />
+                  )}
+                  {row.peaks.map((peak) => (
+                    <span
+                      class={`absolute inset-y-0 rounded-full ring-2 ring-paper ${seriesClass[row.series]}`}
+                      style={`left:${left(peak.from, panel.layers)};width:${width(peak.from, peak.to ?? peak.from, panel.layers)};min-width:6px`}
+                      title={peak.note}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div class="relative mt-2 h-5 font-sans text-xs text-ink-soft" aria-hidden="true">
+            {panel.ticks.map((tick) => (
+              <span class="absolute -translate-x-1/2 first:translate-x-0 last:-translate-x-full" style={`left:${left(tick, panel.layers)}`}>
+                L{tick}
+              </span>
+            ))}
+          </div>
+        </div>
+      ))
+    }
+  </div>
+  <figcaption class="mt-6 max-w-3xl font-sans text-sm leading-6 text-ink-soft">
+    Layers are placed by their fraction of each model's depth. Solid marks show the strongest layers; the tint
+    shows the range swept or the plateau. The methods differ between studies, the Qwen3-32B sweep only covers L24
+    to L48 in steps of four, and its authors claim no uniquely optimal layer, so this comparison is suggestive.
+  </figcaption>
+</figure>

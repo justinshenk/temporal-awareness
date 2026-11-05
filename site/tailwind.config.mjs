@@ -21,6 +21,9 @@ export default {
         "ink-soft": "rgb(var(--color-ink-soft) / <alpha-value>)", // body text
         rule: "rgb(var(--color-rule) / <alpha-value>)", // hairline rules
         surface: "rgb(var(--color-surface) / <alpha-value>)", // raised cards/panels
+        "series-read": "rgb(var(--color-series-read) / <alpha-value>)", // probe accuracy marks
+        "series-causal": "rgb(var(--color-series-causal) / <alpha-value>)", // patching marks
+        "series-steer": "rgb(var(--color-series-steer) / <alpha-value>)", // steering marks
         accent: {
           50: "#ecfdf5",
           100: "#d1fae5",

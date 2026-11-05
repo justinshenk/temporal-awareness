@@ -13,9 +13,11 @@ This project investigates how LLMs encode temporal reasoning and whether we can:
 3. **Measure** divergence between stated and internal time horizons
 
 **Key findings:**
-- GPT-2 encodes temporal scope with 92.5% linear separability
-- Steering validation: r=0.935 correlation between steering and probe predictions
-- Late layers (6-11) encode semantic temporal features robust to keyword removal
+- In Qwen3-4B, four localization methods converge on a subgraph in layers 17–35, where time horizons form ordered clusters from seconds to centuries ([Rios-Sialer et al., BlackboxNLP 2026 extended abstract](https://arxiv.org/abs/2606.05194))
+- In Qwen3-32B, steering at layer 44 opens a 59.4-point gap in long-term choices on 100 held-out prompts, against at most 5.6 points for a random direction ([Mráz & Shenk, Mechanistic Interpretability Workshop at ICML 2026](https://arxiv.org/abs/2608.03892))
+- Probes reach 99.2% on implicit pairs in Qwen3-4B, but no surface baseline has been run yet, so this doesn't establish what they read
+
+Every number, with its dataset and caveats, is on the [project site](https://temporal-awareness.vercel.app/evidence).
 
 ## Program
 

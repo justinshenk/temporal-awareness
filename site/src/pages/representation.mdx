@@ -1,0 +1,98 @@
+---
+layout: ../layouts/BaseLayout.astro
+title: Representation
+description: How a time horizon becomes an output in Qwen3 models, what the evidence supports, and where it stops.
+prose: true
+---
+
+import LayerAxis from "../components/LayerAxis.astro";
+import ledger from "../data/evidence_ledger.json";
+import { BASE, asset } from "../lib/site";
+
+export const { rios, mraz } = ledger.sources;
+
+# How does a time horizon become an output?
+
+This page follows the signal from the prompt to the output in two Qwen3 models, and marks where the evidence stops. Every number comes from the <a href={BASE + "evidence"}>evidence ledger</a>.
+
+## Three terms
+
+- **Time horizon:** the future moment at which outcomes are evaluated.
+- **Temporal scope:** the bounded interval of time over which outcomes are weighted. The time horizon is its upper bound.
+- **Temporal preference:** how the value of an outcome changes with when it occurs. These studies measure it through outputs on choices between sooner and later rewards.
+
+The definitions follow <a href={rios.url}>{rios.label}</a>, Section 2. That paper and <a href={mraz.url}>{mraz.label}</a> are the main sources below.
+
+<h2 id="where">Where is it computed?</h2>
+
+In Qwen3-4B, four methods converge on a subgraph across layers 17–35: probing, two forms of attribution, and activation patching. Attention at L24 is flagged by all four non-probing methods. MLP effects concentrate at L31–35. Patching on 71 prompt pairs ranks four components above the rest: attention at L24 and L21, and MLPs at L35 and L31.
+
+This is a subgraph-level result on a single financial task, not a traced circuit.
+
+<h2 id="shape">What form does the horizon take?</h2>
+
+Horizons form ordered clusters from seconds to centuries, on what the paper describes as a curved manifold. Samples with no stated horizon sit apart at first.
+
+This evidence is qualitative. It comes from PCA projections, and the main text reports no separation metric. A linear direction can still steer outputs across a curved structure, but the paper suggests that may be why output quality degrades at large steering strengths.
+
+<h2 id="when">When does it become a preference signal?</h2>
+
+The direction encoding the horizon is unstable across prompt positions until the user-to-assistant boundary. Over those four tokens, attention collapses the continuous representation into a binary signal. Long and short overlap heavily at `<|im_end|>` and separate cleanly by `assistant`, and the no-horizon samples align with the manifold.
+
+<figure>
+  <img
+    src={asset("paper-figures/turn-boundary.png")}
+    alt="Four rows of paired PCA plots at the tokens im_end, newline, im_start and assistant. Long and short samples overlap in the top row and form two separate clusters in the bottom row."
+    width="1365"
+    height="1174"
+    class="paper-figure"
+  />
+  <figcaption>Layer 31 of Qwen3-4B at the four turn-transition tokens, colored by preference (left) and by time horizon (right). From {rios.label}, Figure 5.</figcaption>
+</figure>
+
+<h2 id="deadline">Does a stated deadline reach the output?</h2>
+
+Not reliably, and this is the main gap between representation and behavior. On 960 investment prompts, there is a zone of deadlines where only the sooner option can pay out in time. Qwen3-4B outputs select the undeliverable long-term option 47–53% of the time. Across the 30 models compared, only frontier API models reach 95–100%.
+
+Fitted discount rates also sit 3–8× below human controls, and the paper reports that these preferences are unstable across contexts. A horizon can be clearly structured in activations without reliably shaping the output.
+
+<h2 id="steering">Does changing the signal change the output?</h2>
+
+In the settings tested, yes. This is the strongest behavioral evidence so far.
+
+At L44 of Qwen3-32B, long-term outputs on 100 held-out explicit prompts move from 33.7% at −128 to 76.8% unsteered to 93.1% at +128, a 59.4-point gap. A matched random direction moves them by at most 5.6 points, and sampled decoding preserves the pattern. On 300 implicit prompts the gap is 36.5 points.
+
+In Qwen3-4B, steering at L22 with α = 50 gives about 3.4× odds, on 20 forced-choice prompts. The abstract calls this suggestive. Outputs also shift on 13 open-ended prompts, but those scores come from an LLM judge not validated against human ratings.
+
+Three limits apply:
+
+- Steering shows that adding a direction changes outputs, not that this direction drives them in normal operation.
+- At L44, |α| = 128 is part of a range the authors call deliberately large, at 36–63% of the unsteered residual norm across layers.
+- Neither paper reports a prompting baseline, so similar shifts might be possible by asking for them.
+
+Moderate long-term steering also raises a planning-related capability metric on TravelPlanner, while +128 lowers it. The authors say this is not evidence that steering generally solves planning.
+
+### Where reading and changing differ
+
+<LayerAxis />
+
+In Qwen3-4B, steering is strongest at L19–22 and weak at L26, where probe accuracy peaks. In Qwen3-32B, the largest choice gap is at L44, later in the network than the best probe layers. So the two can differ in either order, and a high probe score doesn't identify the best place to intervene.
+
+<h2 id="really-time">Is it really about time?</h2>
+
+This isn't established.
+
+- **Probe accuracy:** a probe reaches 99.2% at L26 of Qwen3-4B on implicit pairs, and 77.0–83.5% in Qwen3-32B when trained on explicit questions and tested on implicit ones. Both have **no surface baseline yet**. Shuffled labels rule out chance, but the Qwen3-4B probe already scores about 80% at layer 0, before almost any computation.
+- **Shared subgraph:** cumulative reliability of a reasoning chain is decodable at about 95% across L19–31 of the same model. It is linearly orthogonal to the temporal direction but sits on the same manifold, so the region encodes more than time.
+- **Correlated features:** the Qwen3-32B authors note that their contrast also varies in abstraction, urgency, strategic scope and framing. The direction may be a broader short-term/long-term register.
+- **A precedent:** in a related study of generated code, a classifier using only function and parameter names matched or beat probes that had appeared to detect planning. See <a href={BASE + "related-threads"}>related threads</a>.
+
+<h2 id="generalize">How far does this generalize?</h2>
+
+The strongest transfer result is within Qwen3-32B: a direction trained on binary answers moves the indifference multiplier on a monetary task it was not trained on. At L40, the multiplier goes from 2.67 unsteered to 8.34 at −128 and 1.12 at +128.
+
+Beyond that, little is known. Both papers use Qwen3 models with thinking disabled, and the Qwen3-4B work uses a single financial task. A project report finds that probe signal varies across Qwen, Llama and Phi, but cross-model causal work hasn't been done. Multi-turn and agentic settings are untested.
+
+That leaves the site's main question open: these methods measure horizon-related signals in constrained tasks, and it isn't yet known whether they can measure the horizon behind open-ended output.
+
+Next: <a href={BASE + "evidence"}>check the numbers</a>, <a href={BASE + "explore"}>explore the geometry</a> or <a href={BASE + "contribute"}>pick up an open question</a>.
